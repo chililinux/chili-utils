@@ -1,3 +1,3 @@
-# chili-pkgbuild-template
+# chili-utils
 
-Template for Chili Linux packages
+Pacote de utilitários do sistema operacional Chili Linux GNU
