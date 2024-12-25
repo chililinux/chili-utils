@@ -1,7 +1,7 @@
 # Maintainer: Vilmar Catafesta <vcatafesta@gmail.com>
 
 pkgname=chili-utils
-pkgdesc="Pacote de utilitários do sistema operacional Chili Linux GNU"
+pkgdesc="Pacote de utilitários para GNU/Linux"
 #depends=('')
 #makedepends=('')
 #optdepends=('')
