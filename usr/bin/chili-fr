@@ -44,15 +44,15 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 readonly APP="${0##*/}"
 readonly VERSION='1.15.01-20250115'
 readonly APPDESC='Wrapper lite para o qemu'
-readonly DEPENDENCIES=(
+readonly -a DEPENDENCIES=(
   'tput'
   'gettext'
   'qemu-system-x86_64'
   'spice-vdagent'
-  'virt-viewer'
+  'remote-viewer'
   'python3'
   )
-readonly PACKAGEDEP=(
+readonly -A PACKAGEDEP=(
   [tput]='ncurses'
   [gettext]='gettext'
   [qemu-system-x86_64]='qemu-full'
