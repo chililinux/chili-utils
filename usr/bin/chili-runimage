@@ -62,8 +62,8 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 readonly APP="${0##*/}"
 readonly VERSION='1.15.01-20250115'
 readonly APPDESC='Wrapper para o qemu'
-readonly DEPENDENCIES=('tput' 'printf' 'qemu-system-x86_64' 'gettext')
-readonly PACKAGEDEP=([tput]='ncurses' [printf]='coreutils' [qemu-system-x86_64]='qemu-full' [gettext]='gettext')
+readonly DEPENDENCIES=('tput' 'printf' 'gettext' 'qemu-system-x86_64')
+readonly PACKAGEDEP=([tput]='ncurses' [printf]='coreutils' [gettext]='gettext' [qemu-system-x86_64]='qemu-full')
 
 #readonly iface_bridge='docker0'
 #readonly iface_bridge='virbr0'
