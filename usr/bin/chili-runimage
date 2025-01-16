@@ -286,16 +286,16 @@ function sh_checkDependencies {
 	declare -a missing
 
 	for d in "${DEPENDENCIES[@]}"; do
-		[[ -n $(command -v "$d") ]] && { :; } || {
-			printf "%s\n" "${red}ERROR${reset}: $(gettext "Não foi possível encontrar o comando") ${cyan}'$d'${reset} -> $(gettext "instalar pacote") '${PACKAGEDEP[$d]}'"
-			missing+=("$d")
-			errorFound=true
-		}
+    if ! command -v "$d" &> /dev/null; then
+      printf "%s\n" "${red}ERROR${reset}: $(gettext "Não foi possível encontrar o comando") ${cyan}'$d'${reset} -> $(gettext "instalar pacote") ${cyan}"${PACKAGEDEP[$d]}"${reset}"
+      missing+=("$d")
+      errorFound=true
+    fi
 	done
 
   file_ovmf='/usr/share/edk2/x64/OVMF_VARS.4m.fd'
   if [[ ! -e "$file_ovmf" ]]; then
-	  printf "%s\n" "${red}ERROR${reset}: $(gettext "Não foi possível encontrar o arquivo") ${cyan}'$file_ovmf'${reset} -> $(gettext "instalar pacote") 'edk2-ovmf'"
+	  printf "%s\n" "${red}ERROR${reset}: $(gettext "Não foi possível encontrar o arquivo") ${cyan}'$file_ovmf'${reset} -> $(gettext "instalar pacote") ${cyan}'edk2-ovmf'${reset}"
 		missing+=("$file_ovmf")
 		errorFound=true
 	fi
