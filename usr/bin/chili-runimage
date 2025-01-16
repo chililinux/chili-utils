@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #shellcheck disable=SC2034,SC2155,SC2154,SC2181
 #
-#  chili-runimage
+#  chili-runimage - wrapper para o qemu
 #  Created: 2023/04/25
 #  Altered: qua 14 fev 2024 11:05:21 -04
-#  Updated: sex 03 jan 2025 23:06:19 -04
+#  Updated: qua 15 jan 2025 20:53:01 -04
 #
 #  Copyright (c) 2023-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -60,9 +60,11 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly _VERSION_='1.5.01-20240214'
+readonly VERSION='1.15.01-20250115'
+readonly APPDESC='Wrapper para o qemu'
 readonly DEPENDENCIES=('tput' 'printf' 'qemu-system-x86_64' 'gettext')
-readonly PACKAGEDEP=([tput]='ncurses' [printf]='coreutils' [qemu - system - x86_64]='qemu' [gettext]='gettext')
+readonly PACKAGEDEP=([tput]='ncurses' [printf]='coreutils' [qemu-system-x86_64]='qemu-full' [gettext]='gettext')
+
 #readonly iface_bridge='docker0'
 #readonly iface_bridge='virbr0'
 readonly iface_bridge='br0'
@@ -103,6 +105,105 @@ function DOT {
 	printf "%s" "${blue}:: ${reset}"
 }
 
+
+msg_raw() {
+	local msg="$1"
+	# Remove tags HTML, se existirem
+	#msg="$(sed 's/<[^>]*>//g' <<< "$msg")"
+
+	# Verifica se existe ':' na mensagem
+	if [[ "$msg" == *:* ]]; then
+		# Divide a string antes e depois do primeiro ':'
+		local before_colon="${msg%%:*}:"
+		local after_colon="${msg#*: }"
+		# Aplica as cores
+		msg="${cyan}${before_colon} ${red}${after_colon}${reset}"
+	else
+		# Se não houver ':', aplica apenas a cor padrão
+		msg="${cyan}${msg}${reset}"
+	fi
+	echo -e "$msg"
+}
+export -f msg_raw
+
+msg() {
+	local msg="$1"
+	msg="$(sed 's/<[^>]*>//g' <<<"$msg")" # Remove as tags HTML
+	echo -e "BP=>${cyan}running: ${yellow}${msg}${reset}"
+}
+export -f msg
+
+msg_ok() {
+	local msg="$1"
+	msg="$(sed 's/<[^>]*>//g' <<<"$msg")" # Remove as tags HTML
+	echo -e "BP=>${cyan}feito: ${green}${msg}${reset}"
+}
+export -f msg_ok
+
+msg_run() {
+	local msg="$1"
+	echo -e "BP=>${cyan}running: ${yellow}${msg}${reset}"
+	eval "$msg"
+}
+export -f msg_run
+
+msg_info() {
+  local msg="$1"
+  local caller_function="${FUNCNAME[1]}"      # Nome da função que chamou a função atual
+  local caller_line="${BASH_LINENO[1]}"       # Número da linha que chamou a função atual
+  msg="$(sed 's/<[^>]*>//g' <<<"$msg")"       # Remove as tags HTML
+  #echo -e "${blue}==>${green}[${caller_function}:${caller_line}]=>${yellow}info   : ${cyan}${msg}${reset}"
+  echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
+}
+export -f msg_info
+
+msg_warning() {
+	local msg="$1"
+  local caller_function="${FUNCNAME[1]}"      # Nome da função que chamou a função atual
+  local caller_line="${BASH_LINENO[1]}"       # Número da linha que chamou a função atual
+	msg="$(sed 's/<[^>]*>//g' <<<"$msg")" # Remove as tags HTML
+  echo -e "${caller_function}=>${red}warning: ${orange}${msg}${reset}"
+}
+export -f msg_warning
+
+msg_warn() {
+	local msg="$1"
+  local caller_function="${FUNCNAME[1]}"      # Nome da função que chamou a função atual
+  local caller_line="${BASH_LINENO[1]}"       # Número da linha que chamou a função atual
+	msg="$(sed 's/<[^>]*>//g' <<<"$msg")" # Remove as tags HTML
+  echo -e "${caller_function}=>${red}warning: ${orange}${msg}${reset}"
+}
+export -f msg_warn
+
+replicate() {
+	local char=${1:-'#'}
+	local nsize=${2:-$(tput cols)}
+	local line
+	printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
+}
+export -f replicate
+
+send_telegram_message() {
+	local message="$1"
+	local parse_mode="$2"
+
+	# Define parse_mode como "MarkdownV2" se não for especificado
+	[[ -z $parse_mode ]] && parse_mode="HTML"
+
+	# Remove as tags HTML e exibe o resultado no terminal
+	echo -e "${red}$(sed 's/<[^>]*>//g' <<<"$message")${reset}"
+	# Envia a mensagem original com HTML para o Telegram
+	curl -s -X POST "https://api.telegram.org/bot${inputs_telegram_token}/sendMessage" \
+		-d chat_id="${inputs_telegram_chat_id}" \
+		-d text="$message" \
+		-d parse_mode="$parse_mode"
+}
+export -f send_telegram_message
+
+supports_uefi() {
+	fdisk -l "$1" 2>/dev/null | grep -q "EFI"
+}
+
 function die {
 	local msg=$1
 	shift
@@ -130,15 +231,23 @@ function sh_checkRoot {
 }
 
 sh_version() {
-	printf "%s\n" "${black}${0##*/} v${_VERSION_}${reset}"
-	printf "\t%s\n\t%s\n\t%s\n\t%s\n" "${bold}${black}Copyright (C) 2023 vcatafesta@gmail.com" \
-		"$(gettext "Licença GPLv3+: GNU GPL versão 3 ou posterior") <https://gnu.org/licenses/gpl.html>" \
-		"$(gettext "Este é um software livre: você é livre para alterá-lo e redistribuí-lo.")" \
-		"$(gettext "NÃO HÁ GARANTIA, em toda a extensão permitida por lei.")$reset"
-	exit 0
+  cat <<-EOF
+        ${BOLD}${CYAN}${0##*/} v${VERSION}${RESET}
+        ${APPDESC}
+        ${BOLD}${black}Copyright (C) 2024-2024 ${reset}ChiliLinux Team${black}
+
+        Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
+        O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
+        inclui software de código aberto sob uma variedade de outras licenças.
+        Você pode ler instruções sobre como baixar e criar para você mesmo
+        o código fonte específico usado para criar esta cópia.
+        ${red}Este programa vem com absolutamente NENHUMA garantia.
+        ${reset}
+EOF
+   exit 0
 }
 
-function sh_setenvironment {
+set_varcolors() {
 	declare -gA Alocale=([0]=pt_BR [1]=en_US [2]=de_DE [3]=fr_FR [4]=es_ES [5]=it_IT)
 	tput sgr0 # reset colors
 	bold=$(tput bold)
@@ -166,25 +275,32 @@ function sh_setenvironment {
 	DOTPREFIX="  ${black}::${reset} "
 }
 
-function sh_unsetvarcolors {
+unset_varcolors() {
 	unset bold reset cyan red blue white black
 	unset green yellow orange pink cyan purple violet
 }
 
 function sh_checkDependencies {
 	local d
-	local errorFound=0
+	local errorFound=false
 	declare -a missing
 
 	for d in "${DEPENDENCIES[@]}"; do
 		[[ -n $(command -v "$d") ]] && { :; } || {
 			printf "%s\n" "${red}ERROR${reset}: $(gettext "Não foi possível encontrar o comando") ${cyan}'$d'${reset} -> $(gettext "instalar pacote") '${PACKAGEDEP[$d]}'"
 			missing+=("$d")
-			errorFound=1
+			errorFound=true
 		}
 	done
 
-	if ((errorFound)); then
+  file_ovmf='/usr/share/edk2/x64/OVMF_VARS.4m.fd'
+  if [[ ! -e "$file_ovmf" ]]; then
+	  printf "%s\n" "${red}ERROR${reset}: $(gettext "Não foi possível encontrar o arquivo") ${cyan}'$file_ovmf'${reset} -> $(gettext "instalar pacote") 'edk2-ovmf'"
+		missing+=("$file_ovmf")
+		errorFound=true
+	fi
+
+	if $errorFound; then
 		echo "===================================================="
 		echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
 		echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
@@ -217,10 +333,10 @@ function sh_set_qemu_common_options {
 	qemu_options+=(-device intel-hda)
 	[[ "$audioserver" = 'auto' ]] && audioserver="$(detect_audio_server)"
   qemu_options+=(-audiodev "$audioserver",id=snd0)
-	qemu_options+=(-device hda-duplex,audiodev=snd0,mixer=off)
+	qemu_options+=(-device hda-output,audiodev=snd0)
+	qemu_options+=(-device hda-duplex,audiodev=snd0,mixer=on)
 	qemu_options+=(-rtc base=localtime,clock=host)
 	qemu_options+=(-device ich9-intel-hda)
-	qemu_options+=(-device hda-output,audiodev=snd0)
 	qemu_options+=(-global ICH9-LPC.disable_s3=1)
 	qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
 	qemu_options+=(-serial stdio)
@@ -346,7 +462,7 @@ EOF
 	exit 0
 }
 
-sh_setenvironment
+set_varcolors
 sh_checkDependencies
 
 OPTIONS=m:ubVnhd:a:v:
@@ -365,7 +481,7 @@ while test ${#opts[*]} -gt 0; do
 			videodevice="$2"
 			shift
 		else
-			die "$(gettext "Argumento inválido para -v. Use virtio-vga,virtio-gpu-pci,qxl-vga,VGA,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display ou ramfb")" >&2
+			die "$(gettext "Argumento inválido para -v. Use VGA,virtio-vga,virtio-gpu-pci,qxl-vga,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display ou ramfb")" >&2
 		fi
 		;;
 	-a | --audio)
@@ -392,7 +508,7 @@ while test ${#opts[*]} -gt 0; do
 		bridge=true
 		;;
 	-n | --nocolor)
-		sh_unsetvarcolors
+		unset_varcolors
 		;;
 	-m | --memory)
 		if [[ $2 =~ ^[0-9]+[MG]?$ ]]; then
@@ -426,8 +542,6 @@ if [[ $# > 0 ]]; then
 	if $bridge; then
 		random_mac_net0=$(python3 -c "import random; print(':'.join(['{:02x}'.format(random.randint(0, 255)) for _ in range(6)]))")
 		random_mac_net1=$(python3 -c "import random; print(':'.join(['{:02x}'.format(random.randint(0, 255)) for _ in range(6)]))")
-		#	echo $random_mac_net0
-		#	echo $random_mac_net1
 		#qemu_options+=(-netdev bridge,id=net0,smb=$HOME)
 		#qemu_options+=(-netdev bridge,id=net0)
 		#qemu_options+=(-device e1000,netdev=net0)
