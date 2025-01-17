@@ -5,7 +5,7 @@
 #  chili-fr
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: 2025/01/16 - 00:44
+#  Updated: qui 16 jan 2025 23:11:08 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='1.15.01-20250115'
+readonly VERSION='1.16.01-20250116'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
   'tput'
@@ -62,9 +62,9 @@ readonly -A PACKAGEDEP=(
   )
 
 declare xmem='8G'
-declare videodevice='virtio-vga'
 declare videodevice='qxl'
 declare videodevice='VGA'
+declare videodevice='virtio-vga'
 declare uefi=false
 declare spice=false
 declare bridge=false
@@ -376,6 +376,16 @@ sh_setup() {
   sudo qemu-img create /archlive/qemu/hdb.img -f raw 32G &> /dev/null
   sudo qemu-img create /archlive/qemu/hdc.img -f raw 32G &> /dev/null
   sudo qemu-img create /archlive/qemu/hdd.img -f raw 32G &> /dev/null
+
+  sh_start_vdagentd
+}
+
+sh_start_vdagentd() {
+  if ! pgrep spice-vdagentd; then
+    msg_info "Ativando o serviço spice-vdaagentd"
+    sudo systemctl enable spice-vdagentd
+    sudo systemctl start spice-vdagentd
+  fi
 }
 
 chili-fr() {
@@ -417,8 +427,15 @@ chili-fr() {
 	qemu_options+=(-device hda-output,audiodev=snd0)
 	qemu_options+=(-global ICH9-LPC.disable_s3=1)
 	qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
+ 	qemu_options+=(-device virtio-serial)
+ 	qemu_options+=(-device virtio-serial)
+
+  #video
+ 	qemu_options+=(-device "$videodevice")
 
   if $spice; then
+    sh_start_vdagentd
+
   	# Informar as portas usadas
 	  msg_info "spice running on port: $random_spice_port"
   	msg_info "remote-viewer spice://localhost:$random_spice_port"
@@ -426,11 +443,13 @@ chili-fr() {
   	# Configurar SPICE
   	qemu_options+=(-spice port=$random_spice_port,disable-ticketing=on)
   	qemu_options+=(-monitor tcp:localhost:$random_port,server,nowait)
-  	qemu_options+=(-chardev spicevmc,id=vdagent,debug=0,name=vdagent)
-  	qemu_options+=(-device virtserialport,chardev=vdagent,name=com.redhat.spice.0)
+  	#qemu_options+=(-chardev spicevmc,id=vdagent,debug=0,name=vdagent)
+  	#qemu_options+=(-device virtserialport,chardev=vdagent,name=com.redhat.spice.0)
+    qemu_options+=(-chardev spicevmc,id=charchannel0,name=vdagent)
+    qemu_options+=(-device virtserialport,chardev=charchannel0,name=com.redhat.spice.0)
 
 		# Executar o QEMU
-		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" &> /dev/null &
+		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" &
 		qemu_pid=$!
 		remote-viewer spice://localhost:$random_spice_port &
 		viewer_pid=$!
@@ -535,7 +554,6 @@ if [[ $# > 0 ]]; then
   	qemu_options+=(-netdev user,id=net0)
   	#qemu_options+=(-device e1000,netdev=net0)
     qemu_options+=(-device virtio-net-pci,netdev=net0)
-  	qemu_options+=(-device virtio-serial)
   fi
   if $drive; then
   	msg_info "Anexando disco/drive externo: ${yellow}$drive_path"
