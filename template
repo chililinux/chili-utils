@@ -45,6 +45,7 @@ homepage="https://github.com/chililinux/${pkgname}"
 #distfiles="${homepage}/archive/$version/$pkgname-$version.tar.gz"
 #checksum=37a5b0bc3c7cbccee625209b9196a2e2966396cfe5c7652318559642fb6a7a32
 wrksrc=${pkgname}
+nostrip=yes
 
 do_fetch() {
 	git clone --depth 1 ${homepage} ${wrksrc}
@@ -53,6 +54,6 @@ do_fetch() {
 }
 
 do_install() {
-	vcopy etc /
+#	vcopy etc /
 	vcopy usr /
 }
