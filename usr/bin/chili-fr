@@ -60,7 +60,7 @@ readonly -A PACKAGEDEP=(
 	['spice-vdagent']='spice-vdagent'
 	['remote-viewer']='virt-viewer'
 	['python3']='python'
-	['virsh]='libvirt'
+	['virsh']='libvirt'
 )
 
 declare iface_bridge='br0'
