@@ -54,13 +54,13 @@ readonly -a DEPENDENCIES=(
 	'virsh'
 )
 readonly -A PACKAGEDEP=(
-	[tput]='ncurses'
-	[gettext]='gettext'
-	[qemu - system - x86_64]='qemu-full'
-	[spice - vdagent]='spice-vdagent'
-	[remote - viewer]='virt-viewer'
-	[python3]='python'
-	[virsh]='libvirt'
+	['tput']='ncurses'
+	['gettext']='gettext'
+	['qemu-system-x86_64']='qemu-full'
+	['spice-vdagent']='spice-vdagent'
+	['remote-viewer']='virt-viewer'
+	['python3']='python'
+	['virsh]='libvirt'
 )
 
 declare iface_bridge='br0'
