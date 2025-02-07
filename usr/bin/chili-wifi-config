@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # shellcheck shell=bash disable=SC1091,SC2039,SC2166
 #
-#  chili-wifi-config-wpa
-#  Created: 2025/02/06 - 04:56
-#  Altered: 2025/02/06 - 04:56
+#  chili-wifi-config
+#  Created: 2025/02/06 - 04:53
+#  Altered: 2025/02/06 - 04:53
 #
 #  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -31,7 +31,7 @@
 ##############################################################################
 #export LANGUAGE=pt_BR
 export TEXTDOMAINDIR=/usr/share/locale
-export TEXTDOMAIN=chili-wifi-config-wpa
+export TEXTDOMAIN=chili-wifi-config
 
 # Definir a variável de controle para restaurar a formatação original
 reset=$(tput sgr0)
@@ -72,8 +72,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare APPDESC="Wrapper para o wpa_supplicant"
-declare _VERSION_="1.2.06-20250206"
+declare _VERSION_="1.0.0-20250206"
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput dialog)
 declare dialogRcFile="$HOME/.dialogrc"
@@ -283,21 +282,21 @@ check_and_start_service() {
 	fi
 }
 
+# Função para obter a interface de rede Wi-Fi
 get_wifi_interface() {
 	# Obtém as interfaces de rede Wi-Fi disponíveis
-	interfaces=$(iw dev | grep Interface | awk '{print $2}')
+	#	interfaces=$(iw dev | grep Interface | awk '{print $2}')
+	interfaces=$(nmcli device | grep wifi | awk '{print $1}')
 
-	# Verifica se há interfaces Wi-Fi disponíveis
-	if [ -z "$interfaces" ]; then
+	if [[ -z "$interfaces" ]]; then
 		dialog \
-			--msgbox "Nenhuma interface de rede Wi-Fi encontrada. Saindo..." \
+			--msgbox "Nenhuma interface wifi encontrada. Saindo..." \
 			6 40
 		exit 1
 	fi
-
 	# Exibe as interfaces em um menu usando o dialog
 	interface=$(dialog \
-		--backtitle "$ccabec" \
+		--backtitle "Configuração Wi-Fi" \
 		--title "Selecione a Interface de Rede" \
 		--menu "Escolha a interface de rede" \
 		15 50 4 \
@@ -305,82 +304,77 @@ get_wifi_interface() {
 
 	# Verifica se o usuário selecionou uma interface
 	if [ -z "$interface" ]; then
-		dialog --msgbox "Nenhuma interface selecionada. Saindo..." 6 40
-		exit 1
-	fi
-}
-
-scan_networks() {
-	# Escaneia as redes Wi-Fi
-	networks=$(sudo iw dev "$interface" scan | grep SSID | awk -F: '{print $2}' | sed 's/^[ \t]*//')
-
-	# Verifica se há redes Wi-Fi disponíveis
-	if [ -z "$networks" ]; then
 		dialog \
-			--msgbox "Nenhuma rede Wi-Fi encontrada. Saindo..." \
+			--msgbox "Nenhuma interface selecionada. Saindo..." \
 			6 40
 		exit 1
 	fi
-
-	# Retorna as redes encontradas
-	echo "$networks"
+	sudo nmcli device set "$interface" managed yes >/dev/null
+	sudo ip link set "$interface" down >/dev/null
+	sudo ip link set "$interface" up >/dev/null
 }
 
-# Função para conectar-se à rede Wi-Fi usando wpa_supplicant
+# Função para escanear as redes Wi-Fi disponíveis
+scan_networks() {
+	# Escaneia as redes Wi-Fi
+	#sudo iw dev "$interface" scan | grep SSID | awk -F: '{print $2}' | sed 's/^[ \t]*//'
+	# Função para escanear as redes Wi-Fi disponíveis usando nmcli com interface específica
+	#nmcli -f SSID device wifi list ifname "$interface" | tail -n +2 | sed 's/^[ \t]*//' | grep -v '^\s*--\s*$'
+	nmcli -f SSID,SIGNAL device wifi list ifname "$interface" | tail -n +2 | sed 's/^[ \t]*//' | awk '$2 > 0 && $1 != "--" {print $1, $2}' | awk '{print $1, $2"dBm"}'
+}
+
 connect_wifi() {
 	# Solicita ao usuário para selecionar a rede Wi-Fi
+	# Extraímos as redes e os sinais, ajustando a formatação para incluir "dBm"
+
+	#dialog --msgbox "$(sudo nmcli device wifi list)" 0 0
+
+	# Solicita ao usuário para selecionar a rede Wi-Fi com o dialog
 	network=$(dialog \
-		--backtitle "$ccabec" \
+		--backtitle "Configuração Wi-Fi" \
 		--title "Selecione a Rede Wi-Fi" \
 		--menu "Escolha a rede Wi-Fi" \
 		15 50 4 \
-		$(echo "$networks" | awk '{print $1, $1}') 3>&1 1>&2 2>&3)
+		$(echo "$networks" | sed 's/ / /g') 3>&1 1>&2 2>&3)
 
 	# Verifica se o usuário selecionou uma rede
 	if [ -z "$network" ]; then
-		dialog \
-			--msgbox "Nenhuma rede selecionada. Saindo..." \
-			6 40
+		dialog --msgbox "Nenhuma rede selecionada. Saindo..." 6 40
 		exit 1
 	fi
 
 	# Solicita ao usuário a senha da rede Wi-Fi
 	password=$(dialog \
-		--backtitle "$ccabec" \
+		--backtitle "Configuração Wi-Fi" \
 		--title "Senha da Rede Wi-Fi" \
 		--insecure \
 		--passwordbox "Digite a senha para a rede Wi-Fi '$network'" \
 		8 40 3>&1 1>&2 2>&3)
 
-	# Cria um arquivo de configuração para o wpa_supplicant
-	wpa_conf="/etc/wpa_supplicant/wpa_supplicant.conf"
+	# Verifica se a conexão já existe
+	if nmcli connection show "$interface-$network" >/dev/null 2>&1; then
+		# Se existir, apaga a conexão
+		sudo nmcli connection delete "$interface-$network" >/dev/null
+	fi
 
-	# Adiciona a rede ao arquivo de configuração do wpa_supplicant
-	sudo bash -c "cat >> $wpa_conf <<EOF
-network={
-    ssid=\"$network\"
-    psk=\"$password\"
-}
-EOF"
+	# Cria a conexão novamente
+	sudo nmcli connection add type wifi ifname "$interface" con-name "$interface-$network" ssid "$network" >/dev/null
 
-	# Reinicia o wpa_supplicant para aplicar a configuração
-	sudo systemctl restart wpa_supplicant@"$interface".service
+	# Configura a segurança WPA2-PSK e a senha
+	sudo nmcli connection modify "$interface-$network" wifi-sec.key-mgmt wpa-psk
+	sudo nmcli connection modify "$interface-$network" wifi-sec.psk "$password" >/dev/null
 
-	# Verifica se o serviço wpa_supplicant foi iniciado corretamente
-	#if ! systemctl is-active --quiet wpa_supplicant@"$interface".service; then
-	#	dialog --msgbox "Falha ao iniciar o serviço wpa_supplicant para a interface '$interface'. Verifique o log do sistema para mais detalhes." 6 40
-	#	exit 1
-	#fi
+	# Ativa a conexão
+	sudo nmcli connection up "$interface-$network" >/dev/null
+
+	# Tenta se conectar à rede Wi-Fi usando o wpa_supplicant
+	#sudo nmcli dev wifi connect "$network" password "$password" iface "$interface"
 
 	# Verifica se a conexão foi bem-sucedida
-	if iw dev "$interface" link; then
-    dialog \
-      --msgbox "Conectado com sucesso à rede Wi-Fi '$network'!\n\n" \
-      "Status da conexão:\n\n$status"	6 40
+	if [ $? -eq 0 ]; then
+		dialog --msgbox "Conectado com sucesso à rede Wi-Fi '$network'!" 6 40
 	else
-		dialog \
-			--msgbox "Falha ao conectar à rede Wi-Fi '$network'. Verifique a senha e tente novamente." \
-			6 40
+		dialog --msgbox "Falha ao conectar à rede Wi-Fi '$network'. Verifique a senha e tente novamente." 6 40
 	fi
 }
 
@@ -394,10 +388,14 @@ main() {
 
 	# Exibe uma mensagem inicial
 	dialog \
-		--backtitle "$ccabec" \
+		--backtitle "Configuração Wi-Fi" \
 		--title "Configuração Wi-Fi" \
 		--msgbox "Bem-vindo ao assistente de configuração de Wi-Fi!" \
 		6 40
+
+	sudo rfkill unblock wifi >/dev/null
+	sudo rfkill unblock all >/dev/null
+	sudo rfkill list >/dev/null
 
 	# Obtém a interface de rede Wi-Fi
 	get_wifi_interface
@@ -407,17 +405,14 @@ main() {
 
 	# Verifica se há redes Wi-Fi disponíveis
 	if [ -z "$networks" ]; then
-		dialog \
-			--msgbox "Nenhuma rede Wi-Fi encontrada. Saindo..." \
-			6 40
-		return 1
+		dialog --msgbox "Nenhuma rede Wi-Fi encontrada. Saindo..." 6 40
+		exit 1
 	fi
 
 	# Conecta-se a uma rede Wi-Fi
 	connect_wifi
-	return
 }
 
-# Executa a função principal
 sh_create_dialogrc
+# Executa a função principal
 main
