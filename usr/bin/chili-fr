@@ -755,7 +755,6 @@ chili-fr() {
 	if [[ "${format}" == "application/x-iso9660-image" ]]; then
 		qemu_options+=(-boot d)
 		qemu_options+=(-cdrom "${img}")
-    qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
 	elif [[ "${img}" == *.qcow2 ]]; then
 		qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2)
 		qemu_options+=(-device ide-hd,drive=disk1,bootindex=${bootindex})
