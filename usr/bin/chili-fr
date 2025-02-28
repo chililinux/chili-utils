@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: ter 25 fev 2025 10:07:25 -04
+#  Updated: sex 28 fev 2025 00:45:58 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='1.2.25-20250225'
+readonly VERSION='1.2.28-20250228'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -730,7 +730,11 @@ chili-fr() {
 
 	# Verificar se a imagem foi especificada
 	[[ -z "$img" ]] && { die "Erro: Imagem/Device não especificada!"; }
-	[[ ! -e "$img" ]] && { die "Erro: Imagem/Device ${cyan}${img} ${red}não encontrada!${reset}"; }
+	if [[ ! -e "$img" ]]; then
+    [[ ! -e "$HOME_DIR/vdisk/$img" ]] && { die "Erro: Imagem/Device ${cyan}${img} ${red}não encontrada!${reset}"; }
+    img="$HOME_DIR/vdisk/$img"
+  fi
+  msg_info "Imagem/Dispositivo pronto: ${img}. Continuando..."
 
 	# Forçar UEFI, se solicitado
 	if $uefi; then
