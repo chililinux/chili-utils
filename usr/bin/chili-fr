@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sex 28 fev 2025 00:45:58 -04
+#  Updated: sex 28 fev 2025 14:15:38 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='1.2.28-20250228'
+readonly VERSION='2.2.28-20250228'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -171,10 +171,10 @@ sh_unsetvarcolors() {
 }
 
 die() {
-	local msg=$1
-	shift
-	printf "  %b %s\\n" "${CROSS}" "${bold}${red}${msg}"
-	exit 1
+  local msg=$1
+  shift
+  printf "  %b %s\\n" "${CROSS}" "${red}${msg}${reset}"
+  exit 1
 }
 
 log_err() {
@@ -330,15 +330,6 @@ sh_checkDependencies() {
 		fi
 	done
 
-	aBlock_files+=('/usr/share/edk2/x64/OVMF_VARS.4m.fd')
-	for d in "${aBlock_files[@]}"; do
-		if [[ ! -e "$d" ]]; then
-			log_err "Check: ${red}ERROR${reset}: $(gettext "Não foi possível encontrar o arquivo") ${cyan}'$d'${reset}"
-			missing+=("$d")
-			errorFound=true
-		fi
-	done
-
 	if $errorFound; then
 		replicate '='
 		echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
@@ -362,12 +353,48 @@ sh_checkVdiskFiles() {
 	aBlock_files+=($HOME_DIR/vdisk/vdb.img)
 	aBlock_files+=($HOME_DIR/vdisk/vdc.img)
 	aBlock_files+=($HOME_DIR/vdisk/vdd.img)
+	aBlock_files+=($HOME_DIR/vdisk/vm1.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vm2.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vm3.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vm4.qcow2)
 	for d in "${aBlock_files[@]}"; do
 		if [[ ! -e "$d" ]]; then
 			sh_createVdiskFiles
 			break
 		fi
 	done
+}
+
+sh_checkOVMFFiles() {
+	local aBlock_files=()
+	local d
+	local errorFound=false
+	declare -a missing
+
+	aBlock_files+=('/usr/share/edk2/x64/OVMF_CODE.4m.fd')
+	aBlock_files+=('/usr/share/edk2/x64/OVMF_VARS.4m.fd')
+	for d in "${aBlock_files[@]}"; do
+		if [[ ! -e "$d" ]]; then
+			log_err "Check: ${red}ERROR${reset}: Não foi possível encontrar o arquivo ${cyan}'$d'${yellow} -> instalar pacote ${cyan}edk2-ovmf${reset}"
+	    errorFound=true
+			break
+		else
+      true
+			log_msg "Check: ${cyan}$d"
+		fi
+	done
+
+	if $errorFound; then
+		replicate '='
+		echo "${yellow}             $(gettext "FALHA DO CHECK LIST FILE")"
+		echo "${black}$(gettext "Este script precisa dos arquivos para UEFI listados acima")"
+		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em ${yellow}/usr/share/edk2/x64/${reset}")"
+		echo "${black}$(gettext "Ao decidir não instalar, o UEFI poderá não funcionar corretamente.")${reset}"
+		replicate '='
+		if readconf "Deseja instalar o pacote e suprir arquivos necessários ?"; then
+	    sudo pacman -S --quiet --noconfirm edk2-ovmf
+		fi
+	fi
 }
 
 ######################################################################################################
@@ -620,6 +647,7 @@ EOF
 
 sh_createVdiskFiles() {
   local aBlockDisk=(vda.img vdb.img vdc.img vdd.img)
+  local aBlockDiskQcow2=(vm1.qcow2 vm2.qcow2 vm3.qcow2 vm4.qcow2)
   local file
 
   if [[ ! -d "$HOME_DIR/vdisk/" ]]; then
@@ -636,6 +664,12 @@ sh_createVdiskFiles() {
       qemu-img create $HOME_DIR/vdisk/$file -f raw 32G &>/dev/null
     fi
   done
+  for file in "${aBlockDiskQcow2[@]}"; do
+    if [[ ! -e $HOME_DIR/vdisk/$file ]]; then
+      msg_info "Criando disco virtual '$file' no diretórios de trabalho"
+      qemu-img create $HOME_DIR/vdisk/$file -f qcow2 32G &>/dev/null
+    fi
+  done
 }
 
 sh_setup() {
@@ -647,7 +681,8 @@ sh_setup() {
 		gettext \
 		spice-vdagent \
 		virt-viewer \
-		libvirt
+		libvirt \
+		seabios
 
   sh_createVdiskFiles
 	sh_start_vdagentd
@@ -661,11 +696,7 @@ sh_create_vdisk_file() {
 	sudo chown $USER:$USER "$HOME_DIR/" -R &>/dev/null
 
 	while true; do
-		replicate "================== DISCOS VIRTUAIS DISPONÍVEIS em $HOME_DIR/vdisk ===================" 1
-		echo -n $green
-		ls -lh $HOME_DIR/vdisk
-		echo -n $rst
-		replicate '='
+    sh_list_vdisks
 		get 10 10 "Entre com o nome do disco (sem extensão) - ex vda  : " cvdisk_name
 		get 11 10 "Entre com o tamanho do disco virtual em GB - ex 32 : " cvdisk_size
 
@@ -688,6 +719,14 @@ sh_create_vdisk_file() {
 	done
 }
 
+sh_list_vdisks() {
+  replicate "================== DISCOS VIRTUAIS DISPONÍVEIS em $HOME_DIR/vdisk ===================" 1
+	echo -n $green
+	ls -lh $HOME_DIR/vdisk
+	echo -n $rst
+	replicate '='
+}
+
 sh_remove_vdisk_file() {
 	msg_info "Criando diretórios de trabalho"
 	mkdir -p "$HOME_DIR/vdisk" &>/dev/null
@@ -695,11 +734,7 @@ sh_remove_vdisk_file() {
 	sudo chmod 1777 "$HOME_DIR/" &>/dev/null
 	sudo chown $USER:$USER "$HOME_DIR/" -R &>/dev/null
 
-	replicate "================== DISCOS VIRTUAIS DISPONÍVEIS em $HOME_DIR ===================" 1
-	echo -n $green
-	ls -lh $HOME_DIR/vdisk
-	echo -n $rst
-	replicate '='
+  sh_list_vdisks
 	get 10 10 "Entre com o nome do disco para remover - ex vda.img : " cvdisk_name
 
 	if test -e $HOME_DIR/vdisk/$cvdisk_name &>/dev/null; then
@@ -718,8 +753,7 @@ sh_remove_vdisk_file() {
 sh_start_vdagentd() {
 	if ! pgrep spice-vdagentd; then
 		msg_info "Ativando o serviço spice-vdaagentd"
-		sudo systemctl enable spice-vdagentd
-		sudo systemctl start spice-vdagentd
+		sudo systemctl enable -now spice-vdagentd &>/dev/null
 	fi
 }
 
@@ -729,9 +763,15 @@ chili-fr() {
 	local random_spice_port="$(shuf -i 5900-5910 -n 1)"
 
 	# Verificar se a imagem foi especificada
-	[[ -z "$img" ]] && { die "Erro: Imagem/Device não especificada!"; }
+	[[ -z "$img" ]] && {
+    sh_list_vdisks
+	  die "Erro: Imagem/Device não especificada!";
+  }
 	if [[ ! -e "$img" ]]; then
-    [[ ! -e "$HOME_DIR/vdisk/$img" ]] && { die "Erro: Imagem/Device ${cyan}${img} ${red}não encontrada!${reset}"; }
+    [[ ! -e "$HOME_DIR/vdisk/$img" ]] && {
+      sh_list_vdisks
+      die "Erro: Imagem/Device ${cyan}${img} ${red}não localizada, tente os listados acima!${reset}";
+    }
     img="$HOME_DIR/vdisk/$img"
   fi
   msg_info "Imagem/Dispositivo pronto: ${img}. Continuando..."
@@ -739,9 +779,9 @@ chili-fr() {
 	# Forçar UEFI, se solicitado
 	if $uefi; then
 		msg_info "Forçando inicialização UEFI..."
-    cp /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME/
-  	qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF.4m.fd)
-    qemu_options+=(-drive if=pflash,format=raw,file=$HOME/OVMF_VARS.fd)
+    [[ ! -e $HOME_DIR/OVMF_VARS.4m.fd ]] && cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
+  	qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
+    qemu_options+=(-drive if=pflash,format=raw,file=$HOME_DIR/OVMF_VARS.4m.fd)
 	else
 		msg_warn "Parametro --uefi não informado, usando BIOS Legacy (padrão)..."
 	fi
@@ -757,7 +797,7 @@ chili-fr() {
   bootindex=1  # Índice de boot inicial
 	format=$(file -b --mime-type "${img}")
 	if [[ "${format}" == "application/x-iso9660-image" ]]; then
-		qemu_options+=(-boot d)
+		qemu_options+=(-boot menu=on)
 		qemu_options+=(-cdrom "${img}")
 	elif [[ "${img}" == *.qcow2 ]]; then
 		qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2)
@@ -791,6 +831,7 @@ chili-fr() {
 	qemu_options+=(-device hda-output,audiodev=snd0)
 	qemu_options+=(-global ICH9-LPC.disable_s3=1)
 	qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
+#	qemu_options+=(-device intel-iommu)
 	qemu_options+=(-device virtio-serial)
 
 	#video
@@ -849,6 +890,7 @@ fi
 
 sh_checkDependencies
 sh_checkVdiskFiles
+sh_checkOVMFFiles
 
 OPTIONS=m:ub:Vnhd:sg:v:i:N:c:r:
 LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,video:,image:,network:,create_bridge:,remove_bridge:,cvdisk,rvdisk,vdisk
@@ -1032,5 +1074,7 @@ if [[ $# > 0 ]]; then
 	chili-fr "$@"
 else
 #	die "${opts[*]} $(gettext "falta parâmetro de imagem/disco/device"): ($(gettext "usar -h para ajuda"))"
-	die "$(gettext "falta parâmetro de imagem/disco/device"): ($(gettext "usar -h para ajuda"))"
+  sh_list_vdisks
+	die "Erro: Falta parâmetro de imagem/disco/device. ${cyan}Tente os vdisks listados acima. ${yellow}(usar -h para ajuda)
+      ${reset}Ex. : ${green}$ ${reset}${APP} ${reset}vda.img"
 fi
