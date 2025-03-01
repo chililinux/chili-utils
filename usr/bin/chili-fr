@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sex 28 fev 2025 14:15:38 -04
+#  Updated: sáb 01 mar 2025 17:30:28 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.2.28-20250228'
+readonly VERSION='2.3.1-20250301'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1055,7 +1055,7 @@ if [[ $# > 0 ]]; then
 			((nId++))
 			netdev_id="net$nId"
 			if $bridge; then
-				qemu_options+=(-netdev bridge,id="$netdev_id",br=$iface_bridge,hostfwd=tcp::60022-:22)
+				qemu_options+=(-netdev bridge,id="$netdev_id",br=$iface_bridge)
 			else
 				qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::60022-:22)
 			fi
@@ -1065,7 +1065,7 @@ if [[ $# > 0 ]]; then
 	else
 		netdev_id="net0"
 		if $bridge; then
-			qemu_options+=(-netdev bridge,id="$netdev_id",br=$iface_bridge,hostfwd=tcp::60022-:22)
+			qemu_options+=(-netdev bridge,id="$netdev_id",br=$iface_bridge)
 		else
 			qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::60022-:22)
 		fi
