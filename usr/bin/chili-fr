@@ -830,8 +830,11 @@ chili-fr() {
 			((bootindex++))
 		else
 			msg_info "Anexando vdisk #${bootindex}: ${yellow}${img}"
-			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
+#			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+      qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw)
+      qemu_options+=(-device ahci,id=sata${bootindex})
+      qemu_options+=(-device ide-hd,drive=disk${bootindex},bus=sata${bootindex}.0,bootindex=${bootindex})
 			((bootindex++))
 		fi
 	done
