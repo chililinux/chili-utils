@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 # shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
 #
-#  chili-init-keys - Utilitário para gerenciar chaves utilizando o pacman-key
+#  chili-init-keys - Utility for managing keys using pacman-key
 #  Created: 2024/09/23 - 16:19 -04
 #  Altered: 2024/09/23 - 16:19 -04
-#  Updated: 2024/12/25 - 07:12 -04 - added chili-keyring
+#  Updated: seg 03 mar 2025 12:17:45 -04
 #
 #  Copyright (c) 2024-2024, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -64,6 +64,17 @@ light_blue=$(tput setaf 12)
 light_magenta=$(tput setaf 13)
 light_cyan=$(tput setaf 14)
 bright_white=$(tput setaf 15)
+#
+COL_NC='\e[0m' # No Color
+COL_LIGHT_GREEN='\e[1;32m'
+COL_LIGHT_RED='\e[1;31m'
+TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
+CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}${white}]"
+INFO="[i]"
+# shellcheck disable=SC2034
+DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
+OVER="\\r\\033[K"
+DOTPREFIX="  ${black}::${reset} "
 
 #debug
 export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
@@ -73,10 +84,10 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.0.1-2024125"
+declare APPDESC="Utility for managing keys using pacman-key"
+declare _VERSION_="1.03.03-20250303"
 declare distro
 declare DEPENDENCIES=(tput)
-#source /usr/share/fetch/core.sh
 distro="$(uname -n)"
 
 MostraErro() {
@@ -193,47 +204,105 @@ replicate() {
 }
 export -f replicate
 
-msg_run 'sudo rm -rf /etc/pacman.d/gnupg/* 1>/dev/null'
+sh_checkroot() {
+	if [[ "$(id -u)" != "0" ]]; then
+		elevate_to_root "$@"
+	fi
+	ccabec+='root'
+}
 
-# Inicializar e popular o banco de chaves
-msg_run 'sudo pacman-key --init 1>/dev/null'
+elevate_to_root() {
+	log_err "This script must be run as root. Elevating privileges..."
 
-# Adicionar e assinar chaves específicas
-keys=(
-	AECEEE84E52BBFAA9F1C9DF01EA0CEEEB09B44A3 #talesam@gmail.com
-	A0D5A8312A83940ED8B04B0F4BAC871802E960F1 #vcatafesta@gmail.com
-	0AA022108998AA79A5C4997C45EC44879815E2A6 #bigbruno@gmail.com
-	099D22B956B9ED89263112F700859BF076EAE71F #rruscher@gmail.com
-)
+	# Tenta usar sudo primeiro (caso esteja configurado)
+	if command -v sudo >/dev/null 2>&1; then
+		exec sudo bash "$0" "$@"
+	fi
 
-for key in "${keys[@]}"; do
-	msg_run 'sudo pacman-key --recv-keys "$key" 1>/dev/null'
-	msg_run 'sudo pacman-key --lsign-key "$key" 1>/dev/null'
-#	msg_run 'sudo pacman-key --finger    "$key" 1>/dev/null'
-done
+	# Se sudo falhar, tenta su
+	if command -v su >/dev/null 2>&1; then
+		exec su -c "$0 $*"
+	fi
 
-msg_run 'sudo pacman -U https://repo.biglinux.com.br/stable/x86_64/biglinux-keyring-20220827-3-any.pkg.tar.zst --noconfirm 1>/dev/null'
-msg_run 'sudo pacman -U https://repo.communitybig.org/stable/x86_64/community-keyring-20250101-2045-x86_64.pkg.tar.zst --noconfirm 1>/dev/null'
-msg_run 'sudo pacman -U https://repo.chililinux.com/stable/x86_64/chili-keyring-20250108-1849-any.pkg.tar.zst --noconfirm 1>/dev/null'
+	die "Error: Unable to elevate privileges. Run manually as root."
+}
 
-# Sincronizar pacotes necessários
-msg_run 'sudo pacman -Sy --needed --quiet \
+sh_usage() {
+  cat <<-EOF
+  ${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+  ${APPDESC}
+  ${VERSION}
+  ${bold}${black}Copyright (C) 2019-2025 ChiliLinux Team${black}
+
+  Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
+  O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
+  inclui software de código aberto sob uma variedade de outras licenças.
+  Você pode ler instruções sobre como baixar e criar para você mesmo
+  o código fonte específico usado para criar esta cópia.
+  ${red}Este programa vem com absolutamente NENHUMA garantia.
+  ${rst}
+EOF
+  exit 0
+}
+
+sh_main() {
+	msg_run 'sudo rm -rf /etc/pacman.d/gnupg/* &>/dev/null'
+
+	# Inicializar e popular o banco de chaves
+	msg_run 'sudo pacman-key --init &>/dev/null'
+
+	# Adicionar e assinar chaves específicas
+	keys=(
+		AECEEE84E52BBFAA9F1C9DF01EA0CEEEB09B44A3 #talesam@gmail.com
+		A0D5A8312A83940ED8B04B0F4BAC871802E960F1 #vcatafesta@gmail.com
+		0AA022108998AA79A5C4997C45EC44879815E2A6 #bigbruno@gmail.com
+		099D22B956B9ED89263112F700859BF076EAE71F #rruscher@gmail.com
+	)
+
+	for key in "${keys[@]}"; do
+		msg_run 'sudo pacman-key --recv-keys "$key" &>/dev/null'
+		msg_run 'sudo pacman-key --lsign-key "$key" &>/dev/null'
+		#	msg_run 'sudo pacman-key --finger    "$key" &>/dev/null'
+	done
+
+	#msg_run 'sudo pacman -U https://repo.biglinux.com.br/stable/x86_64/biglinux-keyring-20220827-3-any.pkg.tar.zst --noconfirm 1>/dev/null'
+	#msg_run 'sudo pacman -U https://repo.communitybig.org/stable/x86_64/community-keyring-20250101-2045-x86_64.pkg.tar.zst --noconfirm 1>/dev/null'
+	#msg_run 'sudo pacman -U https://repo.chililinux.com/stable/x86_64/chili-keyring-20250108-1849-any.pkg.tar.zst --noconfirm 1>/dev/null'
+
+	# Sincronizar pacotes necessários
+	msg_run 'sudo pacman -Sy --needed --quiet --noconfirm \
   archlinux-keyring \
-  manjaro-keyring \
   biglinux-keyring \
   community-keyring \
-  chili-keyring'
-#  ubuntu-keyring \
-#  debian-archive-keyring \
-#  alpine-keyring \
-#  gnome-keyring \
-#  debian-ports-archive-keyring \
-#  deepin-polkit-agent-ext-gnomekeyring
+  chili-keyring &>/dev/null'
+	#  ubuntu-keyring \
+	#  debian-archive-keyring \
+	#  alpine-keyring \
+	#  gnome-keyring \
+	#  debian-ports-archive-keyring \
+	#  deepin-polkit-agent-ext-gnomekeyring
 
-msg_run 'sudo pacman-key --init 1>/dev/null'
-msg_run 'sudo pacman-key --populate 1>/dev/null'
+	msg_run 'sudo pacman-key --init &>/dev/null'
+	msg_run 'sudo pacman-key --populate &>/dev/null'
+	msg_ok "All done"
 
-# Listar informações das chaves
-#sudo pacman-key --list-keys
-#sudo pacman-key --list-sigs
-#sudo pacman-key --finger
+	# Listar informações das chaves
+	#sudo pacman-key --list-keys
+	#sudo pacman-key --list-sigs
+	#sudo pacman-key --finger
+}
+
+# Verifica se foi passado -h ou --help
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      sh_usage
+      ;;
+    -V|--version)
+      sh_usage
+      ;;
+  esac
+done
+
+sh_checkroot
+sh_main

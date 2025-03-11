@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
+#
+#  chili-make-pacman-conf - Utility to add repositories to pacman.conf and manage keys.
+#  Created: 2024/09/23 - 16:19 -04
+#  Altered: 2024/09/23 - 16:19 -04
+#  Updated: seg 03 mar 2025 11:21:30 -04
+#
+#  Copyright (c) 2024-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+#export LANGUAGE=pt_BR
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-make-pacman-conf
+
+# Definir a variável de controle para restaurar a formatação original
+reset=$(tput sgr0)
+
+# Definir os estilos de texto como variáveis
+bold=$(tput bold)
+underline=$(tput smul)   # Início do sublinhado
+nounderline=$(tput rmul) # Fim do sublinhado
+reverse=$(tput rev)      # Inverte as cores de fundo e texto
+
+# Definir as cores ANSI como variáveis
+black=$(tput bold)$(tput setaf 0)
+red=$(tput bold)$(tput setaf 196)
+green=$(tput bold)$(tput setaf 2)
+yellow=$(tput bold)$(tput setaf 3)
+blue=$(tput setaf 4)
+pink=$(tput setaf 5)
+magenta=$(tput setaf 5)
+cyan=$(tput setaf 6)
+white=$(tput setaf 7)
+gray=$(tput setaf 8)
+orange=$(tput setaf 202)
+purple=$(tput setaf 125)
+violet=$(tput setaf 61)
+light_red=$(tput setaf 9)
+light_green=$(tput setaf 10)
+light_yellow=$(tput setaf 11)
+light_blue=$(tput setaf 12)
+light_magenta=$(tput setaf 13)
+light_cyan=$(tput setaf 14)
+bright_white=$(tput setaf 15)
+#
+COL_NC='\e[0m' # No Color
+COL_LIGHT_GREEN='\e[1;32m'
+COL_LIGHT_RED='\e[1;31m'
+TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
+CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}${white}]"
+INFO="[i]"
+# shellcheck disable=SC2034
+DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
+OVER="\\r\\033[K"
+DOTPREFIX="  ${black}::${reset} "
+
+#debug
+export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
+#set -x
+#set -e
+shopt -s extglob
+
+#system
+declare APP="${0##*/}"
+declare APPDESC="Utility to add repositories to pacman.conf and manage keys."
+declare _VERSION_="1.03.03-20250303"
+declare distro
+declare DEPENDENCIES=(tput)
+distro="$(uname -n)"
+
+MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
+#trap 'MostraErro "${APP[$FUNCNAME][$LINENO]}" "${BASH_COMMAND}" "$?"; exit 1' ERR
+
+die() {
+	local msg=$1
+	shift
+	printf "  %b %s\\n" "${CROSS}" "${bold}${red}${msg}"
+	exit 1
+}
+
+log_err() {
+	printf "  %b %s\\n" "${CROSS}" "${*}"
+}
+
+log_msg() {
+	local retval="${PIPESTATUS[0]}"
+
+	if [[ $retval -eq 0 ]]; then
+		printf "  %b %s\\n" "${TICK}" "${*}"
+	else
+		printf "  %b %s\\n" "${CROSS}" "${*}"
+	fi
+}
+
+msg_raw() {
+	local msg="$1"
+	# Remove tags HTML, se existirem
+	#msg="$(sed 's/<[^>]*>//g' <<< "$msg")"
+
+	# Verifica se existe ':' na mensagem
+	if [[ "$msg" == *:* ]]; then
+		# Divide a string antes e depois do primeiro ':'
+		local before_colon="${msg%%:*}:"
+		local after_colon="${msg#*: }"
+		# Aplica as cores
+		msg="${cyan}${before_colon} ${red}${after_colon}${reset}"
+	else
+		# Se não houver ':', aplica apenas a cor padrão
+		msg="${yellow}${cyan}${msg}${reset}"
+	fi
+	echo -e "$msg"
+}
+export -f msg_raw
+
+msg() {
+	local msg="$1"
+	echo -e "==>${cyan}running: ${yellow}${msg}${reset}"
+}
+export -f msg
+
+msg_ok() {
+	local msg="$1"
+	echo -e "==>${cyan}   done: ${green}${msg}${reset}"
+}
+export -f msg_ok
+
+msg_run() {
+	local msg="$1"
+	echo -e "==>${cyan}running: ${yellow}${msg}${reset}"
+	eval "$msg"
+}
+export -f msg_run
+
+msg_info() {
+	local msg="$1"
+	local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
+	local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
+	#echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
+	echo -e "==>${yellow}info   : ${cyan}${msg}${reset}"
+}
+export -f msg_info
+
+msg_warning() {
+	local msg="$1"
+	local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
+	local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
+	msg="$(sed 's/<[^>]*>//g' <<<"$msg")"  # Remove as tags HTML
+	#echo -e "${caller_function}=>${red}warning: ${orange}${msg}${reset}"
+	echo -e "  =>${yellow}warning: ${cyan}${msg}${reset}"
+}
+export -f msg_warning
+
+msg_warn() {
+	local msg="$1"
+	#local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
+	#local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
+	#msg="$(sed 's/<[^>]*>//g' <<<"$msg")"  # Remove as tags HTML
+	#echo -e "${caller_function}=>${red}warning: ${orange}${msg}${reset}"
+	#echo -e "  =>${yellow}warning: ${cyan}${msg}${reset}"
+	printf "%s\n" "${yellow}[WARN] ${cyan}$msg${rst}"
+}
+export -f msg_warn
+
+msg_info() {
+	printf "%s\n" "${green}[INFO] ${cyan}$1${rst}"
+}
+
+# Função para exibir mensagens informativas
+msg_err() {
+	printf "%s\n" "${red}[ERRO] ${cyan}$1${rst}"
+}
+
+replicate() {
+	local char=${1:-'#'}
+	local nsize=${2:-$(tput cols)}
+	local line
+	printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
+}
+export -f replicate
+
+###################################################################################################
+
+sh_checkroot() {
+	if [[ "$(id -u)" != "0" ]]; then
+		elevate_to_root "$@"
+	fi
+	ccabec+='root'
+}
+
+elevate_to_root() {
+	log_err "This script must be run as root. Elevating privileges..."
+
+	# Tenta usar sudo primeiro (caso esteja configurado)
+	if command -v sudo >/dev/null 2>&1; then
+		exec sudo bash "$0" "$@"
+	fi
+
+	# Se sudo falhar, tenta su
+	if command -v su >/dev/null 2>&1; then
+		exec su -c "$0 $*"
+	fi
+
+	die "Error: Unable to elevate privileges. Run manually as root."
+}
+
+sh_add_repo_into_pacman_conf() {
+	CONF_FILE="/etc/pacman.conf"
+
+	msg "Adding repositories to /etc/pacman.conf ..."
+	add_repo() {
+		local repo_name="$1"
+		shift
+		local servers=("$@")
+
+		# Se o repositório já estiver presente, não adiciona
+		if grep -q "^\[$repo_name\]" "$CONF_FILE"; then
+			return
+		fi
+
+		echo -e "\n[$repo_name]" >>"$CONF_FILE"
+		for server in "${servers[@]}"; do
+			echo "Server = $server" >>"$CONF_FILE"
+		done
+	}
+
+	# Faz backup antes de modificar
+	cp "$CONF_FILE" "$CONF_FILE.bak"
+
+	# Adiciona os repositórios, se necessário
+	add_repo "community-stable" "https://repo.communitybig.org/stable/\$arch"
+	add_repo "community-testing" "https://repo.communitybig.org/testing/\$arch"
+	add_repo "community-extra" "https://repo.communitybig.org/extra/\$arch"
+	add_repo "chili-stable" "https://repo.chililinux.com/stable/\$arch" "https://repo2.chililinux.com/stable/\$arch"
+	add_repo "chili-testing" "https://repo.chililinux.com/testing/\$arch" "https://repo2.chililinux.com/testing/\$arch"
+	add_repo "chili-extra" "https://repo.chililinux.com/extra/\$arch" "https://repo2.chililinux.com/extra/\$arch"
+	add_repo "chili-aur" "https://repo.chililinux.com/aur/\$arch" "https://repo2.chililinux.com/aur/\$arch"
+
+	msg_ok "Repositories added (if they didn't already exist)."
+
+	# Atualiza os repositórios
+	msg_run 'sudo pacman -Sy &>/dev/null'
+}
+
+sh_usage() {
+  cat <<-EOF
+  ${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+  ${APPDESC}
+  ${VERSION}
+  ${bold}${black}Copyright (C) 2019-2025 ChiliLinux Team${black}
+
+  Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
+  O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
+  inclui software de código aberto sob uma variedade de outras licenças.
+  Você pode ler instruções sobre como baixar e criar para você mesmo
+  o código fonte específico usado para criar esta cópia.
+  ${red}Este programa vem com absolutamente NENHUMA garantia.
+  ${rst}
+EOF
+  exit 0
+}
+
+sh_main() {
+	msg "Removing pacman GPG keys..."
+	msg_run 'sudo rm -rf /etc/pacman.d/gnupg/* &>/dev/null'
+
+	# Inicializar e popular o banco de chaves
+	msg_run 'sudo pacman-key --init &>/dev/null'
+
+	# Adicionar e assinar chaves específicas
+	keys=(
+		AECEEE84E52BBFAA9F1C9DF01EA0CEEEB09B44A3 #talesam@gmail.com
+		A0D5A8312A83940ED8B04B0F4BAC871802E960F1 #vcatafesta@gmail.com
+		0AA022108998AA79A5C4997C45EC44879815E2A6 #bigbruno@gmail.com
+		099D22B956B9ED89263112F700859BF076EAE71F #rruscher@gmail.com
+	)
+
+	for key in "${keys[@]}"; do
+		msg_run 'sudo pacman-key --recv-keys "$key" &>/dev/null'
+		msg_run 'sudo pacman-key --lsign-key "$key" &>/dev/null'
+		#	msg_run 'sudo pacman-key --finger    "$key" &>/dev/null'
+	done
+
+	#msg_run 'sudo pacman -U https://repo.biglinux.com.br/stable/x86_64/biglinux-keyring-20220827-3-any.pkg.tar.zst --noconfirm 1>/dev/null'
+	#msg_run 'sudo pacman -U https://repo.communitybig.org/stable/x86_64/community-keyring-20250101-2045-x86_64.pkg.tar.zst --noconfirm 1>/dev/null'
+	#msg_run 'sudo pacman -U https://repo.chililinux.com/stable/x86_64/chili-keyring-20250108-1849-any.pkg.tar.zst --noconfirm 1>/dev/null'
+
+	# Sincronizar pacotes necessários
+	msg_run 'sudo pacman -Sy --needed --quiet --noconfirm \
+  archlinux-keyring \
+  biglinux-keyring \
+  community-keyring \
+  chili-keyring &>/dev/null'
+	#  ubuntu-keyring \
+	#  debian-archive-keyring \
+	#  alpine-keyring \
+	#  gnome-keyring \
+	#  debian-ports-archive-keyring \
+	#  deepin-polkit-agent-ext-gnomekeyring
+
+	msg_run 'sudo pacman-key --init &>/dev/null'
+	msg_run 'sudo pacman-key --populate &>/dev/null'
+
+	# Listar informações das chaves
+	#sudo pacman-key --list-keys
+	#sudo pacman-key --list-sigs
+	#sudo pacman-key --finger
+}
+
+# Verifica se foi passado -h ou --help
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      sh_usage
+      ;;
+    -V|--version)
+      sh_usage
+      ;;
+  esac
+done
+
+sh_checkroot
+sh_add_repo_into_pacman_conf
+sh_main
