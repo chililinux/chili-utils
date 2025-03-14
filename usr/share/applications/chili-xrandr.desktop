@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Chili xrandr
+GenericName=Chili xrandr Util
+Comment=Utilitário para clonar discos
+Exec=chili-xrandr
+Terminal=true
+MimeType=text/plain;
+Icon=drive-multidisk
+Categories=Utility;Accessories;Chili Apps;
+StartupNotify=true
+Actions=Window;Document;
