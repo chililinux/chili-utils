@@ -1,10 +1,10 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Chili xrandr
-GenericName=Chili xrandr Util
-Comment=Utilitário para clonar discos
-Exec=chili-xrandr
+Name=Chili Util Selector
+GenericName=Chili Util Selector
+Comment=Utility to select utils
+Exec=sudo chili-util-selector
 Terminal=true
 MimeType=text/plain;
 Icon=drive-multidisk
