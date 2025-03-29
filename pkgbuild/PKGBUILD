@@ -9,6 +9,13 @@ license=('MIT')
 url="https://github.com/chililinux/${pkgname}"
 source=("git+${url}.git")
 md5sums=('SKIP')
+depends=()
+optdepends=(
+	chili-clonedisk
+	chili-datetime
+	chili-iso2usb
+	chili-xrandr
+)
 
 # Automatically detect and use the correct install file
 if [ -e "${pkgname}.install" ]; then
@@ -18,8 +25,11 @@ elif [ -e "pkgbuild.install" ]; then
 fi
 
 package() {
-	# Instale todos os arquivos em /usr/share/comm-base-config no momento da criação do pacote:
+	cd "${srcdir}/${pkgname}"
+
+	# Instale todos os arquivos em /usr/share/${pkgname} no momento da criação do pacote:
 	install -dm755 "${pkgdir}/usr/share/${pkgname}"
+	printf "%s\n" "${optdepends[@]}" >"${pkgdir}/usr/share/${pkgname}/optdepends"
 
 	# Copiar a estrutura de /etc, /usr e /opt para /usr/share/${pkgname}
 	local dirs=("usr" "etc" "opt")
