@@ -136,6 +136,7 @@ post_install() {
 	msg "Initializing system installation and configuration..."
 
   sh_copy_user_etc_usr_opt_files
+  return
 	sh_load_optdepends
 
 	[[ -e /etc/environment ]] && source /etc/environment
