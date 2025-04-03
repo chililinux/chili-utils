@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Chili Util Selector
+GenericName=Chili Util Selector
+Comment=Utility to select utils
+Exec=chili-util-selector
+Terminal=true
+MimeType=text/plain;
+Icon=drive-multidisk
+Categories=Settings;DesktopSettigns;Utility;Accessories;Chili Apps;
+StartupNotify=true
+Actions=Window;Document;

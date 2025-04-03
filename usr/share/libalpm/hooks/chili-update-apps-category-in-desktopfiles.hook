@@ -1,0 +1,15 @@
+[Trigger]
+Type      = Package
+Operation = Install
+Operation = Upgrade
+Target    = chili-skel
+Target    = chili-utils
+Target    = chili-clonedisk
+Target    = chili-datetime
+Target    = iso2usb
+Target    = chili-*
+
+[Action]
+Description = ChiliLinux update Apps category in desktop files
+When        = PostTransaction
+Exec        = /usr/share/libalpm/scripts/chili-update-apps-category-in-desktopfiles.sh

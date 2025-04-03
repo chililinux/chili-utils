@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Chili clonedisk
+GenericName=Chili Clonedisk Util
+Comment=utility to clone disks
+Exec=chili-clonedisk
+Terminal=true
+MimeType=text/plain;
+Icon=drive-multidisk
+Categories=Settings;DesktopSettigns;Utility;Accessories;Chili Apps;
+StartupNotify=true
+Actions=Window;Document;
