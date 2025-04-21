@@ -8,7 +8,8 @@ Exec=chili-iso2usb
 Terminal=false
 MimeType=text/plain;
 Icon=pendrive.png
-Categories=Settings;DesktopSettigns;Utility;Accessories;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
 StartupNotify=true
 Actions=Window;Document;
+Hidden=false
 
