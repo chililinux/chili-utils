@@ -2,11 +2,6 @@
 Type      = Package
 Operation = Install
 Operation = Upgrade
-Target    = chili-skel
-Target    = chili-utils
-Target    = chili-clonedisk
-Target    = chili-datetime
-Target    = iso2usb
 Target    = chili-*
 
 [Action]

@@ -1,7 +1,34 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
-# shellcheck source=/dev/null
-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
+#
+#  pkgbuild.install
+#  Created: 2025/04/17 - 21:57
+#  Altered: 2025/04/17 - 21:57
+#
+#  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
 export TERM=${TERM:-xterm}
 export TERM=${TERM:-xterm-256color}
 
@@ -14,6 +41,24 @@ export blue="\033[1;34m"
 export magenta="\033[1;35m"
 export cyan="\033[1;36m"
 export white="\033[1;37m"
+export bold="\033[1m"
+export reset="\033[0m"
+export normal_black="\033[0;30m"
+export normal_red="\033[0;31m"
+export normal_green="\033[0;32m"
+export normal_yellow="\033[0;33m"
+export normal_blue="\033[0;34m"
+export normal_magenta="\033[0;35m"
+export normal_cyan="\033[0;36m"
+export normal_white="\033[0;37m"
+export bright_black="\033[1;90m"
+export bright_red="\033[1;91m"
+export bright_green="\033[1;92m"
+export bright_yellow="\033[1;93m"
+export bright_blue="\033[1;94m"
+export bright_magenta="\033[1;95m"
+export bright_cyan="\033[1;96m"
+export bright_white="\033[1;97m"
 #
 export COL_NC='\e[0m' # No Color
 export COL_LIGHT_GREEN='\e[1;32m'
@@ -24,27 +69,26 @@ export INFO="[i]"
 export DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
 export OVER="\\r\\033[K"
 export DOTPREFIX="  ${black}::${reset} "
-
-# Setting variables for bold and reset
-export bold="\033[1m"
-export reset="\033[0m"
+#
 declare IS_UPGRADE=false
-declare pkgname=chili-utils
+declare IS_DBLOCK=false
+declare DM='lightdm'
+declare WM='utils'
+declare pkgname=chili-"${WM}"
 declare servicesToEnable=()
 declare servicesToDisable=()
 
 msg() {
 	local msg="$1"
-	echo -e "${green}==>[${pkgname}] ${bold}${yellow}${msg}${reset}" >&2
+	echo -e "${blue}==>${black}[${pkgname}] ${bright_cyan}${msg}${reset}" >&2
 }
 
 log_ok() { echo -e "  ${TICK} ${*}${reset}"; }
 log_err() { echo -e "  ${CROSS} ${*}${reset}"; }
 
 die() {
-	local msg=$1
+	local msg="$1"
 	shift
-	#printf "  %b %s\\n" "${CROSS}" "${red}${msg}${reset}"
 	echo -e "  ${CROSS} ${red}${msg}${reset}"
 	sh_restoring_lock
 	exit 1
@@ -61,40 +105,50 @@ sh_load_optdepends() {
 	fi
 }
 
+sh_remove_lock() {
+	if [[ -f /var/lib/pacman/db.lck ]]; then
+		IS_DBLOCK=true
+		msg "Removing pacman lock: /var/lib/pacman/db.lck"
+		rm -f /var/lib/pacman/db.lck &>/dev/null
+	fi
+}
+
 sh_restoring_lock() {
-	msg "Restauring pacman lock: /var/lib/pacman/db.lck"
-	touch /var/lib/pacman/db.lck &>/dev/null
+	if $IS_DBLOCK; then
+		msg "Restauring pacman lock: /var/lib/pacman/db.lck"
+		touch /var/lib/pacman/db.lck &>/dev/null
+	fi
 }
 
 sh_check_package_exist() {
-  local pkg
-  local not_installed=()
-  local not_found=()
+	local pkg
+	local not_installed=()
+	local not_found=()
 
-  # Verifica pacotes instalados localmente de uma vez
-  for pkg in "${OPTDEPENDS[@]}"; do
-    if ! pacman -Qq "$pkg" &>/dev/null; then
-      not_installed+=("$pkg")
-    fi
-  done
+	# Verifica pacotes instalados localmente de uma vez
+	for pkg in "${OPTDEPENDS[@]}"; do
+		if ! pacman -Qq "$pkg" &>/dev/null; then
+			not_installed+=("$pkg")
+		fi
+	done
 
-  # Verifica pacotes ausentes no repositório de uma vez
-  if ((${#not_installed[@]})); then
-    for pkg in "${not_installed[@]}"; do
-      if ! pacman -Ssq "^$pkg$" &>/dev/null; then
-        not_found+=("$pkg")
-      fi
-    done
-  fi
+	# Verifica pacotes ausentes no repositório de uma vez
+	if ((${#not_installed[@]})); then
+		for pkg in "${not_installed[@]}"; do
+			if ! pacman -Ssq "^$pkg$" &>/dev/null; then
+				not_found+=("$pkg")
+			fi
+		done
+	fi
 
-  # Se houver pacotes não encontrados, exibe erro
-  if ((${#not_found[@]})); then
-    die "Fatal: os seguintes pacotes não existem no repositório: ${not_found[*]}"
-  fi
+	# Se houver pacotes não encontrados, exibe erro
+	if ((${#not_found[@]})); then
+		die "Fatal: os seguintes pacotes não existem no repositório: ${not_found[*]}"
+	fi
 
-  for pkg in "${OPTDEPENDS[@]}"; do
-    log_ok "Check: ${cyan}$pkg"
-  done
+	for pkg in "${OPTDEPENDS[@]}"; do
+		log_ok "Check: ${cyan}$pkg"
+	done
 }
 
 sh_start_dbus_in_chroot() {
@@ -114,29 +168,23 @@ sh_start_dbus_in_chroot() {
 }
 
 sh_copy_user_etc_usr_opt_files() {
-  msg "Configuring the package after installation/upgrade..."
+	msg "Configuring the package after installation/upgrade..."
 
-  # Copiar a estrutura para os diretórios de destino
-  local dirs=("usr" "etc" "opt")
+	# Copiar a estrutura para os diretórios de destino
+	local dirs=("usr" "etc" "opt")
 
-  for dir in "${dirs[@]}"; do
-    if [ -d "/usr/share/${pkgname}/${dir}" ]; then
-      # Copiar os arquivos e subdiretórios de /usr/share/${pkgname}/${dir} para o sistema
-      cp -a "/usr/share/${pkgname}/${dir}" "/"
-    fi
-  done
-  # Sobrescreve o arquivo plymouthd.conf com a versão do pacote
-  #cp -af /usr/lib/manjaro-tools/util-live.sh /usr/lib/manjaro-tools/util-live.sh.pacnew
-  #cp -af /usr/lib/manjaro-tools/util-live.sh.community /usr/lib/manjaro-tools/util-live.sh
-  #cp -af /usr/share/${pkgname}/usr/lib/manjaro-tools/util-live.sh.community /usr/lib/manjaro-tools/util-live.sh
-  #chmod +x /usr/lib/manjaro-tools/util-live.sh
+	for dir in "${dirs[@]}"; do
+		if [ -d "/usr/share/${pkgname}/${dir}" ]; then
+			# Copiar os arquivos e subdiretórios de /usr/share/${pkgname}/${dir} para o sistema
+			cp -a "/usr/share/${pkgname}/${dir}" "/"
+		fi
+	done
 }
 
 post_install() {
 	msg "Initializing system installation and configuration..."
 
-  sh_copy_user_etc_usr_opt_files
-  return
+	sh_copy_user_etc_usr_opt_files
 	sh_load_optdepends
 
 	[[ -e /etc/environment ]] && source /etc/environment
@@ -148,17 +196,22 @@ post_install() {
 		:
 	fi
 
-	if [[ -f /var/lib/pacman/db.lck ]]; then
-		msg "Removing pacman lock: /var/lib/pacman/db.lck"
-		rm -f /var/lib/pacman/db.lck &>/dev/null
-	fi
+	# Removing pacman lock: /var/lib/pacman/db.lck
+	sh_remove_lock
 
 	synchronizing_database() {
 		pacman -Sy --quiet --noconfirm &>/dev/null
 	}
 
-  install_packages() {
-    pacman -S --quiet --noconfirm --needed --overwrite \* "$@" &>/dev/null
+	install_packages() {
+		# Captura o erro do pacman
+		if ! pacman -S --quiet --noconfirm --needed --overwrite \* "$@" >/tmp/${pkgname}-pacman_output_log 2>/tmp/${pkgname}-pacman_error_log; then
+			die "$(</tmp/${pkgname}-pacman_error_log)"
+		fi
+		# Se não houver erro (ou erro de já estar instalado/atualizado)
+		rm /tmp/${pkgname}-pacman_error_log &>/dev/null
+		rm /tmp/${pkgname}-pacman_output_log &>/dev/null
+		return 0
 	}
 
 	msg "Please wait, synchronizing databases..."
@@ -167,36 +220,12 @@ post_install() {
 	msg "Checking for the existence of packages..."
 	sh_check_package_exist
 
-	msg "Installing optdepends packages: ${OPTDEPENDS[*]}"
+	msg "Installing optdepends packages..."
 	install_packages "${OPTDEPENDS[@]}"
-
-	for service in "${servicesToDisable[@]}"; do
-		if systemctl is-active --quiet "${service}"; then
-			msg "Disabling service ${service}..."
-			if ! systemctl disable "${service}" &>/dev/null; then
-				msg "${red}Error: It went wrong when desactivating service ${service}"
-			fi
-		else
-			msg "${green}Service ${service} is already inactive..."
-			continue
-		fi
-	done
-
-	for service in "${servicesToEnable[@]}"; do
-		if systemctl is-active --quiet "${service}"; then
-			msg "${green}Service ${service} is already active..."
-			continue
-		else
-			if ! systemctl enable "${service}" &>/dev/null; then
-				msg "${red}Error: It went wrong when activating service ${service}"
-			fi
-		fi
-	done
 
 	# Restauring pacman lock: /var/lib/pacman/db.lck
 	sh_restoring_lock
-
-  msg "Install/Upgrade complete."
+	msg "${green}Install/Upgrade complete."
 }
 
 post_upgrade() {

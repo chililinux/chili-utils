@@ -10,3 +10,5 @@ MimeType=text/plain;
 Icon=pendrive.png
 Categories=Settings;DesktopSettigns;Utility;Accessories;Chili Apps;
 StartupNotify=true
+Actions=Window;Document;
+
