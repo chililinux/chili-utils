@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
-# shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166
 #
 #  pkgbuild.install
-#  Created: 2025/04/17 - 21:57
-#  Altered: 2025/04/17 - 21:57
+#  Created: 2024/09/09 - 08:57
+#  Updated: qui 24 abr 2025 12:27:15 -04
 #
-#  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2024-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -72,6 +72,7 @@ export DOTPREFIX="  ${black}::${reset} "
 #
 declare IS_UPGRADE=false
 declare IS_DBLOCK=false
+declare IS_METAPKG=false
 declare DM='lightdm'
 declare WM='utils'
 declare pkgname=chili-"${WM}"
@@ -146,9 +147,9 @@ sh_check_package_exist() {
 		die "Fatal: os seguintes pacotes não existem no repositório: ${not_found[*]}"
 	fi
 
-	for pkg in "${OPTDEPENDS[@]}"; do
-		log_ok "Check: ${cyan}$pkg"
-	done
+#	for pkg in "${OPTDEPENDS[@]}"; do
+#		log_ok "Check: ${cyan}$pkg"
+#	done
 }
 
 sh_start_dbus_in_chroot() {
@@ -168,7 +169,7 @@ sh_start_dbus_in_chroot() {
 }
 
 sh_copy_user_etc_usr_opt_files() {
-	msg "Configuring the package after installation/upgrade..."
+  msg "Copying files and directories from package..."
 
 	# Copiar a estrutura para os diretórios de destino
 	local dirs=("usr" "etc" "opt")
@@ -179,6 +180,39 @@ sh_copy_user_etc_usr_opt_files() {
 			cp -a "/usr/share/${pkgname}/${dir}" "/"
 		fi
 	done
+}
+
+detect_and_install_gpu_drivers() {
+	msg "Detecting GPU and installing appropriate drivers..."
+	GPU_INFO=$(lspci -nnk | grep -A3 -E "VGA|3D|Display")
+
+	if grep -qiw "NVIDIA" <<<"$GPU_INFO"; then
+		msg "NVIDIA detected! Installing drivers..."
+		msg "Detect kernel version and set package name"
+		KERNEL_VERSION=$(uname -r | cut -d '.' -f1,2 | tr -d '.')
+		KERNEL_PACKAGE="linux${KERNEL_VERSION}-nvidia"
+		msg "Detected kernel: $KERNEL_VERSION"
+		msg "Installing NVIDIA packages: $KERNEL_PACKAGE nvidia-utils nvidia-settings"
+		install_packages "$KERNEL_PACKAGE" nvidia-utils nvidia-settings
+		msg "Blacklisting Nouveau..."
+		mkdir -p /etc/modprobe.d/ &>/dev/null
+		echo -e "blacklist nouveau\ninstall nouveau /bin/true" >/etc/modprobe.d/nouveau.conf
+		echo -e "blacklist nouveau\ninstall nouveau /bin/true" >/etc/modprobe.d/blacklist.conf
+		:
+	elif grep -qiw "Intel" <<<"$GPU_INFO"; then
+		msg "Intel GPU detected! Installing drivers..."
+		install_packages vulkan-intel lib32-vulkan-intel
+		:
+	elif grep -qEiw "AMD|ATI" <<<"$GPU_INFO"; then
+		msg "AMD/ATI GPU detected! Installing drivers..."
+		install_packages mesa-utils \
+			vulkan-icd-loader lib32-vulkan-icd-loader \
+			vulkan-headers vulkan-radeon lib32-vulkan-radeon \
+			mhwd-amdgpu mhwd-ati
+		:
+	else
+		msg "${yellow}Warning: No compatible GPU detected. Skipping driver installation.${reset}"
+	fi
 }
 
 post_install() {
@@ -199,8 +233,16 @@ post_install() {
 	# Removing pacman lock: /var/lib/pacman/db.lck
 	sh_remove_lock
 
+	# Common packages for all GPUs
+	COMMON_PACKAGES=(
+		mesa
+		lib32-mesa
+		vulkan-mesa-layers
+		lib32-vulkan-mesa-layers
+	)
+
 	synchronizing_database() {
-		pacman -Sy --quiet --noconfirm &>/dev/null
+    pacman -Sy --quiet --noconfirm 1>/dev/null
 	}
 
 	install_packages() {
@@ -220,12 +262,123 @@ post_install() {
 	msg "Checking for the existence of packages..."
 	sh_check_package_exist
 
-	msg "Installing optdepends packages..."
-	install_packages "${OPTDEPENDS[@]}"
+	if $IS_METAPKG; then
+		msg "Removindo package jack2..."
+		pacman -S --quiet --noconfirm --overwrite \* pipewire-jack &>/dev/null
+		if ! $IS_UPGRADE; then
+			msg "Installing common packages..."
+			install_packages "${COMMON_PACKAGES[@]}"
+		fi
+	fi
+
+  if ((${#OPTDEPENDS[@]})); then
+    msg "Installing optdepends packages..."
+  	install_packages "${OPTDEPENDS[@]}"
+  fi
+
+	if $IS_METAPKG; then
+		if ! $IS_UPGRADE; then
+			detect_and_install_gpu_drivers
+		fi
+	fi
+
+	if $IS_METAPKG; then
+		if ! $IS_UPGRADE; then
+			msg "Setting up user..."
+			user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
+			if $IN_CHROOT_INSTALLER; then
+				if [[ -n $IN_CHROOT_INSTALLER_USER || $IN_CHROOT_INSTALLER_USER != 'root' ]]; then
+					user=$IN_CHROOT_INSTALLER_USER
+				fi
+			fi
+			user_home=$(getent passwd "$user" | cut -d: -f6)
+
+			msg "Copying skel to $user_home..."
+			mkdir -p "$user_home" &>/dev/null
+			cp -Rfpa /etc/skel/. "$user_home/" &>/dev/null
+
+			msg "Setting user folder permissions in ${user_home}"
+			chown -R "$user:$user" "$user_home" &>/dev/null
+
+			if command -v nautilus >/dev/null; then
+				msg "Configuring Nautilus..."
+				if glib-compile-schemas /usr/share/glib-2.0/schemas/; then
+					msg "Nautilus schemas compiled successfully!"
+				else
+					msg "${yellow}Warning: Failed to compile Nautilus schemas. Some features may not work correctly.${reset}"
+				fi
+			fi
+		fi
+	fi
+
+	if $IS_METAPKG; then
+		if ! $IS_UPGRADE; then
+			msg "Enabling ${DM^}..."
+			if ! systemctl enable ${DM} &>/dev/null; then
+				msg "${red}Error: It went wrong when activating ${DM^}"
+			fi
+		fi
+	fi
+
+	for service in "${servicesToDisable[@]}"; do
+		if systemctl is-active --quiet "${service}"; then
+			msg "Disabling service ${service}..."
+			if ! systemctl disable "${service}" &>/dev/null; then
+				msg "${red}Error: It went wrong when desactivating service ${service}"
+			fi
+		else
+			msg "${yellow}Service ${service} is already inactive..."
+			continue
+		fi
+	done
+
+	for service in "${servicesToEnable[@]}"; do
+		if systemctl is-active --quiet "${service}"; then
+			msg "${yellow}Service ${service} is already active..."
+			continue
+		else
+			if ! systemctl enable "${service}" &>/dev/null; then
+				msg "${red}Error: It went wrong when activating service ${service}"
+			fi
+		fi
+	done
+
+	if $IS_METAPKG; then
+		if ! $IN_CHROOT_INSTALLER; then
+			if ! $IS_UPGRADE; then
+				msg "Please wait, Generating initramfs for all kernels..."
+				mkinitcpio -P &>/dev/null
+
+				msg "Configuring GRUB..."
+				# Change GRUB config
+				if ! grep -qi "${WM}" /etc/default/grub; then
+					sed -i "s/^GRUB_DISTRIBUTOR=\"\(.*\)\"/GRUB_DISTRIBUTOR=\"\1 ${WM^}\"/" /etc/default/grub
+				fi
+				sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash plymouth.enable=1 loglevel=4 libata.noacpi=1 acpi=force apm=power-off nowatchdog tsc=nowatchdog cryptomgr.notests no_timer_check rcupdate.rcu_expedited=1 intel_pstate=active amd_pstate=active cpuidle.governor=teo split_lock_detect=off clearcpuid=514 transparent_hugepage=never skew_tick=1 intremap=off nosoftlockup audit=0 nomce systemd.show_status=auto rd.udev.log_level=3 apparmor=1 security=apparmor vconsole.font=Uni2-Fixed16 intel_iommu=on amd_iommu=on tdx=on nvme_load=yes nouveau.modeset=1 i915.modeset=1 amdgpu.modeset=1 radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1 nvidia.modeset=1 nvidia_drm.modeset=1 DEEPIN_GFXMODE="|' /etc/default/grub 1>/dev/null
+
+				msg "Generating GRUB configuration files..."
+				update-grub &>/dev/null
+			fi
+		fi
+	fi
 
 	# Restauring pacman lock: /var/lib/pacman/db.lck
 	sh_restoring_lock
-	msg "${green}Install/Upgrade complete."
+
+	if $IS_METAPKG; then
+		if ! $IS_UPGRADE; then
+			msg "Installation complete. Rebooting in 10 seconds..."
+			# Countdown before reboot
+			for i in $(seq 10 -1 1); do
+				printf "%d..." "$i"
+				sleep 1
+			done
+			echo
+			msg "Rebooting now..."
+			reboot
+		fi
+	fi
+  msg "${green}Install/Upgrade complete."
 }
 
 post_upgrade() {
