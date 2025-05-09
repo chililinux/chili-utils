@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 09 mar 2025 18:10:08 -04
+#  Updated: qui 08 mai 2025 22:20:38 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.3.9-20250309'
+readonly VERSION='2.5.8-20250508'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -579,7 +579,8 @@ sh_version() {
 		${bold}${cyan}${0##*/} v${VERSION}${rst}
 		${APPDESC}
 		${VERSION}
-		${bold}${black}Copyright (C) 2019-2025 ChiliLinux Team${black}
+		${bold}${black}Copyright (C) 2019-2025 ChiliLinux Development Team${black}
+		${bold}${black}Copyright (C) 2019-2025 Vilmar Catafesta${black}
 
 		  Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
 		  O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
@@ -907,8 +908,8 @@ export -f chili-fr
 sh_copyright() {
 	echo -n $orange
 	echo "$APP - v${VERSION} - ${APPDESC}"
-	echo 'Copyleft (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>'
-	echo 'Copyleft (c) 2019-2025, ChiliLinux Team <https://chililinux.com>'
+	echo 'Copyright (c) 2019-2025, ChiliLinux Development Team <https://chililinux.com>'
+	echo 'Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>'
 	echo $rst
 }
 
@@ -1079,6 +1080,9 @@ if [[ $# > 0 ]]; then
 	#qemu_options+=(-device virtio-net-device,netdev=net0,mac=92:7b:15:c3:4d:ec)
 
 	# Configurar rede
+  # intervalo de 555 a 560 → tamanho = 560−555+1 = 6
+  export GUEST_CID=$(( RANDOM % 6 + 555 ))
+  export HOST_FWD=$(( RANDOM % 6 + 60022 ))
 	if $netchoosedriver; then
 		for netdevice in "${anetdevices[@]}"; do
 			((nId++))
@@ -1089,12 +1093,15 @@ if [[ $# > 0 ]]; then
 			  if $spice; then
   				qemu_options+=(-netdev user,id="$netdev_id")
   			else
-  				qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::60022-:22)
+  				qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22)
   		  fi
 			fi
 			qemu_options+=(-device "$netdevice",netdev="$netdev_id")
 		done
-		qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=555)
+		qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=$GUEST_CID)
+    msg_info "acesso a vm/convidado via ssh:"
+    msg_info "$  ssh live@vsock/$GUEST_CID               # via vsock"
+    msg_info "$  ssh live@127.0.0.1 -p $HOST_FWD      # via redicionamento"
 	else
 		netdev_id="net0"
 		if $bridge; then
@@ -1103,11 +1110,14 @@ if [[ $# > 0 ]]; then
 	    if $spice; then
   		  qemu_options+=(-netdev user,id="$netdev_id")
   		else
-  		  qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::60022-:22)
+  		  qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22)
   		fi
 		fi
 		qemu_options+=(-device "$netdevice",netdev="$netdev_id")
-		qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=555)
+		qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=$GUEST_CID)
+    msg_info "acesso a vm/convidado via ssh:"
+    msg_info "$  ssh live@vsock/$GUEST_CID               # via vsock"
+    msg_info "$  ssh live@127.0.0.1 -p $HOST_FWD      # via redicionamento"
 	fi
 
 	if $drive; then

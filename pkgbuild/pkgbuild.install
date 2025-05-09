@@ -4,7 +4,7 @@
 #
 #  pkgbuild.install
 #  Created: 2024/09/09 - 08:57
-#  Updated: qui 24 abr 2025 12:27:15 -04
+#  Updated: qua 07 mai 2025 12:31:30 -04
 #
 #  Copyright (c) 2024-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -70,6 +70,8 @@ export DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
 export OVER="\\r\\033[K"
 export DOTPREFIX="  ${black}::${reset} "
 #
+declare user="${SUDO_USER:-$USER}"
+declare user_home=$(getent passwd "$user" | cut -d: -f6)
 declare IS_UPGRADE=false
 declare IS_DBLOCK=false
 declare IS_METAPKG=false
@@ -87,25 +89,6 @@ msg() {
 log_ok() { echo -e "  ${TICK} ${*}${reset}"; }
 log_err() { echo -e "  ${CROSS} ${*}${reset}"; }
 
-die() {
-	local msg="$1"
-	shift
-	echo -e "  ${CROSS} ${red}${msg}${reset}"
-	sh_restoring_lock
-	exit 1
-}
-
-sh_load_optdepends() {
-	local info_file="/usr/share/${pkgname}/optdepends"
-
-	if [[ -f "$info_file" && -r "$info_file" ]]; then
-		mapfile -t OPTDEPENDS <"$info_file"
-	else
-		msg "${red}FATAL: Something went wrong! File '$info_file' not found or without read permission."
-		msg "${red}FATAL: Something went wrong! File '$info_file' not found or without read permission."
-	fi
-}
-
 sh_remove_lock() {
 	if [[ -f /var/lib/pacman/db.lck ]]; then
 		IS_DBLOCK=true
@@ -118,6 +101,32 @@ sh_restoring_lock() {
 	if $IS_DBLOCK; then
 		msg "Restauring pacman lock: /var/lib/pacman/db.lck"
 		touch /var/lib/pacman/db.lck &>/dev/null
+	fi
+}
+
+die() {
+	local msg="$1"
+	shift
+	echo -e "  ${CROSS} ${red}${msg}${reset}"
+	sh_restoring_lock
+	exit 1
+}
+
+sh_load_optdepends() {
+	local info_file="/usr/share/${pkgname}/optdepends"
+
+	if [[ -s "$info_file" ]]; then
+		#mapfile -t OPTDEPENDS <"$info_file"
+		#OPTDEPENDS=()
+		#while IFS= read -r line; do
+		#  [[ -n "${line// /}" ]] && OPTDEPENDS+=("$line")
+		#done < "$info_file"
+		mapfile -t OPTDEPENDS < <(grep -v '^\s*$' "$info_file")
+	else
+		OPTDEPENDS=()
+		if $IS_METAPKG; then
+			msg "${yellow}AVISO: '$info_file' está vazio. Nenhum optdepend será carregado."
+		fi
 	fi
 }
 
@@ -147,9 +156,9 @@ sh_check_package_exist() {
 		die "Fatal: os seguintes pacotes não existem no repositório: ${not_found[*]}"
 	fi
 
-#	for pkg in "${OPTDEPENDS[@]}"; do
-#		log_ok "Check: ${cyan}$pkg"
-#	done
+	for pkg in "${OPTDEPENDS[@]}"; do
+		log_ok "Check: ${cyan}$pkg"
+	done
 }
 
 sh_start_dbus_in_chroot() {
@@ -169,7 +178,7 @@ sh_start_dbus_in_chroot() {
 }
 
 sh_copy_user_etc_usr_opt_files() {
-  msg "Copying files and directories from package..."
+	msg "Copying files and directories from package..."
 
 	# Copiar a estrutura para os diretórios de destino
 	local dirs=("usr" "etc" "opt")
@@ -180,6 +189,13 @@ sh_copy_user_etc_usr_opt_files() {
 			cp -a "/usr/share/${pkgname}/${dir}" "/"
 		fi
 	done
+}
+
+sh_blacklist_nouveau_drivers() {
+	msg "Blacklisting Nouveau..."
+	mkdir -p /etc/modprobe.d/ &>/dev/null
+	echo -e "blacklist nouveau\ninstall nouveau /bin/true" >/etc/modprobe.d/nouveau.conf
+	echo -e "blacklist nouveau\ninstall nouveau /bin/true" >/etc/modprobe.d/blacklist.conf
 }
 
 detect_and_install_gpu_drivers() {
@@ -194,10 +210,7 @@ detect_and_install_gpu_drivers() {
 		msg "Detected kernel: $KERNEL_VERSION"
 		msg "Installing NVIDIA packages: $KERNEL_PACKAGE nvidia-utils nvidia-settings"
 		install_packages "$KERNEL_PACKAGE" nvidia-utils nvidia-settings
-		msg "Blacklisting Nouveau..."
-		mkdir -p /etc/modprobe.d/ &>/dev/null
-		echo -e "blacklist nouveau\ninstall nouveau /bin/true" >/etc/modprobe.d/nouveau.conf
-		echo -e "blacklist nouveau\ninstall nouveau /bin/true" >/etc/modprobe.d/blacklist.conf
+		sh_blacklist_nouveau_drivers
 		:
 	elif grep -qiw "Intel" <<<"$GPU_INFO"; then
 		msg "Intel GPU detected! Installing drivers..."
@@ -215,9 +228,42 @@ detect_and_install_gpu_drivers() {
 	fi
 }
 
+ensure_group_user() {
+	local user="$1"
+	local group="$2"
+	getent group "$group" &>/dev/null || sudo groupadd "$group" &>/dev/null
+	id -nG "$user" | grep -qw "$group" || sudo gpasswd -a "$user" "$group" &>/dev/null
+}
+
+sh_get_real_user() {
+	user="${SUDO_USER:-$USER}"
+
+	# Se o usuário não existir, tenta encontrar um UID >= 1000
+	if ! getent passwd "$user" >/dev/null; then
+		user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
+	fi
+
+	# Se estiver no ambiente chroot e uma variável de usuário foi definida
+	if [[ $IN_CHROOT_INSTALLER == true ]]; then
+		if [[ -n $IN_CHROOT_INSTALLER_USER && $IN_CHROOT_INSTALLER_USER != "root" ]]; then
+			user="$IN_CHROOT_INSTALLER_USER"
+		fi
+	fi
+
+	# Descobre o diretório home do usuário
+	user_home=$(getent passwd "$user" | cut -d: -f6)
+
+	# Fallback para /home/$user se user_home estiver vazio
+	if [[ -z "$user_home" ]]; then
+		user_home="/home/$user"
+	fi
+
+	export user
+	export user_home
+}
+
 post_install() {
 	msg "Initializing system installation and configuration..."
-
 	sh_copy_user_etc_usr_opt_files
 	sh_load_optdepends
 
@@ -230,94 +276,119 @@ post_install() {
 		:
 	fi
 
-	# Removing pacman lock: /var/lib/pacman/db.lck
-	sh_remove_lock
+	if ((${#OPTDEPENDS[@]})); then
+		# Removing pacman lock: /var/lib/pacman/db.lck
+		sh_remove_lock
 
-	# Common packages for all GPUs
-	COMMON_PACKAGES=(
-		mesa
-		lib32-mesa
-		vulkan-mesa-layers
-		lib32-vulkan-mesa-layers
-	)
+		synchronizing_database() {
+			pacman -Sy --quiet --noconfirm 1>/dev/null
+		}
 
-	synchronizing_database() {
-    pacman -Sy --quiet --noconfirm 1>/dev/null
-	}
+		install_packages() {
+			local error_log="/tmp/${pkgname}-pacman_error_log"
+			local output_log="/tmp/${pkgname}-pacman_output_log"
+			local max_attempts=3
 
-	install_packages() {
-		# Captura o erro do pacman
-		if ! pacman -S --quiet --noconfirm --needed --overwrite \* "$@" >/tmp/${pkgname}-pacman_output_log 2>/tmp/${pkgname}-pacman_error_log; then
-			die "$(</tmp/${pkgname}-pacman_error_log)"
+			# Primeira tentativa em lote
+			if ! LC_ALL=C pacman -S --quiet --noconfirm --needed --overwrite '*' "$@" >"$output_log" 2>"$error_log"; then
+				log_err "Falha na instalação inicial, tentando novamente..."
+				local attempt=1
+				while ((attempt <= max_attempts)); do
+					msg "Tentando reinstalar os pacotes (tentativa $attempt de $max_attempts)..."
+					if LC_ALL=C pacman -S --quiet --noconfirm --needed --overwrite '*' "$@" >>"$output_log" 2>>"$error_log"; then
+						log_ok "Todos os pacotes foram instalados com sucesso."
+						break
+					fi
+					((attempt++))
+				done
+
+				if ((attempt > max_attempts)); then
+					log_err "Falhou após $max_attempts tentativas."
+					cat "$error_log"
+					die "Erro fatal ao instalar os pacotes."
+				fi
+			fi
+
+			# Limpa arquivos temporários
+			rm -f "$error_log" "$output_log"
+			return 0
+		}
+
+		#		msg "Please wait, synchronizing databases..."
+		#		synchronizing_database
+
+		#		msg "Checking for the existence of packages..."
+		#		sh_check_package_exist
+
+		if $IS_METAPKG; then
+			msg "Reinstalling package pipewire-jack..."
+			pacman -S --quiet --noconfirm --overwrite \* pipewire-jack &>/dev/null
 		fi
-		# Se não houver erro (ou erro de já estar instalado/atualizado)
-		rm /tmp/${pkgname}-pacman_error_log &>/dev/null
-		rm /tmp/${pkgname}-pacman_output_log &>/dev/null
-		return 0
-	}
 
-	msg "Please wait, synchronizing databases..."
-	synchronizing_database
-
-	msg "Checking for the existence of packages..."
-	sh_check_package_exist
-
-	if $IS_METAPKG; then
-		msg "Removindo package jack2..."
-		pacman -S --quiet --noconfirm --overwrite \* pipewire-jack &>/dev/null
-		if ! $IS_UPGRADE; then
-			msg "Installing common packages..."
-			install_packages "${COMMON_PACKAGES[@]}"
+		if ((${#OPTDEPENDS[@]})); then
+			msg "Installing optdepends packages..."
+			install_packages "${OPTDEPENDS[@]}"
 		fi
-	fi
 
-  if ((${#OPTDEPENDS[@]})); then
-    msg "Installing optdepends packages..."
-  	install_packages "${OPTDEPENDS[@]}"
-  fi
+		if $IS_METAPKG; then
+			if ! $IS_UPGRADE; then
+				#detect_and_install_gpu_drivers
+				sh_blacklist_nouveau_drivers
+			fi
 
-	if $IS_METAPKG; then
-		if ! $IS_UPGRADE; then
-			detect_and_install_gpu_drivers
-		fi
-	fi
-
-	if $IS_METAPKG; then
-		if ! $IS_UPGRADE; then
 			msg "Setting up user..."
-			user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
-			if $IN_CHROOT_INSTALLER; then
-				if [[ -n $IN_CHROOT_INSTALLER_USER || $IN_CHROOT_INSTALLER_USER != 'root' ]]; then
-					user=$IN_CHROOT_INSTALLER_USER
+			sh_get_real_user
+
+			msg "Checking if $user is in autologin group"
+			ensure_group_user "$user" autologin
+
+			if ! $IS_UPGRADE; then
+				msg "Copying skel to $user_home..."
+				mkdir -p "$user_home" &>/dev/null
+				cp -Rfpa /etc/skel/. "$user_home/" &>/dev/null
+
+				msg "Setting user folder permissions in ${user_home}"
+				chown -R "$user:$user" "$user_home" &>/dev/null
+
+				if command -v nautilus >/dev/null; then
+					msg "Configuring Nautilus..."
+					if glib-compile-schemas /usr/share/glib-2.0/schemas/; then
+						msg "Nautilus schemas compiled successfully!"
+					else
+						msg "${yellow}Warning: Failed to compile Nautilus schemas. Some features may not work correctly.${reset}"
+					fi
 				fi
 			fi
-			user_home=$(getent passwd "$user" | cut -d: -f6)
 
-			msg "Copying skel to $user_home..."
-			mkdir -p "$user_home" &>/dev/null
-			cp -Rfpa /etc/skel/. "$user_home/" &>/dev/null
-
-			msg "Setting user folder permissions in ${user_home}"
-			chown -R "$user:$user" "$user_home" &>/dev/null
-
-			if command -v nautilus >/dev/null; then
-				msg "Configuring Nautilus..."
-				if glib-compile-schemas /usr/share/glib-2.0/schemas/; then
-					msg "Nautilus schemas compiled successfully!"
-				else
-					msg "${yellow}Warning: Failed to compile Nautilus schemas. Some features may not work correctly.${reset}"
+			if ! $IS_UPGRADE; then
+				msg "Enabling ${DM^}..."
+				if ! systemctl enable ${DM} &>/dev/null; then
+					msg "${red}Error: It went wrong when activating ${DM^}"
 				fi
 			fi
-		fi
-	fi
 
-	if $IS_METAPKG; then
-		if ! $IS_UPGRADE; then
-			msg "Enabling ${DM^}..."
-			if ! systemctl enable ${DM} &>/dev/null; then
-				msg "${red}Error: It went wrong when activating ${DM^}"
+			sh_change_grub() {
+				msg "Configuring GRUB..."
+				# Change GRUB config
+				if ! grep -qi "${WM}" /etc/default/grub; then
+					sed -i "s/^GRUB_DISTRIBUTOR=\"\(.*\)\"/GRUB_DISTRIBUTOR=\"\1 ${WM^}\"/" /etc/default/grub
+				fi
+				sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash plymouth.enable=1 loglevel=4 libata.noacpi=1 acpi=force apm=power-off nowatchdog tsc=nowatchdog cryptomgr.notests no_timer_check rcupdate.rcu_expedited=1 intel_pstate=active amd_pstate=active cpuidle.governor=teo split_lock_detect=off clearcpuid=514 transparent_hugepage=never skew_tick=1 intremap=off nosoftlockup audit=0 nomce systemd.show_status=auto rd.udev.log_level=3 apparmor=1 security=apparmor vconsole.font=Uni2-Fixed16 intel_iommu=on amd_iommu=on tdx=on nvme_load=yes nouveau.modeset=1 i915.modeset=1 amdgpu.modeset=1 radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1 nvidia.modeset=1 nvidia_drm.modeset=1 DEEPIN_GFXMODE="|' /etc/default/grub 1>/dev/null
+			}
+
+			if ! $IN_CHROOT_INSTALLER; then
+				if ! $IS_UPGRADE; then
+					msg "Please wait, Generating initramfs for all kernels..."
+					mkinitcpio -P &>/dev/null
+				fi
+				sh_change_grub
+				msg "Generating GRUB configuration files..."
+				update-grub &>/dev/null
 			fi
 		fi
+
+		# Restauring pacman lock: /var/lib/pacman/db.lck
+		sh_restoring_lock
 	fi
 
 	for service in "${servicesToDisable[@]}"; do
@@ -344,28 +415,6 @@ post_install() {
 	done
 
 	if $IS_METAPKG; then
-		if ! $IN_CHROOT_INSTALLER; then
-			if ! $IS_UPGRADE; then
-				msg "Please wait, Generating initramfs for all kernels..."
-				mkinitcpio -P &>/dev/null
-
-				msg "Configuring GRUB..."
-				# Change GRUB config
-				if ! grep -qi "${WM}" /etc/default/grub; then
-					sed -i "s/^GRUB_DISTRIBUTOR=\"\(.*\)\"/GRUB_DISTRIBUTOR=\"\1 ${WM^}\"/" /etc/default/grub
-				fi
-				sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash plymouth.enable=1 loglevel=4 libata.noacpi=1 acpi=force apm=power-off nowatchdog tsc=nowatchdog cryptomgr.notests no_timer_check rcupdate.rcu_expedited=1 intel_pstate=active amd_pstate=active cpuidle.governor=teo split_lock_detect=off clearcpuid=514 transparent_hugepage=never skew_tick=1 intremap=off nosoftlockup audit=0 nomce systemd.show_status=auto rd.udev.log_level=3 apparmor=1 security=apparmor vconsole.font=Uni2-Fixed16 intel_iommu=on amd_iommu=on tdx=on nvme_load=yes nouveau.modeset=1 i915.modeset=1 amdgpu.modeset=1 radeon.si_support=0 radeon.cik_support=0 amdgpu.si_support=1 amdgpu.cik_support=1 nvidia.modeset=1 nvidia_drm.modeset=1 DEEPIN_GFXMODE="|' /etc/default/grub 1>/dev/null
-
-				msg "Generating GRUB configuration files..."
-				update-grub &>/dev/null
-			fi
-		fi
-	fi
-
-	# Restauring pacman lock: /var/lib/pacman/db.lck
-	sh_restoring_lock
-
-	if $IS_METAPKG; then
 		if ! $IS_UPGRADE; then
 			msg "Installation complete. Rebooting in 10 seconds..."
 			# Countdown before reboot
@@ -378,7 +427,7 @@ post_install() {
 			reboot
 		fi
 	fi
-  msg "${green}Install/Upgrade complete."
+	msg "${green}Install/Upgrade complete."
 }
 
 post_upgrade() {
