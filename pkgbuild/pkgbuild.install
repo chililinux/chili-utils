@@ -262,6 +262,31 @@ sh_get_real_user() {
 	export user_home
 }
 
+sh_fix_groups_udev() {
+	# Grupos que devem existir
+	GRUPOS=("plugdev" "trezord")
+
+	for GRUPO in "${GRUPOS[@]}"; do
+		# Verifica se o grupo existe
+		if ! getent group "$GRUPO" >/dev/null; then
+			msg "Grupo '$GRUPO' não existe. Criando..."
+			groupadd "$GRUPO"
+		fi
+
+		# Verifica se o usuário já está no grupo
+		if id -nG "$user" | grep -qw "$GRUPO"; then
+			msg "Usuário '$user' já está no grupo '$GRUPO'."
+		else
+			msg "Adicionando usuário '$user' ao grupo '$GRUPO'..."
+			usermod -aG "$GRUPO" "$user"
+		fi
+	done
+	# Recarrega regras do udev
+	msg "Recarregando regras do udev..."
+	udevadm control --reload
+	udevadm trigger
+}
+
 post_install() {
 	msg "Initializing system installation and configuration..."
 	sh_copy_user_etc_usr_opt_files
@@ -331,16 +356,19 @@ post_install() {
 		fi
 
 		if $IS_METAPKG; then
+  		msg "Setting up user..."
+  		sh_get_real_user
+  		sh_fix_groups_udev
+
+	  	msg "Checking if $user is in autologin group"
+	  	ensure_group_user "$user" autologin
+    fi
+
+		if $IS_METAPKG; then
 			if ! $IS_UPGRADE; then
 				#detect_and_install_gpu_drivers
 				sh_blacklist_nouveau_drivers
 			fi
-
-			msg "Setting up user..."
-			sh_get_real_user
-
-			msg "Checking if $user is in autologin group"
-			ensure_group_user "$user" autologin
 
 			if ! $IS_UPGRADE; then
 				msg "Copying skel to $user_home..."
@@ -393,23 +421,24 @@ post_install() {
 
 	for service in "${servicesToDisable[@]}"; do
 		if systemctl is-active --quiet "${service}"; then
-			msg "Disabling service ${service}..."
-			if ! systemctl disable "${service}" &>/dev/null; then
-				msg "${red}Error: It went wrong when desactivating service ${service}"
+			if systemctl disable "${service}" &>/dev/null; then
+  			log_ok "Service ${service} is inactive..."
+			else
+				log_err "${red}Error: It went wrong when desactivating service ${service}"
 			fi
 		else
-			msg "${yellow}Service ${service} is already inactive..."
-			continue
+			log_ok "Service ${service} is already inactive..."
 		fi
 	done
 
 	for service in "${servicesToEnable[@]}"; do
 		if systemctl is-active --quiet "${service}"; then
-			msg "${yellow}Service ${service} is already active..."
-			continue
+			log_ok "Service ${service} is already active..."
 		else
-			if ! systemctl enable "${service}" &>/dev/null; then
-				msg "${red}Error: It went wrong when activating service ${service}"
+			if systemctl enable "${service}" &>/dev/null; then
+				log_ok "Service ${service} activated..."
+			else
+				log_err "${red}Error: It went wrong when activating service ${service}"
 			fi
 		fi
 	done
