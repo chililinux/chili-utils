@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: qui 08 mai 2025 22:20:38 -04
+#  Updated: dom 25 mai 2025 13:03:12 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.5.8-20250508'
+readonly VERSION='2.5.25-20250525'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -634,7 +634,7 @@ ${cyan}Forma de uso mais comum:${rst}
   $ ${orange}$APP${reset} $HOME_DIR/vdisk/vdisk_name.img ${rst}
 ${cyan}acesso a vm/convidado via ssh:${rst}
   $ ${reset} ssh live@vsock/555             ${cyan}# via vsock ${rst}
-  $ ${reset} ssh live@127.0.0.1 -p 60022    ${cyan}# via redicionamento ${rst}
+  $ ${reset} ssh live@127.0.0.1 -p 60022    ${cyan}# via redirecionamento ${rst}
   $ ${reset} ssh <ip_vm>                    ${cyan}# via bridge (caso vm iniciada com -b) ${rst}
   ${reset}
 EOF
@@ -1101,7 +1101,7 @@ if [[ $# > 0 ]]; then
 		qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=$GUEST_CID)
     msg_info "acesso a vm/convidado via ssh:"
     msg_info "$  ssh live@vsock/$GUEST_CID               # via vsock"
-    msg_info "$  ssh live@127.0.0.1 -p $HOST_FWD      # via redicionamento"
+    msg_info "$  ssh live@127.0.0.1 -p $HOST_FWD      # via redirecionamento"
 	else
 		netdev_id="net0"
 		if $bridge; then

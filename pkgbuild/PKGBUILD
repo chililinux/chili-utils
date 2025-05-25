@@ -30,6 +30,7 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
 # Maintainer: Vilmar Catafesta <vcatafesta@gmail.com>
+
 pkgname=chili-utils
 pkgdesc="Pacote de utilitários para GNU/Linux"
 pkgver=$(date +%Y%m%d)
