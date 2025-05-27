@@ -1117,7 +1117,7 @@ if [[ $# > 0 ]]; then
 		qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=$GUEST_CID)
     msg_info "acesso a vm/convidado via ssh:"
     msg_info "$  ssh live@vsock/$GUEST_CID               # via vsock"
-    msg_info "$  ssh live@127.0.0.1 -p $HOST_FWD      # via redicionamento"
+    msg_info "$  ssh live@127.0.0.1 -p $HOST_FWD      # via redirecionamento"
 	fi
 
 	if $drive; then
