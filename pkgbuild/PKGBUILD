@@ -42,11 +42,9 @@ source=("git+${url}.git")
 md5sums=('SKIP')
 depends=()
 optdepends=()
-post_install_pkgs=(
-	chili-clonedisk
-	chili-datetime
-	chili-iso2usb
-)
+post_install_pkgs=(chili-clonedisk
+                   chili-datetime
+                   chili-iso2usb)
 
 # Automatically detect and use the correct install file
 if [ -e "${pkgname}.install" ]; then
