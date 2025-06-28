@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 25 mai 2025 13:03:12 -04
+#  Updated: sex 27 jun 2025 20:18:27 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.5.25-20250525'
+readonly VERSION='2.6.27-20250627'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -314,7 +314,8 @@ sh_checkDependencies() {
 			missing+=("$d")
 			errorFound=true
 		else
-			log_msg "Check: ${cyan}$d"
+			#log_msg "Check: ${cyan}$d"
+			:
 		fi
 	done
 
@@ -338,14 +339,14 @@ sh_checkVdiskFiles() {
 	local errorFound=false
 	declare -a missing
 
-	aBlock_files+=($HOME_DIR/vdisk/vda.img)
-	aBlock_files+=($HOME_DIR/vdisk/vdb.img)
-	aBlock_files+=($HOME_DIR/vdisk/vdc.img)
-	aBlock_files+=($HOME_DIR/vdisk/vdd.img)
-	aBlock_files+=($HOME_DIR/vdisk/hda.qcow2)
-	aBlock_files+=($HOME_DIR/vdisk/hdb.qcow2)
-	aBlock_files+=($HOME_DIR/vdisk/hdc.qcow2)
-	aBlock_files+=($HOME_DIR/vdisk/hdd.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/sda.img)
+	aBlock_files+=($HOME_DIR/vdisk/sdb.img)
+	aBlock_files+=($HOME_DIR/vdisk/sdc.img)
+	aBlock_files+=($HOME_DIR/vdisk/sdd.img)
+	aBlock_files+=($HOME_DIR/vdisk/vda.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vdb.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vdc.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vdd.qcow2)
 	for d in "${aBlock_files[@]}"; do
 		if [[ ! -e "$d" ]]; then
 			sh_createVdiskFiles
@@ -370,6 +371,7 @@ sh_checkOVMFFiles() {
 		else
 			true
 			log_msg "Check: ${cyan}$d"
+			:
 		fi
 	done
 
@@ -609,6 +611,7 @@ ${cyan}$(gettext "Opções"):${reset}
   ${rst}-N|--network ${orange}<net_driver>         ${cyan}# virtio-net-pci,e1000,rtl8139,vmxnet3 (default: virtio-pc)
   ${rst}-n|--nocolor                      ${cyan}# remover cores da saída - (default: color)
   ${rst}-s|--spice                        ${cyan}# ativar o spice - (default: desligado)
+  ${rst}-l|--list                         ${cyan}# listar discos virtuais
   ${rst}-u|--uefi                         ${cyan}# inicialização em UEFI - (default: BIOS)
   ${rst}-V|--version                      ${cyan}# exibe a versão do aplicativo
   ${rst}-h|--help                         ${cyan}# imprime este ajuda
@@ -642,8 +645,8 @@ EOF
 }
 
 sh_createVdiskFiles() {
-	local aBlockDisk=(vda.img vdb.img vdc.img vdd.img)
-	local aBlockDiskQcow2=(hda.qcow2 hdb.qcow2 hdc.qcow2 hdd.qcow2)
+	local aBlockDisk=(sda.img sdb.img sdc.img sdd.img)
+	local aBlockDiskQcow2=(vda.qcow2 vdb.qcow2 vdc.qcow2 vdd.qcow2)
 	local file
 
 	if [[ ! -d "$HOME_DIR/vdisk/" ]]; then
@@ -928,8 +931,8 @@ sh_checkDependencies
 sh_checkVdiskFiles
 sh_checkOVMFFiles
 
-OPTIONS=m:ub:Vnhd:sg:v:i:N:c:r:
-LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,video:,image:,network:,create_bridge:,remove_bridge:,cvdisk,rvdisk,vdisk
+OPTIONS=m:ub:Vnhd:sg:v:i:N:c:r:l
+LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,video:,image:,network:,create_bridge:,remove_bridge:,cvdisk,rvdisk,vdisk,list
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
 
@@ -996,6 +999,11 @@ while test ${#opts[*]} -gt 0; do
 		else
 			die "$(gettext "Argumento inválido para -v. Use VGA,virtio-vga,virtio-gpu-pci,qxl-vga,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display ou ramfb")" >&2
 		fi
+		;;
+	-l | --list)
+    sh_list_vdisks
+    exit 0
+    :
 		;;
 	-v | --vdisk)
 		if [[ " $(get_raw_images) " =~ " $2 " || -e "$2" ]]; then
