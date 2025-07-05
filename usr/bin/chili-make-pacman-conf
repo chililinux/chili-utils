@@ -249,9 +249,6 @@ sh_add_repo_into_pacman_conf() {
 	cp "$CONF_FILE" "$CONF_FILE.bak"
 
 	# Adiciona os repositórios, se necessário
-	add_repo "community-stable" "https://repo.communitybig.org/stable/\$arch"
-	add_repo "community-testing" "https://repo.communitybig.org/testing/\$arch"
-	add_repo "community-extra" "https://repo.communitybig.org/extra/\$arch"
 	add_repo "chili-stable" "https://repo.chililinux.com/stable/\$arch" "https://repo2.chililinux.com/stable/\$arch"
 	add_repo "chili-testing" "https://repo.chililinux.com/testing/\$arch" "https://repo2.chililinux.com/testing/\$arch"
 	add_repo "chili-extra" "https://repo.chililinux.com/extra/\$arch" "https://repo2.chililinux.com/extra/\$arch"
@@ -302,15 +299,9 @@ sh_main() {
 		#	msg_run 'sudo pacman-key --finger    "$key" &>/dev/null'
 	done
 
-	#msg_run 'sudo pacman -U https://repo.biglinux.com.br/stable/x86_64/biglinux-keyring-20220827-3-any.pkg.tar.zst --noconfirm 1>/dev/null'
-	#msg_run 'sudo pacman -U https://repo.communitybig.org/stable/x86_64/community-keyring-20250101-2045-x86_64.pkg.tar.zst --noconfirm 1>/dev/null'
-	#msg_run 'sudo pacman -U https://repo.chililinux.com/stable/x86_64/chili-keyring-20250108-1849-any.pkg.tar.zst --noconfirm 1>/dev/null'
-
 	# Sincronizar pacotes necessários
 	msg_run 'sudo pacman -Sy --needed --quiet --noconfirm \
   archlinux-keyring \
-  biglinux-keyring \
-  community-keyring \
   chili-keyring &>/dev/null'
 	#  ubuntu-keyring \
 	#  debian-archive-keyring \

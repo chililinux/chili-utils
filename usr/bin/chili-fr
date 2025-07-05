@@ -877,6 +877,7 @@ chili-fr() {
 	qemu_options+=(-device virtio-serial)
 	#video
 	qemu_options+=(-device "$videodevice")
+	qemu_options+=(-display gtk,gl=on)
 
 	if $spice; then
 		sh_start_vdagentd
