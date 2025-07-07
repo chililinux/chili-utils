@@ -5,6 +5,7 @@
 #  chili-recompress-btrfs
 #  Created: 2025/05/08 - 20:10
 #  Altered: 2025/05/08 - 20:10
+#  Updated: seg 07 jul 2025 10:39:37 -04
 #
 #  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -72,7 +73,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.0.0-20250508"
+declare _VERSION_="1.07.07-20250707"
 declare APPDESC="bash - Wraper for "
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput)
@@ -160,18 +161,28 @@ ALGO="zstd"
 
 # Função de ajuda
 show_help() {
-  echo -e "${CYAN}Uso:${RESET} $0 <diretório> [outros diretórios...]"
-  echo -e "  Recomprime arquivos em sistemas de arquivos Btrfs usando compressão ${YELLOW}${ALGO}${RESET}."
-  echo -e "${CYAN}Exemplo:${RESET} $0 /home /var /etc"
+  echo -e "Recomprime arquivos em sistemas de arquivos Btrfs usando compressão ${YELLOW}${ALGO}${RESET}."
+  echo -e "${CYAN}  Uso:${RESET} $0 <diretório> [outros diretórios...]"
+  echo -e "${CYAN}  Ex.:${RESET} sudo $0 /home /var /etc"
   echo
   echo -e "${BLUE}Dica:${RESET} monte o sistema com compressão usando:"
   echo -e "  ${YELLOW}compress=${ALGO}${RESET} ou ${YELLOW}compress-force=${ALGO}${RESET}"
 }
 
+# Display usage information if no arguments are passed
+if [[ $# -eq 0 || $1 == @(-h|--help) ]]; then
+  show_help
+fi
+if [[ $1 == @(-V|--version) ]]; then
+  sh_version
+fi
+
 # 🚨 Verifica se é root
 if [[ $EUID -ne 0 ]]; then
   echo -e "${RED}🚫 Este script precisa ser executado como root.${RESET}"
-  echo -e "${YELLOW}Sugestão:${RESET} use ${CYAN}sudo $0 ...${RESET}"
+  echo -e "${YELLOW}Sugestão:${RESET} use ${CYAN}sudo $0 / ${RESET}"
+  echo -e "${YELLOW}         ${RESET} use ${CYAN}sudo $0 /home${RESET}"
+  echo -e "${YELLOW}         ${RESET} use ${CYAN}sudo $0 /var /home${RESET}"
   exit 1
 fi
 
