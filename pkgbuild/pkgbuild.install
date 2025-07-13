@@ -339,8 +339,8 @@ post_install() {
 			return 0
 		}
 
-		#		msg "Please wait, synchronizing databases..."
-		#		synchronizing_database
+    msg "Please wait, synchronizing databases..."
+		synchronizing_database
 
 		#		msg "Checking for the existence of packages..."
 		#		sh_check_package_exist
