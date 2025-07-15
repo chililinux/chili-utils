@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sex 27 jun 2025 20:18:27 -04
+#  Updated: ter 15 jul 2025 17:51:17 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.6.27-20250627'
+readonly VERSION='2.7.15-20250715'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -790,7 +790,8 @@ chili-fr() {
 	# Forçar UEFI, se solicitado
 	if $uefi; then
 		msg_info "Forçando inicialização UEFI..."
-		[[ ! -e $HOME_DIR/OVMF_VARS.4m.fd ]] && cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
+		#[[ ! -e $HOME_DIR/OVMF_VARS.4m.fd ]] && cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
+		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
 		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
 		qemu_options+=(-drive if=pflash,format=raw,file=$HOME_DIR/OVMF_VARS.4m.fd)
 	else
