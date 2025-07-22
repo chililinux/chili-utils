@@ -411,6 +411,20 @@ get_next_free_bridge() {
 
 create_bridge_virbr() {
 	local bridge_name="$1"
+
+  if sudo virsh -c qemu:///system net-list --all &>/dev/null; then
+    msg_info "virsh está funcionando e conseguiu listar as redes."
+  else
+    msg_warning "virsh não conseguiu se conectar ao libvirt."
+    msg_warning "Verifique se o serviço libvirtd está ativo com os comandos abaixo:\n\
+sudo systemctl status libvirtd.service
+sudo systemctl status libvirtd.socket"
+    msg_warning "DICA: Tente ativar com os comandos abaixo:\n\
+sudo systemctl enable --now libvirtd virtqemud
+sudo systemctl restart libvirtd.service"
+  die "Erro fatal"
+  fi
+
 	if [[ -z "$bridge_name" ]]; then
 		# Obter o próximo nome de bridge disponível
 		bridge_name=$(get_next_free_bridge)
@@ -956,7 +970,7 @@ while test ${#opts[*]} -gt 0; do
 		;;
 	-c | --create_bridge)
 		if [[ -z "$2" ]]; then
-			die "Argumento inválido para --create_bridge, falta nome para bridge" >&2
+			die "Argumento inválido para --create_bridge, falta nome para bridge \nEx.: --create_bridge br0" >&2
 		else
 			if [[ " $(get_bridge_interfaces) " =~ " $2 " ]]; then
 				die "Argumento inválido para ${cyan}--bridge-create${red}. BRIDGE ${cyan}$2 ${red}já existe" >&2
