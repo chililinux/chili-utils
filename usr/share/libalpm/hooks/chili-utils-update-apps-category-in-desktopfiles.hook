@@ -1,0 +1,10 @@
+[Trigger]
+Type      = Package
+Operation = Install
+Operation = Upgrade
+Target    = chili-*
+
+[Action]
+Description = chili-utils => ChiliLinux update Apps category in desktop files
+When        = PostTransaction
+Exec        = /usr/share/libalpm/scripts/chili-utils-update-apps-category-in-desktopfiles.sh
