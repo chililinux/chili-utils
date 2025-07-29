@@ -305,9 +305,12 @@ post_install() {
 		# Removing pacman lock: /var/lib/pacman/db.lck
 		sh_remove_lock
 
-		synchronizing_database() {
-			pacman -Sy --quiet --noconfirm 1>/dev/null
-		}
+    synchronizing_database() {
+      pacman ca-certificates ca-certificates-utils ca-certificates-mozilla --quiet --noconfirm 1>/dev/null
+      sudo update-ca-certificates 1>/dev/null
+      sudo update-ca-trust1>/dev/null
+      pacman -Sy --quiet --noconfirm 1>/dev/null
+    }
 
 		install_packages() {
 			local error_log="/tmp/${pkgname}-pacman_error_log"
