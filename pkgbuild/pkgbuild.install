@@ -306,8 +306,18 @@ post_install() {
 		sh_remove_lock
 
     synchronizing_database() {
-      pacman -S ca-certificates ca-certificates-utils ca-certificates-mozilla --quiet --noconfirm 1>/dev/null
-      trust extract-compat  1>/dev/null
+      local packages=(ca-certificates ca-certificates-utils ca-certificates-mozilla)
+      local to_install=()
+
+      for pkg in "${packages[@]}"; do
+        pacman -Q "$pkg" &>/dev/null || to_install+=("$pkg")
+      done
+
+      if (( ${#to_install[@]} )); then
+        pacman -S --quiet --noconfirm "${to_install[@]}" &>/dev/null
+      fi
+
+      trust extract-compat 1>/dev/null
       pacman -Sy --quiet --noconfirm 1>/dev/null
     }
 
