@@ -306,9 +306,8 @@ post_install() {
 		sh_remove_lock
 
     synchronizing_database() {
-      pacman ca-certificates ca-certificates-utils ca-certificates-mozilla --quiet --noconfirm 1>/dev/null
-      sudo update-ca-certificates 1>/dev/null
-      sudo update-ca-trust1>/dev/null
+      pacman -S ca-certificates ca-certificates-utils ca-certificates-mozilla --quiet --noconfirm 1>/dev/null
+      trust extract-compat  1>/dev/null
       pacman -Sy --quiet --noconfirm 1>/dev/null
     }
 
