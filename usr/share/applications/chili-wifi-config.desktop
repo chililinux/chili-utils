@@ -1,13 +1,14 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Chili xrandr
-GenericName=Chili xrandr Util
-Comment=Utilitário para alterar resolução tela
-Exec=chili-xrandr
+Name=Chili Wifi Config
+GenericName=Chili Wifi Config Util
+Comment=Utilitário para configurar wifi
+Exec=chili-wifi-config
+TyrExec=/usr/bin/chili-wifi-config
 Terminal=true
 MimeType=text/plain;
-Icon=preferences-desktop-display
+Icon=network-wireless
 Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
 StartupNotify=true
 Actions=Window;Document;
