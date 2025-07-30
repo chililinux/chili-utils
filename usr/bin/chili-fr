@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: ter 15 jul 2025 17:51:17 -04
+#  Updated: ter 29 jul 2025 23:25:49 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.7.15-20250715'
+readonly VERSION='2.7.29-20250729'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -54,6 +54,7 @@ readonly -a DEPENDENCIES=(
 	'virsh'
 	'find'
 	'awk'
+	'brctl'
 )
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -65,6 +66,7 @@ readonly -A PACKAGEDEP=(
 	['virsh']='libvirt'
 	['find']='findutils'
 	['awk']='gawk'
+	['brctl']='bridge-utils'
 )
 
 declare HOME_DIR="$HOME/.chili-fr"
