@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: ter 29 jul 2025 23:25:49 -04
+#  Updated: sex 15 ago 2025 21:22:10 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.7.29-20250729'
+readonly VERSION='2.8.15-20250815'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -128,8 +128,8 @@ sh_setvarcolors() {
 	COL_NC='\e[0m' # No Color
 	COL_LIGHT_GREEN='\e[1;32m'
 	COL_LIGHT_RED='\e[1;31m'
-	TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
-	CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}${white}]"
+  TICK="${white}[${COL_LIGHT_GREEN}✓ OK${COL_NC}${white}]"
+	CROSS="${white}[${COL_LIGHT_RED}✗ERR${COL_NC}${white}]"
 	INFO="[i]"
 	# shellcheck disable=SC2034
 	DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
@@ -173,14 +173,18 @@ sh_unsetvarcolors() {
 }
 
 die() {
-	local msg=$1
-	shift
-	printf "  %b %s\\n" "${CROSS}" "${red}${msg}${reset}"
-	exit 1
+  local msg="$1"
+  shift
+  printf "%b %s\n" "${CROSS}" "${red}${msg}${rst}"
+  exit 1
 }
 
 log_err() {
-	printf "  %b %s\\n" "${CROSS}" "${*}"
+  printf "%b %s\n" "${CROSS}" "${*}"
+}
+
+log_ok() {
+  printf "%b %s\n" "${TICK}" "${*}"
 }
 
 log_msg() {
@@ -192,9 +196,9 @@ log_msg() {
 		shift
 	}
 	if [[ $retval -eq 0 ]]; then
-		printf " %b %s\\n" "${TICK}" "${*}"
+		printf "%b %s\n" "${TICK}" "${*}"
 	else
-		printf " %b %s\\n" "${CROSS}" "${*}"
+		printf "%b %s\n" "${CROSS}" "${*}"
 	fi
 }
 
@@ -239,19 +243,24 @@ msg_run() {
 }
 export -f msg_run
 
+#msg_info() {
+#	local msg="$*"
+#	#local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
+#	#local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
+#	#echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
+#	#echo -e "${reset}  =>${yellow}info   : ${cyan}${msg}${reset}"
+#	printf "%s\n" "${yellow}[WARN] ${cyan}$msg${rst}"
+#}
+#export -f msg_info
+
 msg_info() {
-	local msg="$1"
-	local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
-	local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
-	#echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
-	echo -e "${reset}  =>${yellow}info   : ${cyan}${msg}${reset}"
+  printf "%s\n" "${white}${pink}[INFO] ${rst}${*}${rst}"
 }
-export -f msg_info
 
 msg_warning() {
-	local msg="$1"
-	local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
-	local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
+	local msg="$*"
+	#local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
+	#local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
 	msg="$(sed 's/<[^>]*>//g' <<<"$msg")"  # Remove as tags HTML
 	#echo -e "${caller_function}=>${red}warning: ${orange}${msg}${reset}"
 	echo -e "  =>${yellow}warning: ${cyan}${msg}${reset}"
@@ -269,10 +278,6 @@ msg_warn() {
 }
 export -f msg_warn
 
-msg_info() {
-	printf "%s\n" "${green}[INFO] ${cyan}$1${rst}"
-}
-
 # Função para exibir mensagens informativas
 msg_err() {
 	printf "%s\n" "${red}[ERRO] ${cyan}$1${rst}"
@@ -281,10 +286,18 @@ msg_err() {
 replicate() {
 	local char=${1:-'#'}
 	local nsize=${2:-$(tput cols)}
+	local ccolor=${3:-$green}
 	local line
-	printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
+	printf -v line "%*s" "$nsize" && echo -e "${ccolor}${line// /$char}${rst}"
 }
 export -f replicate
+
+maxcol() {
+  COLUMNS=$(stty size)
+  COLUMNS=${COLUMNS##* }
+  ((COLUMNS <= 0)) && COLUMNS=80
+  echo "$COLUMNS"
+}
 
 readconf() {
 	local msg="$1"
@@ -772,7 +785,7 @@ sh_start_vdagentd() {
 	fi
 }
 
-chili-fr() {
+main() {
 	#	local img="$1"
 	local params=("$@")
 	local img
@@ -792,20 +805,21 @@ chili-fr() {
 		}
 		if [[ ! -e "$img" ]]; then
 			[[ ! -e "$HOME_DIR/vdisk/$img" ]] && {
-				log_msg 1 "Check: ${yellow}device order #${count}: ${cyan}$img"
+				log_msg 1 "Check: ${yellow}dispositivo #${count}: ${cyan}$img"
 				sh_list_vdisks
 				die "Erro: vdisk/iso/device #${count} ${cyan}${img} ${red}não localizada, tente os listados acima!${reset}"
 			}
 			img="$HOME_DIR/vdisk/$img"
 		fi
 		devices+=("$img")
-		log_msg true "Check: ${yellow}device order #${count}: ${cyan}$img"
+		log_msg true "Check: ${yellow}dispositivo #${count}: ${cyan}$img"
 		((++count))
 	done
 
 	# Forçar UEFI, se solicitado
 	if $uefi; then
-		msg_info "Forçando inicialização UEFI..."
+  	sh_checkOVMFFiles
+	  msg_info "Forçando inicialização UEFI..."
 		#[[ ! -e $HOME_DIR/OVMF_VARS.4m.fd ]] && cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
 		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
 		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
@@ -835,7 +849,7 @@ chili-fr() {
 		media_type=$(file -b --mime-type "${img}")
 #		qemu_options+=(-boot menu=on)
 		if [[ "${media_type}" == "application/x-iso9660-image" ]]; then
-			msg_info "Anexando   iso #${bootindex}: ${yellow}${img}"
+			msg_info "Anexando iso #${bootindex}: ${yellow}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
 			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
 			((bootindex++))
@@ -911,6 +925,8 @@ chili-fr() {
 		qemu_options+=(-chardev spicevmc,id=charchannel0,name=vdagent)
 		qemu_options+=(-device virtserialport,chardev=charchannel0,name=com.redhat.spice.0)
 
+    replicate
+
 		# Executar o QEMU
 		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" &
 		qemu_pid=$!
@@ -921,21 +937,23 @@ chili-fr() {
 		wait $viewer_pid
 		kill $qemu_pid &>/dev/null
 	else
+    replicate
 		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" 1>/dev/null
 	fi
 }
-export -f chili-fr
+export -f main
 
 sh_copyright() {
 	echo -n $orange
 	echo "$APP - v${VERSION} - ${APPDESC}"
-	echo 'Copyright (c) 2019-2025, ChiliLinux Development Team <https://chililinux.com>'
+	echo 'Copyright (c) 2019-2025, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>'
 	echo 'Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>'
 	echo $rst
 }
 
 sh_setvarcolors
 sh_copyright
+replicate
 
 # Display usage information if no arguments are passed
 if [[ $# -eq 0 || $1 == @(-h|--help) ]]; then
@@ -947,7 +965,6 @@ fi
 
 sh_checkDependencies
 sh_checkVdiskFiles
-sh_checkOVMFFiles
 
 OPTIONS=m:ub:Vnhd:sg:v:i:N:c:r:l
 LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,video:,image:,network:,create_bridge:,remove_bridge:,cvdisk,rvdisk,vdisk,list
@@ -1073,7 +1090,7 @@ while test ${#opts[*]} -gt 0; do
 			log_msg "Parametro -m/--memory detectado: $2"
 			shift
 		else
-			die "$(gettext "Argumento inválido para -m. Use um formato como 16GB (por exemplo).")" >&2
+			die "$(gettext "Argumento inválido para -m. Use um formato como 16G (por exemplo).")" >&2
 		fi
 		;;
 	--)
@@ -1150,7 +1167,7 @@ if [[ $# > 0 ]]; then
 		msg_info "Anexando disco/drive externo: ${yellow}$drive_path"
 		qemu_options+=(-drive file=$drive_path,format=raw,media=disk)
 	fi
-	chili-fr "$@"
+	main "$@"
 else
 	#	die "${opts[*]} $(gettext "falta parâmetro de imagem/disco/device"): ($(gettext "usar -h para ajuda"))"
 	sh_list_vdisks
