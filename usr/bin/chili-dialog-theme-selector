@@ -79,6 +79,39 @@ light_magenta=$(tput setaf 13)
 light_cyan=$(tput setaf 14)
 bright_white=$(tput setaf 15)
 
+# dialog colors
+REVERSE="\Zr"
+UNDERLINE="\Zu"
+BOLD="\Zb"
+RESET="\Zn"
+BLACK="\Z0"
+YELLOW="\Z3"
+WHITE="\Z7"
+BLUE="\Z4"
+CYAN="\Z6"
+RED="\Z1"
+GREEN="\Z2"
+MAGENTA="\Z5"
+sep='\xe2\x94\x82'
+
+# flag dialog exit status codes
+: "${D_OK=0}"
+: "${D_CANCEL=1}"
+: "${D_HELP=2}"
+: "${D_EXTRA=3}"
+: "${D_ITEM_HELP=4}"
+: "${D_ESC=255}"
+
+cLB1=$(gettext "Use as teclas")
+cLB2=$(gettext "PARA CIMA")
+cLB3=$(gettext "e")
+cLB4=$(gettext "PARA BAIXO")
+cLB5=$(gettext "para navegar")
+cLB6=$(gettext "Use")
+cLB7=$(gettext "para alternar entre os botões")
+cLB8=$(gettext "para selecionar")
+cmsg_LABEL="$cLB1${BLUE} ↑ $cLB2$RESET $cLB3 ${BLUE}↓ $cLB4$RESET $cLB5\n$cLB6${BLUE} TAB${RESET} $cLB7${BLUE} ENTER${RESET} $cLB8"
+
 MostraErro() {
 	echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"
 }
@@ -1995,18 +2028,22 @@ done
 
 while true; do
 	theme_choice=$(dialog \
-	  --default-item "$theme_choice" \
+		--default-item "$theme_choice" \
 		--colors \
 		--title "$ctitle" \
 		--backtitle "$ccabec" \
-		--menu "Escolha o tema desejado" 0 60 20 "${theme_list[@]}" 2>&1 >/dev/tty)
+		--ok-label 'Selecionar' \
+		--cancel-label 'Sair' \
+		--menu "${cmsg_LABEL}\n\n${YELLOW}$(gettext "Escolha o tema desejado"):${RESET}" \
+		0 0 20 "${theme_list[@]}" \
+		2>&1 >/dev/tty)
 
 	# Salvar o tema escolhido no arquivo .dialogrc
 	if [ -n "$theme_choice" ]; then
 		echo "${themes[$theme_choice]}" >"$HOME/.dialogrc"
 		dialog --msgbox "Tema '$theme_choice' aplicado com sucesso!" 0 0
 	else
-#		dialog --msgbox "Nenhum tema escolhido!" 0 0
+		#		dialog --msgbox "Nenhum tema escolhido!" 0 0
 		exit 0
 	fi
 done
