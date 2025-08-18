@@ -2,14 +2,14 @@
 Version=1.0
 Type=Application
 Name=Chili Wifi Config
-GenericName=Chili Wifi Config Util
+GenericName=Chili Wifi Config (chili-wifi-config)
 Comment=Utilitário para configurar wifi
 Exec=chili-wifi-config
 TyrExec=/usr/bin/chili-wifi-config
 Terminal=true
 MimeType=text/plain;
 Icon=network-wireless
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false

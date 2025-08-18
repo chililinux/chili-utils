@@ -2,13 +2,13 @@
 Version=1.0
 Type=Application
 Name=Chili clonedisk
-GenericName=Chili Clonedisk Util
+GenericName=Chili Clonedisk (chili-clonedisk)
 Comment=Utilitário para clonar discos
 Exec=chili-clonedisk
 Terminal=true
 MimeType=text/plain;
 Icon=drive-multidisk
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false

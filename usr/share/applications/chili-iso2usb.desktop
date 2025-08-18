@@ -2,14 +2,14 @@
 Version=1.0
 Type=Application
 Name=Chili iso2usb
-GenericName=Chili Iso2usb Util
-Comment=Utilitário para gravar arquivo iso em pendrive/dispositivo
+GenericName=Chili Iso2usb (chili-iso2usb)
+Comment=Utilitário para gravar arquivo .ISO em pendrive/dispositivo
 Exec=chili-iso2usb
 Terminal=false
 MimeType=text/plain;
 #Icon=pendrive.png
 Icon=drive-removable-media-usb-pendrive.svg
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false

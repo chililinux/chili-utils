@@ -2,13 +2,13 @@
 Version=1.0
 Type=Application
 Name=Chili Util Selector
-GenericName=Chili Util Selector
-Comment=Utility to select utils
+GenericName=Chili Util Selector (chili-util-selector)
+Comment=Aplicativo para selecionar utilitários do Chili Linux
 Exec=chili-util-selector
 Terminal=true
 MimeType=text/plain;
 Icon=drive-multidisk
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false

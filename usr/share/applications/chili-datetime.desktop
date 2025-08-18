@@ -2,13 +2,13 @@
 Version=1.0
 Type=Application
 Name=Chili DateTime
-GenericName=Chili DateTime Util
+GenericName=Chili GetDateTime (chili-getdatetime)
 Comment=Aplicativo para sincronizar data e hora
 Exec=chili-getdatetime
 Terminal=false
 MimeType=text/plain;
 Icon=time
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false

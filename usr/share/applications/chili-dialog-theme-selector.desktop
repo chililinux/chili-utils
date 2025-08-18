@@ -1,14 +1,14 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Chili Dialog Theme Selector
-GenericName=Seletor de temas para o Dialog
-Comment=Seletor de temas para o Dialog
+Name=chili-dialog-theme-selector
+GenericName=Chili Dialog Theme Selector (chili-dialog-theme-selector)
+Comment=Aplicativo seletor de temas para o Dialog
 Exec=chili-dialog-theme-selector
 Terminal=true
 MimeType=text/plain;
 Icon=system-software-install
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false

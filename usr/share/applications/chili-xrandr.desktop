@@ -2,13 +2,13 @@
 Version=1.0
 Type=Application
 Name=Chili xrandr
-GenericName=Chili xrandr Util
+GenericName=Chili xrandr (chiii-xrandr)
 Comment=Utilitário para alterar resolução tela
 Exec=chili-xrandr
 Terminal=true
 MimeType=text/plain;
 Icon=preferences-desktop-display
-Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;
+Categories=DesktopSettings;Utility;Accessories;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;Chili Apps;Big Apps;
 StartupNotify=true
 Actions=Window;Document;
 Hidden=false
