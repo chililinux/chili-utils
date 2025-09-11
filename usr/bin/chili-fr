@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sex 15 ago 2025 21:22:10 -04
+#  Updated: qui 11 set 2025 18:42:14 -03
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.8.15-20250815'
+readonly VERSION='2.8.11-20250911'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -709,7 +709,11 @@ sh_setup() {
 		gettext \
 		spice-vdagent \
 		virt-viewer \
+		python \
 		libvirt \
+		findutils \
+    gawk \
+    bridge-utils \
 		seabios 1>/dev/null
 
 	sh_createVdiskFiles
@@ -925,8 +929,6 @@ main() {
 		qemu_options+=(-chardev spicevmc,id=charchannel0,name=vdagent)
 		qemu_options+=(-device virtserialport,chardev=charchannel0,name=com.redhat.spice.0)
 
-    replicate
-
 		# Executar o QEMU
 		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" &
 		qemu_pid=$!
@@ -937,7 +939,6 @@ main() {
 		wait $viewer_pid
 		kill $qemu_pid &>/dev/null
 	else
-    replicate
 		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" 1>/dev/null
 	fi
 }
@@ -953,7 +954,6 @@ sh_copyright() {
 
 sh_setvarcolors
 sh_copyright
-replicate
 
 # Display usage information if no arguments are passed
 if [[ $# -eq 0 || $1 == @(-h|--help) ]]; then
