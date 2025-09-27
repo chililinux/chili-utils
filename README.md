@@ -1,3 +1,3 @@
 # chili-utils
 
-Pacote de utilitários para GNU/Linux
+Pacote de utilitários para Chili GNU/Linux
