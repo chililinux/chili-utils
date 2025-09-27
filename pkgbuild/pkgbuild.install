@@ -7,6 +7,7 @@ declare IS_VERBOSE=true
 declare IS_UPGRADE=false
 declare IS_DBLOCK=false
 declare IS_METAPKG=false
+declare IS_SKEL=false
 declare DM='lightdm'
 declare WM='utils'
 declare pkgname=chili-"${WM}"
@@ -19,6 +20,8 @@ post_install() {
   [[ $IS_VERBOSE = true ]] && sh_configure_environment       || { sh_configure_environment 2>/dev/null       || true; }
   [[ $IS_VERBOSE = true ]] && sh_load_optdepends             || { sh_load_optdepends 2>/dev/null             || true; }
 
+  # funcao para configurar copiar algo para home do usuario, tipo skel, etc
+  # somente será executado se ativar IS_SKEL=true, ou IS_METAPK=true estiver ativado
   configure_user_and_skel
 
 	if ((${#OPTDEPENDS[@]})); then
