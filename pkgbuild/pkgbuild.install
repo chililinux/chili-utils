@@ -37,9 +37,11 @@ post_install() {
 		create_optdepends_hook
 #		sh_restoring_lock
 	fi
-  sh_disable_services
-  sh_enable_services
+
+# sh_disable_services
+# sh_enable_services
   sh_finish
+
 }
 
 post_upgrade() {
