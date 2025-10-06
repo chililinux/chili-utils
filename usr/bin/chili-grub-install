@@ -5,7 +5,7 @@
 #  chili-grub-install
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
-#  Updated: sáb 04 out 2025 07:33:50 -04
+#  Updated: dom 05 out 2025 15:38:33 -04
 #
 # Descrição:
 #   Reinstala o GRUB e coloca esta distro como "chefe do boot".
@@ -13,13 +13,13 @@
 #   Cria fallback genérico BOOTX64.EFI (x86_64) ou BOOTIA32.EFI (i386).
 #
 # Uso:
-#   chili-grub-install -d DISCO [-n NICK] [--dry-run] [--interactive] [--update-grub]
+#   chili-grub-install -d DISCO [-n NICK] [--dry-run] [--interactive|--interativo|--chroot] [--update-grub]
 #
 # Opções:
 #   -d DISCO         Disco alvo (ex: /dev/sda)
-#   -n NICK          Nome/apelido do bootloader (padrão: GRUB)
+#   -n NICK          Nome/apelido do bootloader (padrão: UEFI)
 #   --dry-run        Simula execução sem aplicar mudanças
-#   --interactive    Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --interactive|--interatiovo|--chroot    Entra em chroot interativo antes de instalar (somente discos alternativos)
 #   --update-grub    Atualiza o grub.cfg (padrão: NÂO atualiza)
 #   -h, --help       Mostra esta ajuda
 #
@@ -137,13 +137,12 @@ set_varcolors() {
 		: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
 		: "${OVER="\\r\\033[K"}"
 		: "${DOTPREFIX="  ${black}::${reset} "}"
-		: "${TICK="${white}[${green}✓✓${rst}${white}]${rst}"}"
-		: "${CROSS="${white}[${red}✗✗${rst}${white}]${rst}"}"
-		: "${MID="${white}[${red}✗${green}✓${rst}${white}]${rst}"}"
-		#   : "${INFO="${white}[${yellow}ii${rst}${white}]${rst}"}"
-		#   : "${INFO="${white}[${yellow}II${rst}${white}]${rst}"}"
-		#   : "${INFO="${white}[${yellow}ⓘ ${rst}${white}]${rst}"}"
-		: "${INFO="${white}[${yellow}➡ ${rst}${white}]${rst}"}"
+		: "${clrkey=${light_white}}"
+		: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
+		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
+		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
+		: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
 
 		# dialog colors
 		REVERSE="\Zr"
@@ -225,7 +224,7 @@ msg() { echo -e "${INFO} ${*}${reset}"; }
 log_ok() { echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
-log_warn() { echo -e "${yellow}[WARN]${reset} $*"; }
+log_warn() { echo -e "${WARN} ${*}${reset}"; }
 die() {
 	echo -e "${CROSS} ${red}${*}${reset}"
 	exit 1
@@ -238,9 +237,11 @@ die() {
 # ===================================================================
 DISK=""
 DRYRUN=0
-NICK="GRUB"
-EFI_PART=""
+NICK="UEFI"
 ROOT_PART=""
+IS_ROOT_PART_USER=false
+EFI_PART=""
+IS_EFI_PART_USER=false
 MNT_TMP="/mnt/$APP-$(date +'%H%M%S')"
 LBIND=false
 IS_ROOT_DISK=false
@@ -300,21 +301,70 @@ is_disk() {
 	fi
 }
 
+detect_fs_type() {
+  local part="$1"
+  lsblk -no FSTYPE "$part"
+}
+
+is_valid_fs() {
+  local part="$1"
+  local fs
+
+  # Lista de FS aceitos (pode ampliar)
+  local valid_fs=("ext2" "ext3" "ext4" "xfs" "btrfs" "vfat" "fat32" "ntfs" "f2fs" "reiserfs" "jfs" "exfat")
+
+  # Captura o tipo de FS
+  local fstype=$(detect_fs_type "$part" 2>/dev/null | tr -d '[:space:]')
+
+  # Se não achou FS, não é válido
+  [[ -z "$fstype" ]] && return 1
+
+  # Verifica se o FS está na lista
+  for fs in "${valid_fs[@]}"; do
+    if [[ "$fstype" == "$fs" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+is_valid_efi_fs() {
+  local part="$1"
+  local fstype
+  fstype=$(detect_fs_type "$part")
+
+  [[ "$fstype" =~ ^(vfat|fat32)$ ]]
+}
+
+get_disk_info() {
+  local disk="$1"
+  lsblk -dno MODEL,SIZE,PTTYPE "$disk"
+}
+
 detect_parts() {
 	local disk="$1"
-	ROOT_PART=""
-	EFI_PART=""
-	for p in $(lsblk -ln -o NAME,TYPE,FSTYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
-		local fstype
-		fstype=$(lsblk -no FSTYPE "/dev/$p")
-		if [[ "$fstype" =~ ^(ext4|btrfs|xfs)$ ]]; then
-			ROOT_PART="/dev/$p"
-		elif [[ "$fstype" =~ ^(vfat|fat32)$ ]]; then
-			EFI_PART="/dev/$p"
-		fi
-	done
-	[[ -z "$ROOT_PART" ]] && die "Não foi possível detectar partição ROOT em $disk"
-	[[ -z "$EFI_PART" ]] && msg "⚠️ Não foi detectada partição EFI em $disk"
+
+  if [[ -n "$ROOT_PART" ]] && ! is_valid_fs "$ROOT_PART"; then
+    die "$ROOT_PART não é uma partição válida"
+  fi
+
+  if [[ -n "$EFI_PART" ]] && ! is_valid_efi_fs "$EFI_PART"; then
+    die "$EFI_PART não é uma ESP válida (precisa ser FAT32)"
+  fi
+
+  if [[ -z "$ROOT_PART" || -z "$EFI_PART" ]]; then
+    for p in $(lsblk -ln -o NAME,TYPE,FSTYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
+      local fstype
+      fstype=$(detect_fs_type "/dev/$p")
+      if [[ "$fstype" =~ ^(ext4|btrfs|xfs)$ ]]; then
+        [[ -z "$ROOT_PART" ]] && ROOT_PART="/dev/$p"
+      elif [[ "$fstype" =~ ^(vfat|fat32)$ ]]; then
+        [[ -z "$EFI_PART" ]] && EFI_PART="/dev/$p"
+      fi
+    done
+  fi
+  [[ -z "$ROOT_PART" ]] && die "Não foi possível detectar partição ROOT em $disk"
+	[[ -z "$EFI_PART" ]] && log_warn "Não foi detectada partição EFI em $disk"
 }
 
 mount_parts_auto() {
@@ -648,11 +698,33 @@ install_uefi() {
 
 }
 
+sh_copyright() {
+  cat <<-EOF
+${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+${bold}${orange}Copyright (c) 2019-2025, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>${reset}
+${bold}${orange}Copyright (c) 2019-2025, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
+EOF
+}
+
+sh_version() {
+  cat <<-EOF
+$(sh_copyright)
+
+        Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
+        O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
+        inclui software de código aberto sob uma variedade de outras licenças.
+        Você pode ler instruções sobre como baixar e criar para você mesmo
+        o código fonte específico usado para criar esta cópia.
+        ${red}Este programa vem com absolutamente NENHUMA garantia.${reset}
+EOF
+}
+
 # ===================================================================
 # Uso e parsing
 # ===================================================================
 usage() {
-  echo "${yellow}${APP}${reset}"
+  sh_copyright
+# echo "${yellow}${APP}${reset}"
   echo ""
   echo "${cyan}Descrição:${rst}"
   echo "  Reinstala o GRUB e coloca esta distro como 'chefe do boot'."
@@ -660,16 +732,51 @@ usage() {
   echo "  Cria fallback genérico BOOTX64.EFI (x86_64) ou BOOTIA32.EFI (i386)."
   echo ""
   echo "${cyan}Uso:${rst}"
-  echo "  ${APP} -d DISCO [-n NICK] [--dry-run] [--interactive]"
+  echo "  ${APP} -d <DISCO> [-n NICK] [--dry-run] [--interactive|--interativo|--chroot] [--root_part <ROOT_PART>] [--efi_part <EFI_PART>]"
   echo ""
   echo "${cyan}Opções:${rst}"
-  echo "  -d DISCO         Disco alvo (ex: /dev/sda) [OBRIGATÓRIO]"
-  echo "  -n NICK          Nome/apelido do bootloader (padrão: GRUB)"
-  echo "  --dry-run        Simula execução sem aplicar mudanças"
-  echo "  --interactive    Entra em chroot interativo antes de instalar (somente discos alternativos)"
-  echo "  -h, --help       Mostra esta ajuda"
+  echo "  ${orange}-d ${yellow}<DISCO>              ${cyan}Disco alvo (ex: /dev/sda) [OBRIGATÓRIO]${rst}"
+  echo "  ${orange}-n ${yellow}NICK                 ${cyan}Nome/apelido do bootloader (padrão: UEFI)${rst}"
+  echo "  ${orange}--dry-run               ${yellow}${cyan}Simula execução sem aplicar mudanças${rst}"
+  echo "  ${orange}--update-grub           ${yellow}${cyan}Atualiza o grub.cfg (padrão: NÂO atualiza)${rst}"
+  echo "  ${orange}--chroot                ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
+  echo "  ${orange}--interactive           ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
+  echo "  ${orange}--interativo            ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
+  echo "  ${orange}--root_part ${yellow}<ROOT_PART> ${yellow}${cyan}Partição root do disco (ex: /dev/sda3 - padrão: autodetect)${rst}"
+  echo "  ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
+  echo "  ${orange}-h, --help              ${yellow}${cyan}Mostra esta ajuda${rst}"
   echo ""
   exit 1
+}
+
+confirm_parts() {
+  local msgread
+	replicate
+	msg "Partições detectadas/informadas:"
+	msg "${cyan}DISCO      ==> ${yellow}${DISK:-<não detectado>}  ${azul}[$(get_disk_info $DISK)]"
+  if $IS_EFI_PART_USER ; then
+  	msg "${cyan}EFI_PART   ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(informada pelo usuário)"
+  else
+  	msg "${cyan}EFI_PART   ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
+  fi
+  if $IS_ROOT_PART_USER ; then
+  	msg "${cyan}ROOT_PART  ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(informada pelo usuário)"
+  else
+  	msg "${cyan}ROOT_PART  ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(auto detectada)"
+  fi
+	replicate
+
+  if $INTERACTIVE; then
+  	msgread="${red}Deseja entrar no chroot desse disco? ${reset}"
+  else
+	  msgread="${red}Deseja continuar com a instalação do GRUB nessas partições?${reset}"
+  fi
+
+  if readconf "$msgread"; then
+		msg "Continuando instalação..."
+  else
+		die "Instalação abortada pelo usuário."
+	fi
 }
 
 parse_args() {
@@ -691,11 +798,22 @@ parse_args() {
       UPDATE_GRUB=true
       shift
       ;;
-    --interactive)
+    --interactive|--interativo|--chroot)
       INTERACTIVE=true
       shift
       ;;
+    --root_part)
+      ROOT_PART="$2"
+      IS_ROOT_PART_USER=true
+      shift 2
+      ;;
+    --efi_part)
+      EFI_PART="$2"
+      IS_EFI_PART_USER=true
+      shift 2
+      ;;
 		-h | --help) usage ;;
+		-V | --version) sh_version; exit 0 ;;
 		*)
 			log_err "Parâmetro desconhecido: $1"
 			usage
@@ -704,28 +822,6 @@ parse_args() {
 	done
 	[[ -z "$DISK" ]] && die "Disco (-d) é obrigatório"
 	[[ ! -b "$DISK" ]] && die "$DISK não é um disco válido"
-}
-
-confirm_parts() {
-  local msgread
-	replicate
-	msg "Partições detectadas:"
-	msg "${cyan}DISCO     = ${yellow}${DISK:-<não detectado>}"
-	msg "${cyan}ROOT_PART = ${yellow}${ROOT_PART:-<não detectada>}"
-	msg "${cyan}EFI_PART  = ${yellow}${EFI_PART:-<não detectada>}"
-	replicate
-
-  if $INTERACTIVE; then
-  	msgread="${red}Deseja entrar no chroot desse disco? ${reset}"
-  else
-	  msgread="${red}Deseja continuar com a instalação do GRUB nessas partições?${reset}"
-  fi
-
-  if readconf "$msgread"; then
-		msg "Continuando instalação..."
-  else
-		die "Instalação abortada pelo usuário."
-	fi
 }
 
 # ===================================================================
