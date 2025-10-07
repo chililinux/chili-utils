@@ -5,7 +5,7 @@
 #  chili-manager-efi
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
-#  Updated: dom 05 out 2025 15:38:33 -04
+#  Updated: seg 06 out 2025 16:27:47 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -46,15 +46,20 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.10.04-$(date +'%Y%m%d')"
-declare APPDESC="$APP - Wraper for efibootmgr"
+declare _VERSION_="1.10.06-20251006"
+declare APPDESC="$APP - Wraper for efibootmgr e grub-install"
 declare distro="$(uname -n)"
-declare DEPENDENCIES=(tput)
+declare DEPENDENCIES=(tput efibootmgr grub-install lsblk sgdisk)
 
 MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
 trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
-#cleanup() { umount_parts 2>/dev/null; }
-#trap cleanup EXIT
+cleanup() {
+  if mount | grep -q "$MNT_TMP"; then
+    msg "Desmontando a partição EFI..."
+    run_cmd "umount -R $MNT_TMP" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
 
 set_varcolors() {
 	# does the terminal support true-color?
@@ -222,6 +227,9 @@ EFI_PART=""
 IS_EFI_PART_USER=false
 IS_ROOT_DISK=false
 MNT_TMP="/mnt/$APP-$(date +'%H%M%S')"
+HAS_UEFI=false
+HAS_MBR=false
+GRUB_FILE_EFI=""
 
 sh_copyright() {
   cat <<-EOF
@@ -274,11 +282,28 @@ run_cmd() {
 # Detecta se o disco passado contém a raiz montada
 is_root_disk() {
   local disk="$1"
-  local root_disk
-  root_disk=$(findmnt -n -o SOURCE /)
-  # Pega o disco pai se for partição
-  root_disk=$(lsblk -no PKNAME "$root_disk" 2>/dev/null || echo "$root_disk")
+  local root_part root_disk
+
+  # Pega a partição raiz
+  root_part=$(findmnt -n -o SOURCE /)
+
+  # Extrai o disco base (removendo número da partição)
+  if [[ "$root_part" =~ ^(/dev/[a-z]+)p?[0-9]+ ]]; then
+    root_disk="${BASH_REMATCH[1]}"
+  else
+    root_disk="$root_part"  # já é disco
+  fi
   [[ "$disk" == "$root_disk" ]]
+}
+
+get_root_part() {
+  local disk="$1"
+  local root_part
+
+  # Pega a partição raiz e remove subvolume
+  root_part=$(findmnt -n -o SOURCE /)
+  root_part="${root_part%%\[*}"  # remove tudo a partir do '['
+  echo "$root_part"
 }
 
 # ===================================================================
@@ -344,8 +369,22 @@ get_disk_info() {
 
 get_part_num() {
   local part="$1"
-  local disk="${part%%[0-9]*}"     # /dev/sdf
-  local partnum="${part#$disk}"    # 2
+  local disk partnum
+
+  # remove eventual sufixo de subvolume ([/@]) ou algo similar
+  part="${part%%[*]}"
+
+  if [[ "$part" =~ ^/dev/(nvme[0-9]+n[0-9]+|loop[0-9]+)p([0-9]+)$ ]]; then
+    # nvme0n1p2 ou loop0p1
+    partnum="${BASH_REMATCH[2]}"
+  elif [[ "$part" =~ ^/dev/([a-z]+)([0-9]+)$ ]]; then
+    # sda1, sdb2, etc
+    partnum="${BASH_REMATCH[2]}"
+  else
+    # caso não seja partição (pode ser disco inteiro)
+    partnum=""
+  fi
+
   echo "$partnum"
 }
 
@@ -380,6 +419,11 @@ confirm_parts() {
   replicate
   msg "Partições detectadas/informadas:"
   msg "${cyan}DISCO      ==> ${yellow}${DISK:-<não detectado>}  ${azul}[$(get_disk_info $DISK)]"
+  if $IS_ROOT_PART_USER ; then
+    msg "${cyan}ROOT_PART  ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(informada pelo usuário)"
+  else
+    msg "${cyan}ROOT_PART  ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(auto detectada)"
+  fi
   if $IS_EFI_PART_USER ; then
     msg "${cyan}EFI_PART   ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(informada pelo usuário)"
   else
@@ -396,16 +440,136 @@ confirm_parts() {
   fi
 }
 
+check_grub_install() {
+  local disk="$1"      # disco para checar MBR
+  local efi_part="$2"  # partição para checar UEFI
+  local tmp=$(mktemp -d)
+
+  # --- Checa BIOS/MBR no disco ---
+  if dd if="$disk" bs=512 count=1 2>/dev/null | strings | grep -q GRUB; then
+    log_ok "GRUB BIOS (MBR) encontrado em $disk"
+    HAS_MBR=true
+  fi
+
+  # --- Checa UEFI na partição se informada ---
+  if [[ -n "$efi_part" ]]; then
+    local fstype
+#   fstype=$(lsblk -no FSTYPE "$efi_part" 2>/dev/null) # não funciona com device em loop/losetup
+    fstype=$(blkid -o value -s TYPE "$efi_part" 2>/dev/null)
+
+    # FS válidos para UEFI/GRUB
+    if [[ "$fstype" =~ ^(vfat|fat|fat32|ext2)$ ]]; then
+      if mount "$efi_part" "$tmp" 2>/dev/null; then
+        local grub_file=$(find "$tmp/EFI" -maxdepth 2 -type f -iname "grub*.efi" | head -n1)
+        if [[ -n "$grub_file" ]]; then
+          log_ok "GRUB UEFI encontrado em $efi_part ($grub_file)"
+          HAS_UEFI=true
+        fi
+        umount "$tmp" 2>/dev/null
+      fi
+    else
+      log_err "$efi_part não é um FS válido para UEFI/GRUB - (detectado: $fstype)"
+    fi
+  fi
+
+  rmdir "$tmp"
+
+  # --- Resultado final ---
+  if [[ $HAS_UEFI = true && $HAS_MBR = true ]]; then
+    msg "GRUB encontrado em ambos: UEFI e BIOS/MBR."
+    return 0
+  elif $HAS_UEFI; then
+    msg "GRUB instalado apenas em UEFI."
+    return 0
+  elif $HAS_MBR; then
+    msg "GRUB instalado apenas em BIOS/MBR."
+    return 0
+  else
+    msg "✘ Nenhuma instalação do GRUB detectada."
+    return 1
+  fi
+}
+
+change_efi_guid() {
+  local disk="$1"      # exemplo: /dev/sda
+  local efi_part="$2"  # exemplo: /dev/sda2
+  local newguid="$3"   # exemplo: R para aleatório ou GUID específico
+  local partnum="$(get_part_num $efi_part)"
+
+  # define tipo da partição para EFI
+  msg "Alterando tipo da partição $partnum em $disk para EFI System Partition..."
+  run_cmd "sgdisk -t ${partnum}:ef00 $disk" || die "Falha ao alterar tipo para EFI"
+
+  # altera GUID
+  if [[ -z "$newguid" || "$newguid" == "R" ]]; then
+    msg "Gerando GUID aleatório para partição $partnum..."
+    run_cmd "sgdisk -u ${partnum}:R $disk" || die "Falha ao gerar GUID aleatório" 
+  else
+    msg "Definindo GUID ${newguid} para partição $partnum..."
+    run_cmd "sgdisk -u ${partnum}:${newguid} $disk" || die "Falha ao definir GUID"
+  fi
+
+  log_ok "✔ Partição $partnum em $disk configurada como EFI com novo GUID."
+}
+
+# Detecta GUID duplicados nas entradas EFI entre discos diferentes
+# --- Extrai GUID, BootNum e disco da partição EFI ---
+get_efi_entries() {
+  efibootmgr -v 2>/dev/null | awk -F',' '
+    /Boot[0-9A-Fa-f]+\*/ {
+      bootnum = $1
+      # Extrai GUID e disco do HD(...)
+      match($2, /HD\(([^,]+),[^,]+,([0-9a-fA-F-]+),[^)]*\)/, arr)
+      if (arr[1] != "" && arr[2] != "") {
+        gsub(/ /,"",arr[1])
+        gsub(/ /,"",arr[2])
+        print bootnum","arr[2]","arr[1]  # BootNum,Disco,GUID
+      }
+    }'
+}
+
+# --- Verifica duplicatas em discos diferentes ---
+check_duplicates() {
+  local entries found=0
+  entries=$(get_efi_entries)
+
+  declare -A guid_map
+
+  while IFS=',' read -r boot disk guid; do
+#   echo "$boot -> GUID: $guid -> Disco: $disk"
+    # Ignora GUID vazio
+    [[ -z "$guid" || -z "$disk" ]] && continue
+    # Adiciona BootNum@Disco na lista do GUID
+    guid_map["$guid"]+="$boot@$disk "
+  done <<< "$entries"
+
+# echo ""
+#  echo "=== GUIDs duplicados em discos diferentes ==="
+  for guid in "${!guid_map[@]}"; do
+    entries_list=${guid_map[$guid]}
+    # Extrai discos únicos
+    unique_disks=$(echo $entries_list | tr ' ' '\n' | awk -F'@' '{print $2}' | sort -u | wc -l)
+    if [[ $unique_disks -gt 1 ]]; then
+      log_err "GUID $guid duplicado em discos diferentes: $entries_list"
+      found=1
+    fi
+  done
+
+  [[ $found -eq 0 ]] && log_ok "Nenhum GUID duplicado em discos diferentes encontrado."
+
+  return "$found"
+}
+
 usage() {
 	echo -e "${yellow}Uso: ${APP} [opções]${rst}"
 	echo -e "${yellow}Ex : ${APP} --disk /dev/sdX --efi_part /dev/sdX2 --nick UEFI ${rst}"
 	echo
 	echo -e "${yellow}Opções:${reset}"
-	echo -e "  --disk <dispositivo>    Disco onde está a partição EFI (ex: /dev/nvme0n1)"
-  echo -e "  ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
-	echo -e "  --nick <nome>           Nome/label para a entrada EFI (ex: UEFI)"
-	echo -e "  --V, --version          Exibe a versão do app"
-	echo -e "  -h, --help              Exibe esta ajuda${rst}"
+	echo -e "   ${orange}--disk ${yellow}<dispositivo>    ${yellow}${cyan}Disco onde está a partição EFI (ex: /dev/nvme0n1)"
+  echo -e "   ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
+	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
+	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
+	echo -e "   ${orange}-h, --help              ${yellow}${cyan}Exibe esta ajuda${rst}"
 	exit 1
 }
 
@@ -454,16 +618,23 @@ main() {
 	fi
 
 	if is_root_disk "$DISK"; then
-		msg "Disco raiz detectado: $DISK"
-		ROOT_PART=$(findmnt -n -o SOURCE /)
+		msg "Disco raiz detectado: ${yellow}${DISK}${reset}"
+		ROOT_PART=$(get_root_part "$DISK")
 		EFI_PART=$(findmnt -n -o SOURCE /boot/efi 2>/dev/null || true)
 		IS_ROOT_DISK=true
 	else
-		msg "Disco alternativo detectado: $DISK"
+		msg "Disco alternativo detectado: ${yellow}${DISK}${reset}"
 		detect_parts "$DISK"
 		IS_ROOT_DISK=false
 	fi
 	confirm_parts # <- CONFIRMAÇÃO ANTES DE INSTALAR
+
+  IS_GUID_DUPLICADO=false
+  if ! check_duplicates; then
+    change_efi_guid "$DISK" "$EFI_PART" 'R'
+    IS_GUID_DUPLICADO=true
+  fi
+  check_grub_install "$DISK" "$EFI_PART"
 
 	# === Criar um diretório temporário para montagem da partição EFI ===
 	msg "Criando diretório temporário para montagem: $MNT_TMP"
@@ -479,17 +650,51 @@ main() {
 	msg "Criando diretório $MNT_TMP/EFI/$NICK para o GRUB..."
 	run_cmd "mkdir -p $MNT_TMP/EFI/$NICK"
 
-	# === Instalar o GRUB na pasta escolhida ===
-#	msg "Instalando GRUB no diretório $MNT_TMP/EFI/$NICK..."
-#	run_cmd "grub-install --target=x86_64-efi --efi-directory=$MNT_TMP --bootloader-id=$NICK --recheck --root-directory=$MNT_TMP"
-
-	# === Criar a entrada UEFI com efibootmgr ===
-	msg "Criando a entrada UEFI com o efibootmgr..."
-	if run_cmd "efibootmgr --create --disk $DISK --part $(get_part_num $EFI_PART) --label $NICK --loader '\\EFI\\$NICK\\grubx64.efi' >/dev/null"; then
-  	log_ok "Entrada '$NICK' criada com sucesso!"
-  else
-  	log_err "Falha na criação da entrada '$NICK'"
+  if ! $HAST_MBR; then
+  	# === Instalar o GRUB na MBR ===
+    msg "Instalando GRUB no MBR do disco $DISK..."
+    if ! run_cmd "grub-install --target=i386-pc --recheck $DISK"; then
+      die "Falha na instalação do GRUB na MBR do disco $DISK!"
+    fi
+    log_ok "GRUB instaldo com sucesso sucesso na MBR do disco $DISK!"
   fi
+
+  if ! $HAS_UEFI || $IS_GUID_DUPLICADO; then
+  	# === Instalar o GRUB na pasta escolhida ===
+    msg "Instalando GRUB no diretório $MNT_TMP/EFI/$NICK..."
+    if ! run_cmd "grub-install --target=x86_64-efi --efi-directory=$MNT_TMP --bootloader-id=$NICK --recheck --root-directory=$MNT_TMP"; then
+      die "Falha na instalação do GRUB UEFI!"
+    fi
+    log_ok "GRUB UEFI instaldo com sucesso sucesso!"
+  else
+  	# === Criar a entrada UEFI com efibootmgr ===
+  	msg "Criando a entrada UEFI com o efibootmgr..."
+  	if run_cmd "efibootmgr --create --disk $DISK --part $(get_part_num $EFI_PART) --label $NICK --loader '\\EFI\\$NICK\\grubx64.efi' >/dev/null"; then
+    	log_ok "Entrada '$NICK' criada com sucesso!"
+
+#    	msg "Criando binario UEFI grubx64.efi..."
+#     run_cmd "grub-mkimage -O x86_64-efi -o $MNT_TMP/EFI/$NICK/grubx64.efi -p /EFI/$NICK part_gpt part_msdos fat ext2 normal chain linux configfile search echo"
+
+      GRUB_FILE_EFI=$(find "$MNT_TMP/EFI/" -maxdepth 2 -type f -iname "grub*.efi" \
+        ! -path "$MNT_TMP/EFI/$NICK/grubx64.efi" -print -quit)
+
+      # falha se não encontrou nenhum outro .efi
+      if [[ -z "$GRUB_FILE_EFI" ]]; then
+        die "Nenhum GRUB .efi encontrado em $MNT_TMP/EFI (excluído $MNT_TMP/EFI/$NICK/grubx64.efi)."
+      fi
+
+      # garante diretório destino (falha se mkdir falhar)
+      run_cmd "mkdir -p $MNT_TMP/EFI/$NICK" || die "Falha ao criar diretório $MNT_TMP/EFI/$NICK"
+
+      # copia e falha se cp falhar
+      msg "Copiando ${GRUB_FILE_EFI} para ${MNT_TMP}/EFI/${NICK}/grubx64.efi"
+      run_cmd "cp -f ${GRUB_FILE_EFI} ${MNT_TMP}/EFI/${NICK}/grubx64.efi" \
+        || die "Falha ao copiar ${GRUB_FILE_EFI} para ${MNT_TMP}/EFI/${NICK}/grubx64"
+    else
+    	log_err "Falha na criação da entrada '$NICK'"
+    fi
+  fi
+
   #remover entrada
   #efibootmgr -b 0011 -B
 
