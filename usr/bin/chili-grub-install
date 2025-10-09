@@ -5,7 +5,7 @@
 #  chili-grub-install
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
-#  Updated: dom 05 out 2025 15:38:33 -04
+#  Updated: qua 08 out 2025 20:08:24 -04
 #
 # Descrição:
 #   Reinstala o GRUB e coloca esta distro como "chefe do boot".
@@ -13,14 +13,19 @@
 #   Cria fallback genérico BOOTX64.EFI (x86_64) ou BOOTIA32.EFI (i386).
 #
 # Uso:
-#   chili-grub-install -d DISCO [-n NICK] [--dry-run] [--interactive|--interativo|--chroot] [--update-grub]
+#   chili-grub-install --disk <DISCO> [--nick <NICK>] [--dry-run] [--interactive|--interativo|--chroot] [--update-grub] [--efi_part] [--root_part [-V|--version]]
 #
 # Opções:
-#   -d DISCO         Disco alvo (ex: /dev/sda)
-#   -n NICK          Nome/apelido do bootloader (padrão: UEFI)
+#   --disk <DISCO>   Disco alvo (ex: /dev/sda)
+#   --nick <NICK>    Nome/apelido do bootloader (padrão: UEFI)
 #   --dry-run        Simula execução sem aplicar mudanças
-#   --interactive|--interatiovo|--chroot    Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --interactive    Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --interactive    Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --chroot         Entra em chroot interativo antes de instalar (somente discos alternativos)
 #   --update-grub    Atualiza o grub.cfg (padrão: NÂO atualiza)
+#   --root_part      Partição root do disco (ex: /dev/sda3 - padrão: autodetect)
+#   --efi_part       Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)
+#   -V, --version    Exibe versão do aplicativo
 #   -h, --help       Mostra esta ajuda
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
@@ -62,8 +67,8 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.10.04-$(date +'%Y%m%d')"
-declare APPDESC="$APP - Wraper for "
+declare _VERSION_="1.10.08-20251008"
+declare APPDESC="$APP - Wraper for grub-install"
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput)
 
@@ -221,10 +226,15 @@ readconf() {
 }
 
 msg() { echo -e "${INFO} ${*}${reset}"; }
+msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
 log_ok() { echo -e "${TICK} ${*}${reset}"; }
+log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
+log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
+log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
 log_warn() { echo -e "${WARN} ${*}${reset}"; }
+log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
 die() {
 	echo -e "${CROSS} ${red}${*}${reset}"
 	exit 1
@@ -257,7 +267,7 @@ run_cmd() {
 	if [[ $DRYRUN -eq 1 ]]; then
 		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
 	else
-		echo -e "  [⚙ ] ${cyan}${cmd}${rst}"
+		echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
 #		eval "$@" &>/dev/null
 #		eval "$@"
     # Executa o comando, falha se houver erro
@@ -272,12 +282,30 @@ run_cmd() {
 
 # Detecta se o disco passado contém a raiz montada
 is_root_disk() {
-	local disk="$1"
-	local root_disk
-	root_disk=$(findmnt -n -o SOURCE /)
-	# Pega o disco pai se for partição
-	root_disk=$(lsblk -no PKNAME "$root_disk" 2>/dev/null || echo "$root_disk")
-	[[ "$disk" == "$root_disk" ]]
+  local disk="$1"
+  local root_part root_disk
+
+  # Pega a partição raiz
+  root_part="$(get_root_part "$disk")"
+
+  # Extrai o disco base (remove o sufixo da partição)
+  if [[ "$root_part" =~ ^(/dev/(sd[a-z]|hd[a-z]|vd[a-z]|xvd[a-z]|nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+))p?[0-9]+$ ]]; then
+    root_disk="${BASH_REMATCH[1]}"
+  else
+    root_disk="$root_part"  # já é disco
+  fi
+  [[ "$disk" == "$root_disk" ]]
+}
+
+get_root_part() {
+  local disk="$1"
+  local root_part
+
+  # Pega a partição raiz e remove subvolume
+  root_part=$(findmnt -n -o SOURCE /)
+  root_part="${root_part%%\[*}"  # remove tudo a partir do '['
+  IS_ROOT_PART_USER=false
+  echo "$root_part"
 }
 
 # ===================================================================
@@ -389,28 +417,33 @@ mount_btrfs_parts() {
   local base="$MNT_TMP"
   local tmp_mount="/mnt/.btrfs_tmp_mount"
 
-  echo "==> Criando diretórios base"
+  msg_tab "Criando diretórios base"
   run_cmd "mkdir -p $base"
   run_cmd "mkdir -p $tmp_mount"
 
-  echo "==> Montando temporariamente $root_part em $tmp_mount"
+  msg_tab "Montando temporariamente $root_part em $tmp_mount"
   run_cmd "mount -o ro,subvol=/ $root_part $tmp_mount"
 
-  echo "==> Listando subvolumes de top level 5"
+  msg_tab "Listando subvolumes de top level 5"
   local subvols=()
   while read -r line; do
     local level=$(echo "$line" | awk '{print $7}')   # CORRETO
     if [[ "$level" == "5" ]]; then
       local sv=$(echo "$line" | awk '{print $9}')    # CORRETO
+      # Se for um subvolume do Timeshift, pula
+      if [[ "$sv" == "@timeshift" || "$sv" == *"timeshift"* ]]; then
+        log_warn_tab "Ignorando subvolume Timeshift: $sv"
+        continue
+      fi
       subvols+=("$sv")
-      log_ok "Detectado subvolume: $sv"
+      log_ok_tab "Detectado subvolume: $sv"
     fi
   done < <(btrfs subvolume list "$tmp_mount" 2>/dev/null)
 
-  echo "==> Desmontando temporário $tmp_mount"
+  msg_tab "Desmontando temporário $tmp_mount"
   run_cmd "umount $tmp_mount"
 
-  echo "==> Montando subvolumes"
+  msg_tab "Montando subvolumes"
   for sv in "${subvols[@]}"; do
     local target="$base"
 
@@ -422,18 +455,18 @@ mount_btrfs_parts() {
       *)          target="$base/${sv#@}" ;;          # demais subvols
     esac
 
-    msg "Montando subvolume $sv em $target"
+    msg_tab "Montando subvolume ${azul}$sv${reset} em ${yellow}$target"
     run_cmd "mkdir -p $target"
     run_cmd "mount -o \"subvol=$sv\" \"$root_part\" \"$target\""
   done
 
   if [[ -n "$efi_part" ]]; then
-    echo "==> Montando EFI $efi_part em $base/boot/efi"
+    msg_tab "Montando EFI $efi_part em $base/boot/efi"
     run_cmd "mkdir -p $base/boot/efi"
     run_cmd "mount $efi_part $base/boot/efi"
   fi
 
-  echo "==> Montagem BTRFS concluída"
+  msg_tab "${green}Montagem BTRFS concluída${reset}"
 }
 
 mount_parts() {
@@ -525,7 +558,7 @@ sh_init_bind() {
 enter_chroot() {
   local dir_install="$MNT_TMP"
 
-  [[ -z "$DISK" ]] && die "Disco (-d) é obrigatório"
+  [[ -z "$DISK" ]] && die "Disco (--disk) é obrigatório"
 
   sh_init_bind || die "Falha ao montar o ambiente chroot"
 
@@ -537,8 +570,6 @@ enter_chroot() {
 
   # BIOS
   echo -e "  - Para instalar GRUB BIOS/MBR: ${green}grub-install --target=i386-pc --recheck $DISK${reset}"
-  # Atualizar config
-  echo -e "  - Para atualizar configuração do GRUB: ${green}grub-mkconfig -o /boot/grub/grub.cfg${reset}"
 
   # UEFI, se existir
   if [[ -n "$EFI_PART" ]]; then
@@ -555,7 +586,8 @@ enter_chroot() {
     echo -e "  - Para instalar GRUB UEFI: ${green}grub-install --recheck --target=${arch}-efi --efi-directory=/boot/efi --bootloader-id=$NICK${reset}"
     echo -e "  - Criar fallback: ${green}cp /boot/efi/EFI/$NICK/$grubefi /boot/efi/EFI/BOOT/$fallback${reset}"
   fi
-
+  # Atualizar config
+  echo -e "  - Para atualizar configuração do GRUB: ${green}grub-mkconfig -o /boot/grub/grub.cfg${reset}"
   echo -e "  - Para sair do chroot: ${green}exit${reset}"
   replicate '-'
 
@@ -571,7 +603,7 @@ enter_chroot() {
 update_grub() {
   local dir_install="$MNT_TMP"
 
-  [[ -z "$DISK" ]] && die "Disco (-d) é obrigatório"
+  [[ -z "$DISK" ]] && die "Disco (--disk) é obrigatório"
 
   msg "Atualizando grub.cfg no alvo ($DISK)..."
 
@@ -586,7 +618,7 @@ update_grub() {
     # Caso seja outro disco, precisa de chroot
     sh_init_bind || die "Falha ao montar o ambiente chroot"
 
-    # Detectar caminho absoluto dentro do chroot
+    # Detectar caminho absoluto via chroot
     local grub_bin
     if [[ -x "$MNT_TMP/bin/grub-mkconfig" ]]; then
       grub_bin="/bin/grub-mkconfig"
@@ -601,7 +633,7 @@ update_grub() {
       return 1
     fi
 
-    msg "Executando $grub_bin dentro do chroot..."
+    msg "Executando $grub_bin via chroot..."
     run_cmd "chroot $MNT_TMP $grub_bin -o /boot/grub/grub.cfg" || die "Falha ao atualizar grub.cfg no chroot"
     sh_stop_bind
   fi
@@ -667,13 +699,13 @@ install_uefi() {
   else
     sh_init_bind || die "Falha ao montar ambiente chroot"
 
-    msg "[UEFI] Instalando GRUB em $EFI_PART ($target) dentro do chroot..."
+    msg "[UEFI] Instalando GRUB em $EFI_PART ($target) via chroot..."
     run_cmd "chroot $MNT_TMP grub-install --recheck --target=$target --efi-directory=$efi_dir --bootloader-id=$NICK" \
       || die "Falha ao instalar GRUB no chroot"
 
     log_ok "UEFI ($target) instalado!"
 
-    msg "Criando fallback $fallback dentro do chroot..."
+    msg "Criando fallback $fallback via chroot..."
     run_cmd "chroot $MNT_TMP mkdir -p $efi_dir/EFI/BOOT"
     run_cmd "chroot $MNT_TMP cp -f $efi_dir/EFI/$NICK/$grubefi $efi_dir/EFI/BOOT/$fallback"
 
@@ -732,11 +764,11 @@ usage() {
   echo "  Cria fallback genérico BOOTX64.EFI (x86_64) ou BOOTIA32.EFI (i386)."
   echo ""
   echo "${cyan}Uso:${rst}"
-  echo "  ${APP} -d <DISCO> [-n NICK] [--dry-run] [--interactive|--interativo|--chroot] [--root_part <ROOT_PART>] [--efi_part <EFI_PART>]"
+  echo "  ${APP} --disk <DISCO> [--nick NICK] [--dry-run] [--interactive|--interativo|--chroot] [--root_part <ROOT_PART>] [--efi_part <EFI_PART>]"
   echo ""
   echo "${cyan}Opções:${rst}"
-  echo "  ${orange}-d ${yellow}<DISCO>              ${cyan}Disco alvo (ex: /dev/sda) [OBRIGATÓRIO]${rst}"
-  echo "  ${orange}-n ${yellow}NICK                 ${cyan}Nome/apelido do bootloader (padrão: UEFI)${rst}"
+  echo "  ${orange}--disk ${yellow}<DISCO>          ${cyan}Disco alvo (ex: /dev/sda) [OBRIGATÓRIO]${rst}"
+  echo "  ${orange}--nick ${yellow}NICK             ${cyan}Nome/apelido do bootloader (padrão: UEFI)${rst}"
   echo "  ${orange}--dry-run               ${yellow}${cyan}Simula execução sem aplicar mudanças${rst}"
   echo "  ${orange}--update-grub           ${yellow}${cyan}Atualiza o grub.cfg (padrão: NÂO atualiza)${rst}"
   echo "  ${orange}--chroot                ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
@@ -744,6 +776,7 @@ usage() {
   echo "  ${orange}--interativo            ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
   echo "  ${orange}--root_part ${yellow}<ROOT_PART> ${yellow}${cyan}Partição root do disco (ex: /dev/sda3 - padrão: autodetect)${rst}"
   echo "  ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
+  echo "  ${orange}-V, --version           ${yellow}${cyan}Exibe versão do aplicativo${rst}"
   echo "  ${orange}-h, --help              ${yellow}${cyan}Mostra esta ajuda${rst}"
   echo ""
   exit 1
@@ -751,19 +784,15 @@ usage() {
 
 confirm_parts() {
   local msgread
+  local origem_efi=$([[ $IS_EFI_PART_USER == true ]] && echo "definida pelo usuário" || echo "detectada automaticamente (substitua com --efi_part)")
+  local origem_root=$([[ $IS_ROOT_PART_USER == true ]] && echo "definida pelo usuário" || echo "detectada automaticamente (substitua com --root_part)")
+
 	replicate
 	msg "Partições detectadas/informadas:"
-	msg "${cyan}DISCO      ==> ${yellow}${DISK:-<não detectado>}  ${azul}[$(get_disk_info $DISK)]"
-  if $IS_EFI_PART_USER ; then
-  	msg "${cyan}EFI_PART   ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(informada pelo usuário)"
-  else
-  	msg "${cyan}EFI_PART   ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
-  fi
-  if $IS_ROOT_PART_USER ; then
-  	msg "${cyan}ROOT_PART  ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(informada pelo usuário)"
-  else
-  	msg "${cyan}ROOT_PART  ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(auto detectada)"
-  fi
+	msg "${cyan}--disk      ==> ${yellow}${DISK:-<não detectado>}  ${azul}[$(get_disk_info $DISK)]"
+  msg "${cyan}--efi_part  ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(${origem_efi})"
+  msg "${cyan}--root_part ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(${origem_root})"
+  msg "${cyan}--nick      ==> ${yellow}${NICK:-<não informado>}"
 	replicate
 
   if $INTERACTIVE; then
@@ -782,11 +811,11 @@ confirm_parts() {
 parse_args() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-		-d)
+		--disk)
 			DISK="$2"
 			shift 2
 			;;
-		-n)
+		--nick)
 			NICK="$2"
 			shift 2
 			;;
@@ -836,12 +865,12 @@ main() {
 	fi
 
 	if is_root_disk "$DISK"; then
-		msg "Disco raiz detectado: $DISK"
-		ROOT_PART=$(findmnt -n -o SOURCE /)
-		EFI_PART=$(findmnt -n -o SOURCE /boot/efi 2>/dev/null || true)
+		msg "Disco raiz detectado: ${yellow}${DISK}${reset}"
+    ROOT_PART=$(get_root_part "$DISK")
+    EFI_PART=$(findmnt -n -o SOURCE /boot/efi 2>/dev/null || true)
 		IS_ROOT_DISK=true
 	else
-		msg "Disco alternativo detectado: $DISK"
+    msg "Disco alternativo detectado: ${yellow}${DISK}${reset}"
 		detect_parts "$DISK"
 		IS_ROOT_DISK=false
 	fi
