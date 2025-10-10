@@ -20,6 +20,7 @@
 #
 #  Created: 2025/10/07 - 13:27
 #  Altered: 2025/10/07 - 13:27
+#  Updated: ter 07 out 2025 23:56:40 -04
 #
 #  Copyright (c) 2025-2025, Nome Completo <user@server.com>
 #  All rights reserved.
@@ -88,7 +89,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.0.0-20251007"
+declare _VERSION_="1.10.7-20251007"
 declare APPDESC="Script para renomear um usuário do sistema Linux de forma segura"
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput)
@@ -98,13 +99,22 @@ MostraErro() {
 }
 trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
 
+debug() {
+# dialog \
+  whiptail --fb  --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n"  0 40
+  local result="$?"
+  ((result)) && exit "$result"
+  return "$result"
+}
+
 ####################################################################################################
 
 usage() {
   cat <<EOF
-Uso:
-  $APP <usuario_antigo> <usuario_novo>   ${cyan}# Renomeia usuário e faz checagem${reset}
-  $APP --check <usuario_antigo>          ${cyan}# Apenas checagem de ocorrências do usuário antigo${reset}
+  ${cyan}${APPDESC}${reset}
+${yellow}Uso:${reset}
+  $APP ${yellow}<usuario_antigo>${reset} ${green}<usuario_novo>   ${cyan}# Renomeia usuário e faz checagem${reset}
+  $APP ${green}--check ${yellow}<usuario_antigo>          ${cyan}# Apenas checagem de ocorrências do usuário antigo${reset}
 EOF
   exit 0
 }
@@ -232,12 +242,14 @@ check_old_user() {
   echo "✅ Checagem concluída para $old"
 }
 
-
 # --------------------------
 # Processa argumentos
 # --------------------------
+[[ "${1:-}" == "-h" || "${1:-}" == "--help" || -z "${1:-}" || -z "${2:-}" ]] && usage
+
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "${red}Execute como root.${reset}"
+  echo "${cyan}${APPDESC}${reset}"
+  echo "${red}erro: você não pode realizar esta operação a menos que seja root.${reset}"
   exit 1
 fi
 
@@ -246,8 +258,6 @@ if [[ "${1:-}" == "--check" ]]; then
   check_old_user "$2"
   exit 0
 fi
-
-[[ -n "${1:-}" && -n "${2:-}" ]] || usage
 
 OLD_USER="$1"
 NEW_USER="$2"
