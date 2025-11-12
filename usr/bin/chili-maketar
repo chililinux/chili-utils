@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #shellcheck disable=SC2155,SC2034
 #shellcheck source=/dev/null
-
-#  chili-maketar - Create tar of directories
+#
+#  chili-maketar - Create tar of directories or files
 #
 #  Created: 2023/07/28
 #  Altered: 2023/07/28
@@ -30,273 +30,453 @@
 #  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##########################################################################
+# =========================================================
+# Cores e terminal
+# =========================================================
+: "${RED=$(tput bold)$(tput setaf 196)}"
+: "${GREEN=$(tput bold)$(tput setaf 2)}"
+: "${YELLOW=$(tput bold)$(tput setaf 3)}"
+: "${BLUE=$(tput setaf 4)}"
+: "${PURPLE=$(tput setaf 125)}"
+: "${CYAN=$(tput setaf 6)}"
+: "${NC=$(tput sgr0)}"
+: "${RESET=$(tput sgr0)}"
+: "${BOLD=$(tput bold)}"
+: "${black=$(tput bold)$(tput setaf 0)}"
+: "${reverse=$(tput rev)}"
+: "${branca=${black}$(tput setab 7)}"
 
-#debug
+: "${reset=$(tput sgr0)}"
+: "${rst=$(tput sgr0)}"
+: "${bold=$(tput bold)}"
+: "${underline=$(tput smul)}"
+: "${nounderline=$(tput rmul)}"
+: "${reverse=$(tput rev)}"
+
+: "${black=$(tput bold)$(tput setaf 0)}"
+: "${red=$(tput bold)$(tput setaf 196)}"
+: "${green=$(tput bold)$(tput setaf 2)}"
+: "${yellow=$(tput bold)$(tput setaf 3)}"
+: "${blue=$(tput setaf 27)}"
+: "${pink=$(tput setaf 5)}"
+: "${magenta=$(tput setaf 5)}"
+: "${cyan=$(tput setaf 6)}"
+: "${white=$(tput setaf 7)}"
+: "${gray=$(tput setaf 8)}"
+: "${light_red=$(tput setaf 9)}"
+: "${light_green=$(tput setaf 10)}"
+: "${light_yellow=$(tput setaf 11)}"
+: "${light_blue=$(tput setaf 12)}"
+: "${light_magenta=$(tput setaf 13)}"
+: "${light_cyan=$(tput setaf 14)}"
+: "${light_white=$(tput setaf 15)}"
+: "${orange=$(tput setaf 202)}"
+: "${purple=$(tput setaf 125)}"
+: "${violet=$(tput setaf 61)}"
+
+# Definir cores de fundo
+: "${preto=$(tput setab 0)}"
+: "${vermelho=$(tput setab 196)}"
+: "${verde=$(tput setab 2)}"
+: "${amarelo=$(tput setab 3)}"
+: "${azul=$(tput setab 20)}"
+: "${roxo=$(tput setab 5)}"
+: "${ciano=$(tput setab 6)}"
+: "${branca="${black}$(tput setab 7)"}"
+: "${cinza=$(tput setab 8)}"
+: "${laranja=$(tput setab 202)}"
+: "${roxa=$(tput setab 125)}"
+: "${violeta=$(tput setab 61)}"
+
+: "${COL_NC='\e[0m'}" # No Color
+: "${COL_LIGHT_GREEN='\e[1;32m'}"
+: "${COL_LIGHT_RED='\e[1;31m'}"
+: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
+: "${OVER="\\r\\033[K"}"
+: "${DOTPREFIX="  ${black}::${reset} "}"
+: "${clrkey=${light_white}}"
+: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
+: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
+: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
+: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
+: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
+
 export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
-#set -x
-#set -e
+set -euo pipefail
 shopt -s extglob
 
 readonly APP="${0##*/}"
-readonly APPDESC="Create tar of directories"
-readonly _VERSION_="1.8.15-20250815"
-declare DEPENDENCIES=(tar tput sed pzstd)
-declare PACKAGEDEP=(tar ncurses sed zstd)
+readonly APPDESC="Create tar of directories or files"
+readonly _VERSION_="3.3.2-20251112"
 
-function sh_diahora {
-	#	DIAHORA=$(date +"%d%m%Y-%T" | sed 's/://g')
-	DIAHORA=$(date +"%d%m%Y-%H:%M" | sed 's/://g')
-	printf "%s\n" "$DIAHORA"
+# Dependências base
+declare DEPENDENCIES=(tar tput sed)
+declare PACKAGEDEP=(tar ncurses sed)
+
+# Mapeamento de compressores → comandos/pacotes (Arch Linux)
+declare -A COMPRESS_DEPS=(
+	[pigz]="pigz pigz"
+	[pzstd]="zstd zstd"
+	[gzip]="gzip gzip"
+	[xz]="xz xz"
+	[lz4]="lz4 lz4"
+	[lzo]="lzop lzop"
+	[br]="brotli brotli"
+	[lrzip]="lrzip lrzip"
+	[zpaq]="zpaq zpaq"
+	[zstdgpg]="zstd gpg"
+	[7z]="7z p7zip"
+	[zip]="zip zip"
+	[tarzstgpg2]="zstd gpg2"
+)
+
+# =========================================================
+# Utilitários básicos
+# =========================================================
+
+function sh_diahora() {
+  date +"%d%m%Y-%H%M%S"
 }
 
 function sh_config {
-	declare -g TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
-	declare -g CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}$white]"
-	declare -g BOOTLOG="/tmp/$APP-$(sh_diahora).log"
-	declare -g LOGGER='/dev/tty8'
+	declare -g BOOTLOG="/tmp/${APP}_$(date +'%Y%m%d_%H%M%S')_${USER}.log"
+	if [[ -w /dev/tty ]]; then
+		declare -g LOGGER='/dev/tty'
+	else
+		declare -g LOGGER='/dev/stdout'
+	fi
 	declare -g quiet=true
 	declare -g use_color=true
+	declare -g compressor="pzstd"
 	declare -gi ncontador=1
 	declare -gi njobs=0
-	#declare -g compressor="normal" # Default compressor
-	declare -g compressor="pzstd" # Default compressor
-	sh_setvarcolors
 }
 
-function log_error {
-	printf "%30s:%-06d] : %s => %s\n" "$1" "$2" "$3 $4" >>"$BOOTLOG"
+# =========================================================
+# Funções auxiliares
+# =========================================================
+
+function add_compressor_dep() {
+  DEPENDENCIES+=("$1")
+  PACKAGEDEP+=("$2")
 }
 
-msg() {
-	local msg="$1"
-	echo -e "==>${cyan}[INFO] ${yellow}${msg}${reset}"
+function cmdlogger() {
+	local cmd=("$@")
+	info_msg "Executando comando: ${cyan}${cmd[*]}${reset}"
+	"${cmd[@]}" 2>&1 | tee -a "$BOOTLOG"
+	local status=${PIPESTATUS[0]}
+	if ((status != 0)); then
+	  die "Erro durante execução: ${cmd[*]}"
+  else
+    size=$(du -h "$filename" 2>/dev/null | cut -f1)
+    log_ok "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+  fi
 }
 
-function cmdlogger {
-	local lastcmd="$@"
-	local line_number=${BASH_LINENO[0]}
-	local status
-	local error_output
-	local script_name="${0##*/}[${FUNCNAME[1]}]"
-
-	info_msg "Running '$*'"
-	#   error_output=$( "$@" 2>&1 )
-	if $quiet; then
-		eval "$@" 2>&1 | tee -i -a "$BOOTLOG" >"$LOGGER"
-	else
-		eval "$@" | tee -i -a "$BOOTLOG"
-	fi
-	#  status="${PIPESTATUS[0]}"
-	status="$?"
-	if [ $status -ne 0 ]; then
-		error_output=$(echo "$error_output" | cut -d':' -f3-)
-		log_error "$script_name" "$line_number" "$lastcmd" "$error_output"
-	fi
-	return $status
-}
-
-function sh_check_terminal {
-	if [ ! -t 1 ]; then
-		use_color=false
-	fi
-}
-
-function print_color {
-	if $use_color; then
-		echo -e "${@//\033\[*/}"
-	else
-		echo -e "$@"
-	fi
-}
-
-function sh_setvarcolors {
-	sh_check_terminal
-	if $use_color; then
-		bold=$(tput bold)
-		red=$(tput bold)$(tput setaf 196)
-		reset=$(tput sgr0)
-		rst=$(tput sgr0)
-		pink=$(tput setaf 5)
-		yellow=$(tput bold)$(tput setaf 3)
-		green=$(tput bold)$(tput setaf 2)
-		cyan=$(tput setaf 6)
-	else
-		unset bold red reset pink yellow green cyan
-	fi
-}
+# =========================================================
+#  Mensagens
+# =========================================================
 
 die() {
 	((++njobs))
-	printf "${red}$CROSS ${pink}%03d/%03d => ${red}FATAL: %s\n\033[m" "$ncontador" "$njobs" "$@"
+	printf "${red}$CROSS ${pink}%03d/%03d => ${red}FATAL: %s\n\033[m" "$ncontador" "$njobs" "$*"
 	((++ncontador))
 	exit 1
 }
 
-function info_msg() {
+info_msg() {
 	((++njobs))
-	printf "${green}$TICK ${pink}%03d/%03d => ${yellow}%s\n\033[m" "$ncontador" "$njobs" "$@"
+	printf "${green}$INFO ${pink}%03d/%03d => ${yellow}%s\n\033[m" "$ncontador" "$njobs" "$*"
 	((++ncontador))
 }
 
-function run_cmd {
-	info_msg "$APP: Running $*"
-	eval "$@"
-}
+log_error()    { printf "%30s:%-06d] : %s => %s\n" "$1" "$2" "$3 $4" >>"$BOOTLOG"; }
+msg()          { echo -e "${INFO} ${*}${reset}"; }
+log_ok()       { echo -e "${TICK} ${*}${reset}"; }
+log_err()      { echo -e "${CROSS} ${*}${reset}"; }
+log_mid()      { echo -e "${MID} ${*}${reset}"; }
+log_warn()     { echo -e "${WARN} ${*}${reset}"; }
+msg_tab()      { echo -e "  ${INFO} ${*}${reset}"; }
+log_ok_tab()   { echo -e "  ${TICK} ${*}${reset}"; }
+log_err_tab()  { echo -e "  ${CROSS} ${*}${reset}"; }
+log_mid_tab()  { echo -e "  ${MID} ${*}${reset}"; }
+log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
+
+# =========================================================
+# Dependências
+# =========================================================
 
 function sh_checkDependencies() {
-	local d
-	local errorFound=false
-	declare -a missing
+	local missing=()
 
+	# Verifica dependências básicas
 	for d in "${DEPENDENCIES[@]}"; do
-		[[ -z $(command -v "$d") ]] && missing+=("$d") && errorFound=true &&
-			info_msg "${red}ERRO: não encontrei o comando${reset}: ${cyan}'$d'${reset}"
+		if ! command -v "$d" &>/dev/null; then
+			missing+=("$d")
+			info_msg "${red}ERRO:${reset} comando ausente: ${cyan}'$d'${reset}"
+		fi
 	done
 
-	if $errorFound; then
-		if ! sudo pacman -Sy "${PACKAGEDEP[@]}" --needed --noconfirm 1>/dev/null; then
-			echo
-			msg "${yellow}----------------------IMPOSSÍVEL CONTINUAR--------------------${reset}"
-			msg "Este script precisa dos comandos listados acima.${reset}"
-			msg "Fiz tentativa de instalar, no entanto falhou.${reset}"
-			msg "Instale-os e/ou certifique-se de que eles estejam em seu ${red}\$PATH${reset}"
-			msg "${yellow}----------------------IMPOSSÍVEL CONTINUAR--------------------${reset}"
-			die "Instalação abortada!"
+	if ((${#missing[@]})); then
+		info_msg "Tentando instalar dependências básicas: ${yellow}${missing[*]}${reset}"
+		sudo pacman -Sy "${PACKAGEDEP[@]}" --needed --noconfirm &>/dev/null ||
+			die "Falha ao instalar dependências básicas: ${missing[*]}"
+	fi
+
+	# Instala apenas o compressor selecionado
+	local cdep="${COMPRESS_DEPS[$compressor]}"
+	if [[ -n "$cdep" ]]; then
+		read -r cmd pkg <<<"$cdep"
+		if ! command -v "$cmd" &>/dev/null; then
+			info_msg "Instalando pacote necessário para ${yellow}$compressor${reset}: ${cyan}$pkg${reset}"
+			sudo pacman -Sy "$pkg" --needed --noconfirm &>/dev/null ||
+				die "Falha ao instalar pacote: ${pkg} (necessário para $compressor)"
 		fi
 	fi
 }
 
+# =========================================================
+# Compactação
+# =========================================================
+
 function sh_main {
-	if [[ "$1" == '.' ]]; then
-		directory=$(basename "$(pwd)")
-	else
-		directory="${1%/}"
-	fi
-	local FILENAME="${2:-$directory-$(sh_diahora).tar}"
-	local error
-	local param='--verbose'
+	local filename="$1"
+	shift
+	local exclude_opt=""
+	local sources=("$@")
+	local error param='--verbose'
 
-	if [[ ! "$FILENAME" =~ \.tar$ ]]; then
-	  FILENAME+='.tar'
-  fi
-
-	if $quiet; then
-		param=''
+	#  Evita adicionar ".tar" para compressores que não usam tar
+	if [[ "$compressor" != "zip" && "$compressor" != "7z" ]]; then
+		if [[ ! "$filename" =~ \.tar($|\.gz$|\.xz$|\.zst$|\.lz4$|\.lzo$|\.br$|\.lrz$|\.zpaq$|\.gpg$) ]]; then
+			filename+='.tar'
+		fi
 	fi
+
+	filename="${filename#./}"
+	filename="${filename/#./}"
+	exclude_opt="--exclude=$(basename "$filename")*"
+	$quiet && param=''
 
 	case "$compressor" in
+	7z)
+		[[ "$filename" != *.7z ]] && filename+=".7z"
+		add_compressor_dep 7z p7zip
+		info_msg "Usando 7z (alta compressão e suporte a múltiplos formatos)"
+		if $quiet; then
+			7z a "$filename" "${sources[@]}" >/dev/null 2>&1
+		else
+			cmdlogger 7z a "$filename" "${sources[@]}"
+		fi
+		local size
+		size=$(du -h "$filename" 2>/dev/null | cut -f1)
+		info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+		return 0
+		;;
+	zip)
+		[[ "$filename" != *.zip ]] && filename+=".zip"
+		add_compressor_dep zip zip
+		info_msg "Usando zip tradicional"
+		if $quiet; then
+			zip -r "$filename" "${sources[@]}" >/dev/null 2>&1
+		else
+			cmdlogger zip -r "$filename" "${sources[@]}"
+		fi
+		local size
+		size=$(du -h "$filename" 2>/dev/null | cut -f1)
+		info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+		return 0
+		;;
+
+	tarzstgpg2)
+		filename+=".tar.zst.gpg"
+		add_compressor_dep zstd zstd
+		add_compressor_dep gpg2 gnupg
+		info_msg "Compactando com zstd e criptografando com gpg2"
+		cmdlogger tar -cf - "${sources[@]}" | zstd -T0 -19 | gpg2 -c -o "$filename"
+		;;
 	pigz)
-		FILENAME+=".gz"
-		cmdlogger tar -I pigz $param --posix --xattrs -chf "$FILENAME" "$1"
+		filename+=".gz"
+		cmd=(tar "$exclude_opt" -I pigz)
 		;;
 	pzstd)
-		FILENAME+=".zst"
-		#   cmdlogger tar --use-compress-program="pzstd -19" --verbose --posix --xattrs -chf chililinux-26122024-1235.tar.zst chililinux
-		cmdlogger tar -I pzstd $param --posix --xattrs -chf "$FILENAME" "$1"
+		filename+=".zst"
+		cmd=(tar "$exclude_opt" -I pzstd)
 		;;
 	gzip)
-		FILENAME+=".gz"
-		cmdlogger tar -z $param --posix --xattrs -chf "$FILENAME" "$1"
+		filename+=".gz"
+		cmd=(tar "$exclude_opt" -z)
 		;;
 	xz)
-		FILENAME+=".xz"
-		cmdlogger tar --xz $param --posix --xattrs -chf "$FILENAME" "$1"
+		filename+=".xz"
+		cmd=(tar "$exclude_opt" --xz)
 		;;
-	normal)
-		cmdlogger tar --posix $param --xattrs -chf "$FILENAME" "$1"
+	lz4)
+		filename+=".lz4"
+		cmd=(tar "$exclude_opt" -I lz4)
 		;;
+	lzo)
+		filename+=".lzo"
+		cmd=(tar "$exclude_opt" -I lzop)
+		;;
+	br)
+		filename+=".br"
+		cmd=(tar "$exclude_opt" -I "brotli -q 11")
+		;;
+	lrzip)
+		[[ "$filename" != *.lrz ]] && filename+=".lrz"
+		add_compressor_dep lrzip lrzip
+		info_msg "Usando lrzip (ótimo para arquivos grandes)"
+		if $quiet; then
+			tar $exclude_opt -I lrzip --posix --xattrs -chf "$filename" "${sources[@]}" >/dev/null 2>&1
+		else
+			cmdlogger tar $exclude_opt -I lrzip --posix --xattrs -chf "$filename" "${sources[@]}"
+		fi
+		local size
+		size=$(du -h "$filename" 2>/dev/null | cut -f1)
+		info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+		return 0
+		;;
+	zpaq)
+		filename+=".zpaq"
+		add_compressor_dep zpaq zpaq
+		info_msg "Usando método compatível de compactação com zpaq (modo pós-processo)"
+		local tmpfile="${filename%.zpaq}"
+		cmdlogger tar "$exclude_opt" ${param:+$param} --posix --xattrs -chf "$tmpfile" "${sources[@]}"
+		cmdlogger zpaq a "$filename" "$tmpfile" -method 3 -threads 0
+		rm -f "$tmpfile"
+		;;
+	zstdgpg)
+		filename+=".zst.gpg"
+		cmd=(tar "$exclude_opt" -I 'bash -c "zstd -T0 -19 | gpg -c"')
+		;;
+	*) cmd=(tar "$exclude_opt") ;;
 	esac
 
-	error=$?
-
-	if ((error)); then
-		die "$@"
-	else
-		info_msg "Successfully created: ${red}$FILENAME ${reset}"
+	if [[ "$compressor" != "zpaq" ]]; then
+		cmdlogger "${cmd[@]}" ${param:+$param} --posix --xattrs -chf "$filename" "${sources[@]}"
 	fi
+
+#	local size
+#	size=$(du -h "$filename" 2>/dev/null | cut -f1)
+#	info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
 }
 
-sh_usage() {
-	cat <<-EOF
-		    ${cyan}$APP - $APPDESC${reset}
-		    Uso: $APP [options] <directory> [filename]
-		         $APP -z .config
-		         $APP -z .config backup-config.tar
+# =========================================================
+# Ajuda
+# =========================================================
 
-		    Options:
-		      -v          Verbose mode (progress messages)
-		      -n          Disable colors in the output
-		      -z          Use pigz for compression
-		      -s          Use pzstd for compression ${cyan}(default)${reset}
-		      -g          Use gzip for compression
-		      -x          Use xz for compression
-		      (normal)    Create tar archive without additional compression
+function sh_usage() {
+	cat <<-EOF
+		${yellow}$APP${reset} - ${green}$APPDESC${reset}  (${cyan}v$_VERSION_${reset})
+		${bold}${pink}Compactadores disponíveis:${reset}
+		  ${yellow}-7${reset}  7z (p7zip, compressão forte)
+		  ${yellow}-b${reset}  brotli (para web)
+		  ${yellow}-e${reset}  zstd+gpg (criptografado)
+		  ${yellow}-g${reset}  gzip (simples)
+		  ${yellow}-l${reset}  lz4 (ultrarrápido)
+		  ${yellow}-o${reset}  lzop (leve)
+		  ${yellow}-p${reset}  zstd + gpg2 (criptografia com senha)
+		  ${yellow}-q${reset}  zpaq (compressão extrema)
+		  ${yellow}-r${reset}  lrzip (ótimo para arquivos grandes)
+		  ${yellow}-s${reset}  pzstd (Zstandard, ${cyan}padrão${reset})
+		  ${yellow}-x${reset}  xz (alta compressão)
+		  ${yellow}-z${reset}  pigz (gzip paralelo)
+		  ${yellow}-Z${reset}  zip (simples e universal)
+		  ${yellow}-h${reset}  este help
+		${bold}${pink}Exemplos:${reset}
+				  ${cyan}$APP -s${reset}                  → compacta diretório atual
+				  ${cyan}$APP -l /etc${reset}             → usa lz4
+				  ${cyan}$APP -b site assets.br${reset}   → usa brotli
+				  ${cyan}$APP -q${reset}                  → compacta via zpaq (modo pós-processo)
+				  ${cyan}$APP -e backup${reset}           → compacta e criptografa
+				  ${cyan}$APP *.c *.h fontes.tar${reset}  → compacta com zstd (padrao)
+				  ${cyan}$APP .                 ${reset}  → compacta com zstd (padrao)
+				${bold}${cyan}──────────────────────────────────────────────${reset}
+				 ${yellow}Autor:${reset} ${green}Vilmar Catafesta${reset}  ${cyan}<vcatafesta@gmail.com>${reset}
+				${bold}${cyan}──────────────────────────────────────────────${reset}
 	EOF
 	exit 1
 }
 
+# =========================================================
+# Execução principal
+# =========================================================
+
 sh_config
-
-# Display usage information if no arguments are passed
-if [[ $# -eq 0 || $1 = @(-h|--help) || $1 = "-h" || $1 = "--help" || $1 = "help" || $1 = "-help" ]]; then
-	sh_usage
-fi
-
-sh_checkDependencies
-
-if test -w "$PWD"; then
-	info_msg "$USER com gravação permitida em $PWD, prosseguindo..."
-else
-	info_msg "$USER sem permissão de gravação em $PWD"
-	if [ "$(id -u)" -ne 0 ]; then
-		die "$APP: need root perms to continue, exiting."
-	fi
-fi
-
-# Process command line options using getopts
-while getopts "vnzsgx" opt; do
+[[ $# -eq 0 || $1 =~ ^(-h|--help|help|-help)$ ]] && sh_usage
+while getopts "vnzsgxlobrqe7pZ" opt; do
 	case $opt in
-	v)
-		quiet=false
-		info_msg 'Param -v detected, enabling verbose'
-		;;
+	7) compressor="7z" ;;
+	p) compressor="tarzstgpg2" ;;
+	v) quiet=false ;;
 	n)
 		use_color=false
-		sh_setvarcolors
-		info_msg 'Param -n detected, disabling colors'
 		;;
-	z)
-		compressor="pigz"
-    DEPENDENCIES+=($compressor)
-    PACKAGEDEP+=($compressor)
-		info_msg "Param -z detected, compressor is now '$compressor'"
-		;; # Use pigz for compression
-	s)
-		compressor="pzstd"
-    DEPENDENCIES+=($compressor)
-    PACKAGEDEP+=(zstd)
-		info_msg "Param -z detected, compressor is now '$compressor'"
-		;; # Use pzstd for compression
-	g)
-		compressor="gzip"
-    DEPENDENCIES+=($compressor)
-    PACKAGEDEP+=($compressor)
-		info_msg "Param -z detected, compressor is now '$compressor'"
-		;; # Use gzip for compression
-	x)
-		compressor="xz"
-    DEPENDENCIES+=($compressor)
-    PACKAGEDEP+=($compressor)
-		info_msg "Param -z detected, compressor is now '$compressor'"
-		;; # Use xz for compression
+	z) compressor="pigz" ;;
+	s) compressor="pzstd" ;;
+	g) compressor="gzip" ;;
+	x) compressor="xz" ;;
+	l) compressor="lz4" ;;
+	o) compressor="lzo" ;;
+	b) compressor="br" ;;
+	r) compressor="lrzip" ;;
+	q) compressor="zpaq" ;;
+	e) compressor="zstdgpg" ;;
+	Z) compressor="zip" ;;
 	\?) die "Invalid option: -$OPTARG" ;;
 	esac
 done
-
-# Process the remaining argument (directory)
 shift $((OPTIND - 1))
 
-# Check if the directory argument is missing or invalid
-[[ -z "$1" || ! -d "$1" ]] && die "${cyan}argument directory ${yellow}'$1' ${reset}is either missing or does not exist!"
-info_msg "Compressor is '$compressor'"
-sh_main "$@"
+[[ $# -eq 0 ]] && {
+	info_msg "Nenhum arquivo/diretório informado — usando diretório atual."
+	set -- .
+}
+
+lastarg="${!#}"
+if [[ "$lastarg" =~ \.tar(\.(gz|xz|zst|lz4|lzo|br|lrz|zpaq|gpg))?$ ]]; then
+	outfile="$lastarg"
+	set -- "${@:1:$(($# - 1))}"
+else
+	outfile=""
+fi
+
+declare -a ITEMS=()
+for item in "$@"; do
+	for i in $item; do [[ -e "$i" ]] && ITEMS+=("$i"); done
+done
+[[ ${#ITEMS[@]} -eq 0 ]] && die "Nenhum arquivo/diretório encontrado."
+
+# Nome lógico do arquivo de saída
+if [[ -z "$outfile" ]]; then
+	if ((${#ITEMS[@]} == 1)) && [[ -d "${ITEMS[0]}" ]]; then
+		localname=$(basename "$(realpath "${ITEMS[0]}")")
+	elif ((${#ITEMS[@]} == 1)) && [[ -f "${ITEMS[0]}" ]]; then
+		localname=$(basename "${ITEMS[0]}" | sed 's/\.[^.]*$//')
+	else
+		localname=$(basename "$PWD")
+	fi
+	[[ "$PWD" == "/" ]] && localname="tar"
+
+	case "$compressor" in
+	zip) outfile="${localname}-$(sh_diahora).zip" ;;
+	7z) outfile="${localname}-$(sh_diahora).7z" ;;
+	zpaq) outfile="${localname}-$(sh_diahora).zpaq" ;;
+	*) outfile="${localname}-$(sh_diahora).tar" ;; # padrão pros demais
+	esac
+fi
+
+if [[ "${ITEMS[*]}" == "." ]]; then
+	ITEMS=(*)
+	[[ ${#ITEMS[@]} -eq 0 ]] && ITEMS=(.)
+fi
+
+info_msg "Itens a serem arquivados: ${cyan}${ITEMS[*]}${reset}"
+info_msg "Compressor final: ${cyan}$compressor${reset}"
+info_msg "Arquivo de saída: ${green}$outfile${reset}"
+
+sh_checkDependencies
+sh_main "$outfile" "${ITEMS[@]}"
