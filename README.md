@@ -67,15 +67,32 @@ Os chili-utils seguem quatro mandamentos:
 
     Compatibilidade total com ambientes POSIX.
 
-🧱 Instalação (via PKGBUILD)
-
-O pacote está pronto para instalação direta em sistemas baseados em Arch Linux / Manjaro.
+🧱 Instalação
+🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
 
 git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils/pkgbuild
 makepkg -si
 
-Isso criará e instalará o pacote .pkg.tar.zst automaticamente, incluindo todos os utilitários em /usr/local/bin.
+🧩 Opção 2 — via Makefile (instalação manual)
+
+git clone https://github.com/vcatafesta/chili-utils.git
+cd chili-utils
+sudo make install
+
+Para remover:
+
+sudo make uninstall
+
+🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
+
+Pacote pré-compilado (Arch, Manjaro e derivados):
+
+sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst
+
+Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:
+👉 https://chililinux.com/repo/chili-stable/x86_64/
+
 📜 Licença
 
 Licenciado sob BSD 2-Clause
