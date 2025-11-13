@@ -6,7 +6,7 @@
 #
 #  Created: 2023/07/28
 #  Altered: 2023/07/28
-#  Updated: sex 15 ago 2025 22:30:08 -04
+#  Updated: qui 13 nov 2025 01:29:14 -04
 #
 #  Copyright (c) 2023-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -103,12 +103,12 @@
 : "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
 
 export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
-set -euo pipefail
+#set -euo pipefail
 shopt -s extglob
 
 readonly APP="${0##*/}"
 readonly APPDESC="Create tar of directories or files"
-readonly _VERSION_="3.3.2-20251112"
+readonly _VERSION_="3.3.3-20251113"
 
 # Dependências base
 declare DEPENDENCIES=(tar tput sed)
@@ -162,16 +162,18 @@ function add_compressor_dep() {
   PACKAGEDEP+=("$2")
 }
 
+print_size() {
+  size=$(du -h "$filename" 2>/dev/null | cut -f1)
+  log_ok "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+}
+
 function cmdlogger() {
 	local cmd=("$@")
-	info_msg "Executando comando: ${cyan}${cmd[*]}${reset}"
+	info_msg "Executando comando : ${cyan}${cmd[*]}${reset}"
 	"${cmd[@]}" 2>&1 | tee -a "$BOOTLOG"
 	local status=${PIPESTATUS[0]}
 	if ((status != 0)); then
 	  die "Erro durante execução: ${cmd[*]}"
-  else
-    size=$(du -h "$filename" 2>/dev/null | cut -f1)
-    log_ok "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
   fi
 }
 
@@ -248,12 +250,12 @@ function sh_main {
 	local sources=("$@")
 	local error param='--verbose'
 
-	#  Evita adicionar ".tar" para compressores que não usam tar
-	if [[ "$compressor" != "zip" && "$compressor" != "7z" ]]; then
-		if [[ ! "$filename" =~ \.tar($|\.gz$|\.xz$|\.zst$|\.lz4$|\.lzo$|\.br$|\.lrz$|\.zpaq$|\.gpg$) ]]; then
-			filename+='.tar'
-		fi
-	fi
+  #  Evita adicionar ".tar" para compressores que não usam tar
+  if [[ ! "$compressor" =~ ^(zip|7z|zpaq)$ ]]; then
+    if [[ ! "$filename" =~ \.tar($|\.gz$|\.xz$|\.zst$|\.lz4$|\.lzo$|\.br$|\.lrz$|\.zpaq$|\.gpg$) ]]; then
+      filename+='.tar'
+    fi
+  fi
 
 	filename="${filename#./}"
 	filename="${filename/#./}"
@@ -289,14 +291,22 @@ function sh_main {
 		info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
 		return 0
 		;;
+  tarzstgpg2)
+    # Garante que a extensão não será duplicada
+    filename="${filename%.tar}.tar.zst.gpg"
+    add_compressor_dep zstd zstd
+    add_compressor_dep gpg gnupg
+    info_msg "Compactando com zstd e criptografando com gpg (modo seguro)"
 
-	tarzstgpg2)
-		filename+=".tar.zst.gpg"
-		add_compressor_dep zstd zstd
-		add_compressor_dep gpg2 gnupg
-		info_msg "Compactando com zstd e criptografando com gpg2"
-		cmdlogger tar -cf - "${sources[@]}" | zstd -T0 -19 | gpg2 -c -o "$filename"
-		;;
+    if $quiet; then
+      tar --posix --xattrs -cf - "${sources[@]}" | zstd -T0 -19 | gpg -c -o "$filename" >/dev/null 2>&1
+    else
+      info_msg "Executando comando: tar --posix --xattrs -cf - ... | zstd -T0 -19 | gpg -c -o ${cyan}$filename${reset}"
+      tar --posix --xattrs -cf - "${sources[@]}" | zstd -T0 -19 | gpg -c -o "$filename"
+    fi
+    print_size
+    return 0
+    ;;
 	pigz)
 		filename+=".gz"
 		cmd=(tar "$exclude_opt" -I pigz)
@@ -334,20 +344,35 @@ function sh_main {
 		else
 			cmdlogger tar $exclude_opt -I lrzip --posix --xattrs -chf "$filename" "${sources[@]}"
 		fi
-		local size
-		size=$(du -h "$filename" 2>/dev/null | cut -f1)
-		info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+		print_size
 		return 0
 		;;
-	zpaq)
-		filename+=".zpaq"
-		add_compressor_dep zpaq zpaq
-		info_msg "Usando método compatível de compactação com zpaq (modo pós-processo)"
-		local tmpfile="${filename%.zpaq}"
-		cmdlogger tar "$exclude_opt" ${param:+$param} --posix --xattrs -chf "$tmpfile" "${sources[@]}"
-		cmdlogger zpaq a "$filename" "$tmpfile" -method 3 -threads 0
-		rm -f "$tmpfile"
-		;;
+  zpaq)
+    # =========================================================
+    # ZPAQ — compressão extrema (pós-processo)
+    # =========================================================
+    [[ "$filename" != *.zpaq ]] && filename+=".zpaq"
+    add_compressor_dep zpaq zpaq
+    info_msg "Usando método compatível de compactação com zpaq (modo pós-processo)"
+
+    # Remove .zpaq temporariamente pra gerar o tar intermediário
+    local tmpfile="${filename%.zpaq}.tar"
+
+    if $quiet; then
+      tar --posix --xattrs -chf "$tmpfile" "${sources[@]}" >/dev/null 2>&1
+      zpaq a "$filename" "$tmpfile" -method 3 -threads 0 >/dev/null 2>&1
+    else
+      cmdlogger tar --posix --xattrs -chf "$tmpfile" "${sources[@]}"
+      cmdlogger zpaq a "$filename" "$tmpfile" -method 3 -threads 0
+    fi
+
+    rm -f "$tmpfile"
+
+    local size
+    size=$(du -h "$filename" 2>/dev/null | cut -f1)
+    info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+    return 0
+    ;;
 	zstdgpg)
 		filename+=".zst.gpg"
 		cmd=(tar "$exclude_opt" -I 'bash -c "zstd -T0 -19 | gpg -c"')
@@ -358,10 +383,7 @@ function sh_main {
 	if [[ "$compressor" != "zpaq" ]]; then
 		cmdlogger "${cmd[@]}" ${param:+$param} --posix --xattrs -chf "$filename" "${sources[@]}"
 	fi
-
-#	local size
-#	size=$(du -h "$filename" 2>/dev/null | cut -f1)
-#	info_msg "Successfully created: ${red}$filename${reset} (${cyan}${size:-0}${reset})"
+  print_size
 }
 
 # =========================================================
@@ -406,7 +428,18 @@ function sh_usage() {
 # =========================================================
 
 sh_config
+
 [[ $# -eq 0 || $1 =~ ^(-h|--help|help|-help)$ ]] && sh_usage
+
+if test -w "$PWD"; then
+  info_msg "$USER com gravação permitida em $PWD, prosseguindo..."
+else
+  info_msg "$USER sem permissão de gravação em $PWD"
+  if [ "$(id -u)" -ne 0 ]; then
+    die "$APP: need root perms to continue, exiting."
+  fi
+fi
+
 while getopts "vnzsgxlobrqe7pZ" opt; do
 	case $opt in
 	7) compressor="7z" ;;
@@ -470,13 +503,16 @@ if [[ -z "$outfile" ]]; then
 fi
 
 if [[ "${ITEMS[*]}" == "." ]]; then
-	ITEMS=(*)
-	[[ ${#ITEMS[@]} -eq 0 ]] && ITEMS=(.)
+  shopt -s dotglob nullglob
+  ITEMS=(*)
+  shopt -u dotglob nullglob
+  # Se ainda estiver vazio, força incluir '.'
+  [[ ${#ITEMS[@]} -eq 0 ]] && ITEMS=(.)
 fi
 
-info_msg "Itens a serem arquivados: ${cyan}${ITEMS[*]}${reset}"
-info_msg "Compressor final: ${cyan}$compressor${reset}"
-info_msg "Arquivo de saída: ${green}$outfile${reset}"
+info_msg "Compressor final   : ${cyan}$(awk '{print $1}' <<<"${COMPRESS_DEPS[$compressor]}")${reset}"
+info_msg "Arquivo de saída   : ${cyan}$outfile${reset}"
+info_msg "Itens para arquivar: ${cyan}${ITEMS[*]}${reset}"
 
 sh_checkDependencies
 sh_main "$outfile" "${ITEMS[@]}"
