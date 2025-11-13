@@ -78,6 +78,11 @@ Os chili-utils seguem quatro mandamentos:
     sudo make uninstall
 
 ### 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
+> _“Cada ferramenta faz uma coisa, e faz bem.”_
+
+---
+
+
 > _Pacote pré-compilado (Arch, Manjaro e derivados)_
 
 > _sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst`_  
