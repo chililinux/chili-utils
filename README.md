@@ -65,7 +65,7 @@ Os chili-utils seguem quatro mandamentos:
 
 🧱 Instalação
 🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
-```bash
+´´´bash
 git clone https://github.com/vcatafesta/chili-utils.git_
 cd chili-utils/pkgbuild
 makepkg -si
