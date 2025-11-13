@@ -1,8 +1,8 @@
 # 🌶️ chili-utils
 
-**chili-utils** é uma coleção de **ferramentas Linux criadas por Vilmar Catafesta** — um conjunto de utilitários rápidos, diretos e sem frescura, feitos em **Bash**, **C**, **Go**, **Harbour** e Python. 
+**chili-utils** é uma coleção de **ferramentas Linux criadas por Vilmar Catafesta** — um conjunto de utilitários rápidos, diretos e sem frescura, feitos em **Bash**, **C**, **Go**, **Harbour** e **Python**.
 
-Tudo com a filosofia clássica do Unix:
+Tudo com a filosofia clássica do Unix:  
 > _“Cada ferramenta faz uma coisa, e faz bem.”_
 
 ---
@@ -58,53 +58,58 @@ chili-compare-dirs /mnt/diskA /mnt/diskB
     — Vilmar Catafesta
 
 Os chili-utils seguem quatro mandamentos:
-    - Simplicidade acima de tudo.
-    - Zero dependências externas sempre que possível.
-    - Scripts autoexplicativos e com mensagens claras.
-    - Compatibilidade total com ambientes POSIX.
+
+    Simplicidade acima de tudo.
+
+    Zero dependências externas sempre que possível.
+
+    Scripts autoexplicativos e com mensagens claras.
+
+    Compatibilidade total com ambientes POSIX.
 
 🧱 Instalação
 🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
-´´´bash
-git clone https://github.com/vcatafesta/chili-utils.git_
+
+git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils/pkgbuild
 makepkg -si
 
 🧩 Opção 2 — via Makefile (instalação manual)
-```bash
+
 git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils
 sudo make install
 
-    Para remover:
-```bash
+Para remover:
+
 sudo make uninstall
 
 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
-    Pacote pré-compilado (Arch, Manjaro e derivados)_
 
-```bash
-sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst`_  
- 
-    Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
-    👉 [https://chililinux.com/repo/chili-stable/x86_64/](https://chililinux.com/repo/chili-stable/x86_64/)
+    Pacote pré-compilado (Arch, Manjaro e derivados)
 
-📜   Licença
+    sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst
 
-Licenciado sob BSD 2-Clause
+    Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:
+    👉 https://chililinux.com/repo/chili-stable/x86_64/
+
+📜 Licença
+
+Licenciado sob BSD 2-Clause License
 
 Copyright (c) 2019-2025
 Vilmar Catafesta <vcatafesta@gmail.com>
 All rights reserved.
 
-🧩   Autor
-    Vilmar Catafesta
-    💻 Programador & SysAdmin
-    ✉️ vcatafesta@gmail.com
+🧩 Autor
 
-🌶️    Conclusão
-    chili-utils é o canivete suíço definitivo para quem vive no terminal —
-    um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
+Vilmar Catafesta
+💻 Programador & SysAdmin
+✉️ vcatafesta@gmail.com
+🌶️ Conclusão
+
+chili-utils é o canivete suíço definitivo pra quem vive no terminal —
+um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
 
     “Não existe mágica. Só shell bem escrito.” 🧙‍♂️
     — Catafesta
