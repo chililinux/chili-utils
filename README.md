@@ -78,10 +78,10 @@ Os chili-utils seguem quatro mandamentos:
     sudo make uninstall
 
 ### 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
+Tudo com a filosofia clássica do Unix:
 > _“Cada ferramenta faz uma coisa, e faz bem.”_
 
 ---
-
 
 > _Pacote pré-compilado (Arch, Manjaro e derivados)_
 
@@ -89,8 +89,6 @@ Os chili-utils seguem quatro mandamentos:
  
     Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
 👉 [https://chililinux.com/repo/chili-stable/x86_64/](https://chililinux.com/repo/chili-stable/x86_64/)
----
-
 
 📜   Licença
 
