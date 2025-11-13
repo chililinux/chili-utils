@@ -58,42 +58,34 @@ chili-compare-dirs /mnt/diskA /mnt/diskB
     — Vilmar Catafesta
 
 Os chili-utils seguem quatro mandamentos:
-
-    Simplicidade acima de tudo.
-
-    Zero dependências externas sempre que possível.
-
-    Scripts autoexplicativos e com mensagens claras.
-
-    Compatibilidade total com ambientes POSIX.
+    - Simplicidade acima de tudo.
+    - Zero dependências externas sempre que possível.
+    - Scripts autoexplicativos e com mensagens claras.
+    - Compatibilidade total com ambientes POSIX.
 
 🧱 Instalação
 🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
-
-git clone https://github.com/vcatafesta/chili-utils.git
-cd chili-utils/pkgbuild
-makepkg -si
+    git clone https://github.com/vcatafesta/chili-utils.git
+    cd chili-utils/pkgbuild
+    makepkg -si
 
 🧩 Opção 2 — via Makefile (instalação manual)
+    git clone https://github.com/vcatafesta/chili-utils.git
+    cd chili-utils
+    sudo make install
 
-git clone https://github.com/vcatafesta/chili-utils.git
-cd chili-utils
-sudo make install
-
-Para remover:
-
-sudo make uninstall
+    Para remover:
+    sudo make uninstall
 
 ### 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
+    Pacote pré-compilado (Arch, Manjaro e derivados):  
+  
+    $ sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst 
 
-> Pacote pré-compilado (Arch, Manjaro e derivados):  
->  
-> `sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst`  
->  
-> Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
-> 👉 https://chililinux.com/repo/chili-stable/x86_64/
+    Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
+    👉    https://chililinux.com/repo/chili-stable/x86_64/
 
-📜 Licença
+📜   Licença
 
 Licenciado sob BSD 2-Clause
 
@@ -101,15 +93,14 @@ Copyright (c) 2019-2025
 Vilmar Catafesta <vcatafesta@gmail.com>
 All rights reserved.
 
-🧩 Autor
+🧩   Autor
+    Vilmar Catafesta
+    💻 Programador & SysAdmin
+    ✉️ vcatafesta@gmail.com
 
-Vilmar Catafesta
-💻 Programador & SysAdmin
-✉️ vcatafesta@gmail.com
-🌶️ Conclusão
-
-chili-utils é o canivete suíço definitivo para quem vive no terminal —
-um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
+🌶️    Conclusão
+    chili-utils é o canivete suíço definitivo para quem vive no terminal —
+    um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
 
     “Não existe mágica. Só shell bem escrito.” 🧙‍♂️
     — Catafesta
