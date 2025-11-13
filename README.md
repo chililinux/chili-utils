@@ -1,8 +1,8 @@
 # 🌶️ chili-utils
 
-**chili-utils** é uma coleção de **ferramentas Linux criadas por Vilmar Catafesta** — um conjunto de utilitários rápidos, diretos e sem frescura, feitos em **Bash**, **C**, **Go**, **Harbour** e Python.  
+**chili-utils** é uma coleção de **ferramentas Linux criadas por Vilmar Catafesta** — um conjunto de utilitários rápidos, diretos e sem frescura, feitos em **Bash**, **C**, **Go**, **Harbour** e Python. 
 
-Tudo com a filosofia clássica do Unix:  
+Tudo com a filosofia clássica do Unix:
 > _“Cada ferramenta faz uma coisa, e faz bem.”_
 
 ---
@@ -65,9 +65,9 @@ Os chili-utils seguem quatro mandamentos:
 
 🧱 Instalação
 🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
-    git clone https://github.com/vcatafesta/chili-utils.git
-    cd chili-utils/pkgbuild
-    makepkg -si
+>   _git clone https://github.com/vcatafesta/chili-utils.git_
+>    cd chili-utils/pkgbuild
+>    makepkg -si
 
 🧩 Opção 2 — via Makefile (instalação manual)
     git clone https://github.com/vcatafesta/chili-utils.git
