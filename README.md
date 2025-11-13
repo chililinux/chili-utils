@@ -72,8 +72,7 @@ Os chili-utils seguem quatro mandamentos:
 O pacote está pronto para instalação direta em sistemas baseados em Arch Linux / Manjaro.
 
 git clone https://github.com/vcatafesta/chili-utils.git
-cd chili-utils
-cd pkgbuild
+cd chili-utils/pkgbuild
 makepkg -si
 
 Isso criará e instalará o pacote .pkg.tar.zst automaticamente, incluindo todos os utilitários em /usr/local/bin.
@@ -81,7 +80,7 @@ Isso criará e instalará o pacote .pkg.tar.zst automaticamente, incluindo todos
 
 Licenciado sob BSD 2-Clause
 
-Copyright (c) 2023-2025
+Copyright (c) 2019-2025
 Vilmar Catafesta <vcatafesta@gmail.com>
 All rights reserved.
 
