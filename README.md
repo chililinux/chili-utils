@@ -65,9 +65,9 @@ Os chili-utils seguem quatro mandamentos:
 
 🧱 Instalação
 🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
->   _git clone https://github.com/vcatafesta/chili-utils.git_
->    cd chili-utils/pkgbuild
->    makepkg -si
+    git clone https://github.com/vcatafesta/chili-utils.git_
+    cd chili-utils/pkgbuild
+    makepkg -si
 
 🧩 Opção 2 — via Makefile (instalação manual)
     git clone https://github.com/vcatafesta/chili-utils.git
@@ -78,12 +78,15 @@ Os chili-utils seguem quatro mandamentos:
     sudo make uninstall
 
 ### 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
-    Pacote pré-compilado (Arch, Manjaro e derivados):  
-  
-    $ sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst 
 
-    Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
-    👉    https://chililinux.com/repo/chili-stable/x86_64/
+> Pacote pré-compilado (Arch, Manjaro e derivados):  
+>  
+> ```bash
+> sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst
+> ```  
+>  
+> Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
+> 👉 [https://chililinux.com/repo/chili-stable/x86_64/](https://chililinux.com/repo/chili-stable/x86_64/)
 
 📜   Licença
 
