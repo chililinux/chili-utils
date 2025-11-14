@@ -6,7 +6,7 @@
 #
 #  Created: 2023/07/28
 #  Altered: 2023/07/28
-#  Updated: qui 13 nov 2025 12:41:12 -04
+#  Updated: qui 13 nov 2025 23:34:04 -04
 #
 #  Copyright (c) 2023-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -108,7 +108,7 @@ shopt -s extglob
 
 readonly APP="${0##*/}"
 readonly APPDESC="Create tar of directories or files"
-readonly _VERSION_="3.3.4-20251113"
+readonly _VERSION_="3.3.5-20251113"
 
 # Dependências base
 declare DEPENDENCIES=(tar tput sed)
@@ -517,29 +517,32 @@ done
 
 # Nome lógico do arquivo de saída
 # Nome lógico do arquivo de saída
+# Nome lógico do arquivo de saída
 if [[ -z "$outfile" ]]; then
   if ((${#ITEMS[@]} == 1)); then
+    item="${ITEMS[0]}"
 
     # Caso especial: "."
-    if [[ "${ITEMS[0]}" == "." ]]; then
+    if [[ "$item" == "." ]]; then
       localname=$(basename "$PWD")
 
-    # Diretório comum
-    elif [[ -d "${ITEMS[0]}" ]]; then
-      localname=$(basename -- "${ITEMS[0]}")
+    # Diretório → pega basename correto mesmo com caminhos absolutos
+    elif [[ -d "$item" ]]; then
+      localname=$(basename -- "$item")
 
     # Arquivo
-    elif [[ -f "${ITEMS[0]}" ]]; then
-      filename_base=$(basename -- "${ITEMS[0]}")
-      localname="${filename_base%%.*}"
-      [[ "$filename_base" =~ ^\..* ]] && localname="$filename_base"
+    elif [[ -f "$item" ]]; then
+      base=$(basename -- "$item")
+      if [[ "$base" =~ ^\..* ]]; then
+        localname="$base"      # Mantém .bashrc
+      else
+        localname="${base%%.*}"
+      fi
     fi
 
   else
     localname=$(basename "$PWD")
   fi
-
-  [[ "$PWD" == "/" ]] && localname="tar"
 
   case "$compressor" in
     zip)  outfile="${localname}-$(sh_diahora).zip"  ;;
