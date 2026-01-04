@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sáb 13 dez 2025 01:47:59 -04
+#  Updated: dom 04 jan 2026 02:05:28 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -42,7 +42,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='2.12.13-20251213'
+readonly VERSION='3.01.04-20260104'
 readonly APPDESC='Wrapper lite para o qemu'
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -71,14 +71,37 @@ declare HOME_DIR="$HOME/.chili-fr"
 declare iface_bridge='br0'
 declare bridge=false
 declare xmem='8G'
+
+declare videodevice='none'
+declare videodevice='ati-vga'
+declare videodevice='vmware-svga'
+declare videodevice='cirrus'
+declare videodevice='cirrus-vga'
+declare videodevice='isa-cirrus-vga'
+declare videodevice='isa-vga'
+declare videodevice='qxl-vga'
+declare videodevice='secondary-vga'
+declare videodevice='virtio-vga-gl'
+declare videodevice='virtio-gpu'
+declare videodevice='virtio-vga-gl'
+declare videodevice='virtio-gpu-pci'
+declare videodevice='virtio-gpu-gl-pci'
+declare videodevice='qxl-vga'
+declare videodevice='bochs-display'
+declare videodevice='ramfb'
+declare videodevice='virtio-gpu-gl'
+declare videodevice='virtio-gpu'
+
+declare videodevice='VGA'
 declare videodevice='qxl'
 declare videodevice='virtio-vga'
-declare videodevice='VGA'
+
 declare spice=false
 declare only_tty=false
 declare drive=false
 declare uefi=false
 declare vdisk=false
+declare output=false
 declare vdisk_name=''
 declare netdevice='virtio-net-pci'
 declare anetdevices=()
@@ -1224,6 +1247,7 @@ ${cyan}Opções:${reset}
   ${rst}-l|--list                              ${cyan}# listar discos virtuais
   ${rst}-u|--uefi                              ${cyan}# inicialização em UEFI - (default: BIOS)
   ${rst}-V|--version                           ${cyan}# exibe a versão do aplicativo
+  ${rst}-o|--output                            ${cyan}# exibe a saída gerada pelo comando e sai
   ${rst}-h|--help                              ${cyan}# imprime este ajuda
 ${cyan}Exemplos:${rst}
   $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#Execute uma imagem, em ponte, usando UEFI ${rst}
@@ -1493,8 +1517,19 @@ function sh_start_with_spice() {
 		-display none
 	)
 
+   if $output; then
+cat <<-EOF
+# ${red}output ${cyan}
+sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]} &
+qemu_pid=\$!
+remote-viewer spice://localhost:$random_spice_port &
+viewer_pid=\$!
+wait \$viewer_pid
+kill \$qemu_pid &>/dev/null
+EOF
+      exit 0
+   fi
 	# Executar o QEMU
-#  echo "${qemu_options[@]}" ;  exit 0
 	sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" &
 	qemu_pid=$!
 	remote-viewer spice://localhost:$random_spice_port &
@@ -1555,7 +1590,7 @@ main() {
 
 	# Adicionar opções padrão do QEMU
 	qemu_options+=(-no-fd-bootchk)
-	qemu_options+=(-machine accel=kvm)
+#	qemu_options+=(-machine accel=kvm)
 	qemu_options+=(-cpu host)
 	qemu_options+=(-smp "$(nproc)")
 	qemu_options+=(-m ${xmem})
@@ -1573,7 +1608,8 @@ main() {
 	for img in "${devices[@]}"; do
 		media_type=$(file -b --mime-type "${img}")
 		#		qemu_options+=(-boot menu=on)
-		if [[ "${media_type}" == "application/x-iso9660-image" ]]; then
+#		if [[ "${media_type}" == "application/x-iso9660-image" ]]; then
+      if [[ "$img" == *.iso ]]; then
 			msg_info "Anexando iso #${bootindex}: ${yellow}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
 			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
@@ -1583,19 +1619,58 @@ main() {
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 			((bootindex++))
-		elif [[ "${img}" == /dev/* ]]; then
-			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=${cache_type})
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-			msg_info "Anexando device #${bootindex}: ${yellow}${img}"
-			((bootindex++))
-		else
-			msg_info "Anexando vdisk #${bootindex}: ${yellow}${img}"
-			#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-			#			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw)
-			qemu_options+=(-device ahci,id=sata${bootindex})
-			qemu_options+=(-device ide-hd,drive=disk${bootindex},bus=sata${bootindex}.0,bootindex=${bootindex})
-			((bootindex++))
+#		elif [[ "${img}" == /dev/* ]]; then
+#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=${cache_type})
+#			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+#			msg_info "Anexando device #${bootindex}: ${yellow}${img}"
+#			((bootindex++))
+      elif [[ -b "$img" ]]; then
+         # Disco físico (block device real):
+         # Este bloco trata dispositivos reais em /dev (ex.: /dev/sdX, /dev/nvmeXnY).
+         # Diferente dos discos virtuais (arquivos), aqui forçamos cache=none e aio=native
+         # para evitar qualquer cache duplo no host e reduzir risco de corrupção de dados.
+         #
+         # Essa decisão é intencional e NÃO usa cache_type configurável:
+         # writeback/unsafe em disco físico pode causar perda silenciosa de dados
+         # em caso de crash do host ou queda de energia.
+         #
+         # Em resumo:
+         # - Disco físico → segurança e previsibilidade acima de performance
+         # - Disco virtual → política de cache configurável (ver bloco seguinte)
+         # Disco físico (/dev): usa I/O direto (cache=none,aio=native) para evitar
+         # cache duplo e reduzir risco de corrupção. Política fixa por segurança.
+         msg_info "Anexando device #${bootindex}: ${yellow}${img}"
+         qemu_options+=(
+            -drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+         )
+         qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+         ((bootindex++))
+#		else
+#			msg_info "Anexando vdisk #${bootindex}: ${yellow}${img}"
+#			#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
+#			#			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw)
+#			qemu_options+=(-device ahci,id=sata${bootindex})
+#			qemu_options+=(-device ide-hd,drive=disk${bootindex},bus=sata${bootindex}.0,bootindex=${bootindex})
+#			((bootindex++))
+      else
+         # Fallback para imagem raw genérica:
+         # Este bloco só é alcançado quando o arquivo NÃO é:
+         #  - ISO (cdrom)
+         #  - qcow2 (vdisk gerenciado)
+         #  - block device real (disco físico em /dev)
+         #
+         # Diferente do bloco anterior (disco físico), aqui assumimos que o disco
+         # é um ARQUIVO raw comum. Por isso usamos virtio-blk com cache configurável,
+         # mantendo bom desempenho sem os riscos de I/O direto no hardware.
+         #
+         # IDE/AHCI NÃO é usado aqui de propósito:
+         # virtio-blk é o caminho moderno, mais rápido e esperado para sistemas atuais.
+         # IDE fica restrito a compatibilidade legada explícita.
+         msg_info "Anexando vdisk #${bootindex}: ${yellow}${img} (raw)"
+         qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
+         qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+         ((bootindex++))
 		fi
 	done
 
@@ -1638,7 +1713,7 @@ main() {
 			-display curses
 		)
 	else
-		qemu_options+=(-device virtio-scsi-pci,id=scsi0)
+#		qemu_options+=(-device virtio-scsi-pci,id=scsi0)
 		qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
 		qemu_options+=(-rtc base=localtime,clock=host)
 		qemu_options+=(-device ich9-intel-hda)
@@ -1646,21 +1721,39 @@ main() {
 		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
 		#	qemu_options+=(-device intel-iommu)
-		qemu_options+=(-device "$videodevice")
-		qemu_options+=(-display gtk,gl=on)
-		qemu_options+=(-device virtio-serial)
+#		qemu_options+=(-display gtk,gl=on)
 	fi
 
 	if $spice; then
+      # SPICE video: use QXL. VGA é fallback; virtio-vga é para GTK, não SPICE.
+#		qemu_options+=(-device qxl)
+#		qemu_options+=(-device qxl,heads=1)
+#		qemu_options+=(-device qxl,heads=2)
+		qemu_options+=(-device "$videodevice")
+		qemu_options+=(-device virtio-serial)
 		sh_start_with_spice
 		exit 0
 	else
+		qemu_options+=(-device "$videodevice")
+		qemu_options+=(-display gtk,gl=on)
 		if $only_tty; then
-#			echo "${qemu_options[@]}" ;  exit 0
+		   if $output; then
+cat <<EOF
+# ${red}output${cyan}
+sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+EOF
+			   exit 0
+	      fi
 			cmd_sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		else
-#			echo "${qemu_options[@]}" ;  exit 0
+		   if $output; then
+cat <<EOF
+# ${red}output ${cyan}
+sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+EOF
+   			exit 0
+	      fi
 			sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		fi
@@ -1683,8 +1776,8 @@ fi
 sh_checkDependencies
 sh_checkVdiskFiles
 
-OPTIONS=m:ub:Vnhd:stg:v:i:N:c:r:l
-LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list
+OPTIONS=m:ub:Vnhd:stg:v:i:N:c:r:l:o
+LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
 
@@ -1694,7 +1787,7 @@ while test ${#opts[*]} -gt 0; do
 		sh_unsetvarcolors
 		;;
 	-u | --uefi)
-      msg_info "Parametro ${cyan}--uefi${rst} detectado: usando uefi ${rst}"
+      msg_info "Parametro ${yellow}--uefi${rst} detectado: usando uefi ${rst}"
 
 		uefi=true
 		;;
@@ -1752,7 +1845,7 @@ while test ${#opts[*]} -gt 0; do
 	-b | --bridge)
 		if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
 			iface_bridge="$2"
-			msg_info "Parametro ${cyan}--bridge${rst} detectado: usando bridge ${cyan}'$iface_bridge'${rst}"
+			msg_info "Parametro ${yellow}--bridge${rst} detectado: usando bridge ${cyan}'$iface_bridge'${rst}"
 			bridge=true
 			shift
 		else
@@ -1763,7 +1856,7 @@ while test ${#opts[*]} -gt 0; do
 		;;
 	-s | --spice)
 		spice=true
-		log_msg "Parametro --spice detectado: usando spice..."
+		log_msg "Parametro ${yellow}--spice ${rst}detectado: usando spice..."
 		;;
 	-t | --tty)
 		spice=false
@@ -1813,6 +1906,9 @@ while test ${#opts[*]} -gt 0; do
 			die "Argumento inválido para --network. Use virtio-net-pci,e1000,rtl8139,vmxnet3,ne2k_pci,ne2k_isa,pcnet,smc91c111,i82551,i82557b,i82559er" >&2
 		fi
 		;;
+	-o | --output)
+	   output=true
+	   ;;
 	-d | --drive)
 		if [[ -n $2 ]]; then
 			drive=true
@@ -1828,12 +1924,12 @@ while test ${#opts[*]} -gt 0; do
 		fi
 		;;
 	-m | --memory)
-		if [[ $2 =~ ^[0-9]+[MG]?$ ]]; then
+		if [[ $2 =~ ^[0-9]+[MG]$ ]]; then
 			xmem=$2
-			log_msg "Parametro -m/--memory detectado: $2"
+			log_msg "Parametro ${yellow}$1 ${rst}detectado: Usando $2"
 			shift
 		else
-			die "Argumento inválido para -m. Use um formato como 16G (por exemplo)." >&2
+			die "Argumento inválido para ${yellow}${1}${red}. Use um formato como 16G (por exemplo)." >&2
 		fi
 		;;
 	--)
@@ -1914,7 +2010,12 @@ if [[ $# > 0 ]]; then
 	print_summary_access_vm
 
 	#windows
-	qemu_options+=(-usb -device usb-tablet)
+#   if ! $spice; then
+      # usb-tablet fornece dispositivo de apontamento absoluto.
+      # Útil para GTK/VNC (evita mouse desalinhado).
+      # Em SPICE com vdagent ativo, é desnecessário e pode ser omitido.
+   	qemu_options+=(-usb -device usb-tablet)
+#   fi
 
 	if $drive; then
 		msg_info "Anexando disco/drive externo: ${yellow}$drive_path"
