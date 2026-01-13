@@ -56,19 +56,11 @@ fi
 package() {
 	cd "${srcdir}/${pkgname}"
 
-  # Instala todos os arquivos em /usr/share/${pkgname} no momento da criação do pacote
-  install -dm755 "${pkgdir}/usr/share/${pkgname}"
-  # Lista de pacotes instalados automaticamente via post_install
-  # (não confundir com optdepends do PKGBUILD)
-  if ((${#post_install_pkgs[@]})); then
-    printf "%s\n" "${post_install_pkgs[@]}" >"${pkgdir}/usr/share/${pkgname}/optdepends"
-  fi
-
 	# Copiar a estrutura de /etc, /usr e /opt para /usr/share/${pkgname}
 	local dirs=("usr" "etc" "opt")
 	for dir in "${dirs[@]}"; do
 		if [ -d "${srcdir}/${pkgname}/${dir}" ]; then
-			cp -a "${srcdir}/${pkgname}/${dir}" "${pkgdir}/usr/share/${pkgname}/"
+			cp -a "${srcdir}/${pkgname}/${dir}" "${pkgdir}/"
 		fi
 	done
 
