@@ -1,0 +1,50 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 19:39-0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-xrandr:81
+msgid "Wrapper para configuração de resolução usando xrandr, umc e cvt"
+msgstr ""
+
+#: chili-xrandr:357
+msgid "Erro fatal"
+msgstr ""
+
+#: chili-xrandr:372
+msgid "Menu DISPOSITIVO DE VÍDEO"
+msgstr ""
+
+#: chili-xrandr:373
+msgid "Selecione a saída do dispositivo para o conjunto:"
+msgstr ""
+
+#: chili-xrandr:379 chili-xrandr:419
+msgid "Cancelado!"
+msgstr ""
+
+#: chili-xrandr:411
+msgid "Menu ESCOLHER RESOLUÇÃO"
+msgstr ""
+
+#: chili-xrandr:412
+msgid "Adicionar"
+msgstr ""
+
+#: chili-xrandr:413
+msgid "Remover"
+msgstr ""
+
+#: chili-xrandr:414
+msgid "Escolha a resolução para o conjunto:"
+msgstr ""
