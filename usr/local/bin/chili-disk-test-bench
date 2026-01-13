@@ -4,10 +4,13 @@
 #
 #  chili-disk-test-bench
 #  Benchmark de leitura não destrutivo: dd, hdparm e fio
+#
 #  Created: 2025/09/18 - 21:29
 #  Altered: qui 25 set 2025 12:08:22 -04
+#  Updated: ter 13 jan 2026 12:26:46 -04
 #
-#  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2019-2026, Chililinux Team <https://github/chililinux/chili-utils>
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -30,8 +33,8 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
-#export LANGUAGE=pt_BR
-export TEXTDOMAINDIR=/usr/share/locale
+export LANGUAGE="${LANGUAGE:-pt_BR}"
+export TEXTDOMAINDIR=usr/share/locale
 export TEXTDOMAIN=chili-disk-test-bench
 
 #debug
@@ -43,14 +46,51 @@ shopt -s extglob
 #system
 declare APP="${0##*/}"
 declare _VERSION_="1.0.0-$(date +'%Y%m%d')"
-declare APPDESC="$APP - Wraper for tests with dd, hdparm and fio"
-declare distro="$(uname -n)"
-declare -a DEPENDENCIES=(dd hdparm fio tput)
-declare -A PACKAGEDEP=([dd]=coreutils [hdparm]=hdparm [fio]=fio [tput]=ncurses)
+declare APPDESC="$APP - $(gettext "Wraper para testes com dd, hdparm e fio")"
+declare -A PACKAGEDEP=(
+	[gettext]=gettext
+	[dd]=coreutils
+	[hdparm]=hdparm
+	[fio]=fio
+	[tput]=ncurses
+)
+# Mapa: [distro]="lista de pacotes"
+declare -A DISTRO_PKGS=(
+	["void"]="gettext rsync parted curl xz lvm2"
+	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidlinux"]="gettext rsync parted curl xz lvm2"
+	["chili"]="gettext rsync parted curl xz"
+	["chililinux"]="gettext rsync parted curl xz"
+	["arch"]="gettext rsync parted curl xz"
+	["manjaro"]="gettext rsync parted curl xz"
+	["debian"]="gettext-base rsync parted curl xz-utils"
+)
+# Mapa: [distro]="comando de instalação"
+declare -A DISTRO_MGR=(
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
+)
 
-#trap cleanup EXIT
-MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
-trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
+detect_distro() {
+	local id=""
+
+	if [[ -r /etc/os-release ]]; then
+		# Lê ID=void|arch|debian|... exatamente como a distro declara
+		id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+	elif [[ -r /usr/lib/os-release ]]; then
+		id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
+	else
+		echo "unknown"
+		return
+	fi
+	echo "$id"
+}
 
 sh_check_terminal() {
 	if [ ! -t 1 ]; then
@@ -145,15 +185,13 @@ unset_varcolors() {
 
 sh_checkroot() {
 	if [[ "$(id -u)" != "0" ]]; then
-		#alerta "$cdistro Linux installer" "${RED}${REVERSE}You should run this script as root!"
-		#scrend 0
 		elevate_to_root "$@"
 	fi
 }
 
 elevate_to_root() {
-	log_err "This script must be run as root."
-	log_ok "Elevating privileges..."
+	log_err "$(gettext "Você não pode realizar esta operação a menos que seja root.")"
+	log_ok "$(gettext "Elevando privilégios...")"
 	ccabec+='root [elevated]'
 	# Tenta usar sudo primeiro (caso esteja configurado)
 	if command -v sudo >/dev/null 2>&1; then
@@ -163,98 +201,110 @@ elevate_to_root() {
 	if command -v su >/dev/null 2>&1; then
 		exec su -c "$0 $*"
 	fi
-	die "Error: Unable to elevate privileges. Run manually as root."
+	die "$(gettext "Erro: Não foi possível elevar os privilégios. Execute manualmente como root.")"
 }
 
 sh_checkDependencies() {
-  local aBlock_files=()
-  local d
-  local errorFound=false
-  declare -a missing
+	local DISTRO="$(detect_distro)"
+	local aBlock_files=()
+	local d
+	local pkg
+	local errorFound=false
+	declare -a missing
+	local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+	local cmsgPkg="$(gettext "instalar pacote")"
 
-  for d in "${DEPENDENCIES[@]}"; do
-    if ! command -v "$d" &>/dev/null; then
-      log_err "${red}Error${reset}: $(gettext "Não foi possível encontrar o comando") ${cyan}'$d'${reset} -> $(gettext "instalar pacote") ${cyan}'"${PACKAGEDEP[$d]}"'${reset}"
-      missing+=("$d")
-      errorFound=true
-    else
-      log_msg "Check: ${cyan}$d"
-    fi
-  done
+	for d in "${!PACKAGEDEP[@]}"; do
+		if ! command -v "$d" &>/dev/null; then
+			pkg="${PACKAGEDEP[$d]}"
+			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+			missing+=("${pkg}")
+			errorFound=true
+		else
+			#			log_msg "Check: ${cyan}$d"
+			:
+		fi
+	done
 
-  if $errorFound; then
-    replicate '='
-    echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
-    echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
-    echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
-    replicate '='
-    if readconf "Deseja instalar os pacotes necessários ?"; then
-      msg_info "Tentando instalar necessários pacotes ${cyan}'${missing[@]}' ${reset}via pacman"
-      if sudo pacman -Sy --needed --quiet --noconfirm "${PACKAGEDEP[@]}" 1>/dev/null; then
-        sh_checkDependencies #overload
-      else
-        die "Encerrando..."
-      fi
-    else
-      die "Encerrando..."
-    fi
-  fi
+	if $errorFound; then
+		replicate '='
+		echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
+		echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
+		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
+		replicate '='
 
+		local cmd="${DISTRO_MGR[$DISTRO]}"
+		#     local pkgs="${DISTRO_PKGS[$DISTRO]}"
+		local pkgs="${missing[@]}"
+
+		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		if readconf "$(gettext "Instalar dependências base agora?")"; then
+			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
+			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+			if ! $cmd $pkgs; then
+				echo
+				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+				exit 1
+			fi
+			echo
+			echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+		fi
+	fi
 }
 
 readconf() {
-  local msg="$1"
-  local color="${2:-${yellow}}"
+	local msg="$1"
+	local color="${2:-${yellow}}"
 
-  echo -n -e "$color"
-  if [[ $LC_DEFAULT -eq 0 ]]; then
-    read -r -p "$msg [S/n]"
-  else
-    read -r -p "$msg [Y/n]"
-  fi
-  echo -n -e "$reset"
-  case "${REPLY^}" in
-  [SY]) return 0 ;;
-  "") return 0 ;;
-  *) return 1 ;;
-  esac
+	echo -n -e "$color"
+	if [[ $LC_DEFAULT -eq 0 ]]; then
+		read -r -p "$msg [S/n]"
+	else
+		read -r -p "$msg [Y/n]"
+	fi
+	echo -n -e "$reset"
+	case "${REPLY^}" in
+	[SY]) return 0 ;;
+	"") return 0 ;;
+	*) return 1 ;;
+	esac
 }
 
 replicate() {
-  local char=${1:-'#'}
-  local nsize=${2:-$(tput cols)}
-  local line
-  printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
+	local char=${1:-'#'}
+	local nsize=${2:-$(tput cols)}
+	local line
+	printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
 }
 export -f replicate
 
 msg_info() {
-  local msg="$1"
-  #local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
-  #local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
-  #msg="$(sed 's/<[^>]*>//g' <<<"$msg")"  # Remove as tags HTML
-  #echo -e "${blue}==>${green}[${caller_function}:${caller_line}]=>${yellow}info   : ${cyan}${msg}${reset}"
-  #echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
-  #echo -e "==>${yellow}[INFO]   : ${cyan}${msg}${reset}"
-  #printf "==>%b%-10s%s\n" "${yellow}" "[INFO]" "${cyan}$msg${reset}"
-  printf "  %b %s\\n" "${INFO}" "${*}"
+	local msg="$1"
+	#local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
+	#local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
+	#msg="$(sed 's/<[^>]*>//g' <<<"$msg")"  # Remove as tags HTML
+	#echo -e "${blue}==>${green}[${caller_function}:${caller_line}]=>${yellow}info   : ${cyan}${msg}${reset}"
+	#echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
+	#echo -e "==>${yellow}[INFO]   : ${cyan}${msg}${reset}"
+	#printf "==>%b%-10s%s\n" "${yellow}" "[INFO]" "${cyan}$msg${reset}"
+	printf "  %b %s\\n" "${INFO}" "${*}"
 
 }
 export -f msg_info
 
 log_msg() {
-  local retval="${PIPESTATUS[0]}"
-  local pcount=$#
+	local retval="${PIPESTATUS[0]}"
+	local pcount=$#
 
-  ((pcount >= 2)) && {
-    retval=$1
-    shift
-  }
-  if [[ $retval -eq 0 ]]; then
-    printf "  %b %s\\n" "${TICK}" "${*}"
-  else
-    printf "  %b %s\\n" "${CROSS}" "${*}"
-  fi
+	((pcount >= 2)) && {
+		retval=$1
+		shift
+	}
+	if [[ $retval -eq 0 ]]; then
+		printf "  %b %s\\n" "${TICK}" "${*}"
+	else
+		printf "  %b %s\\n" "${CROSS}" "${*}"
+	fi
 }
 
 log_ok() { echo -e "  ${TICK} ${*}${reset}"; }
@@ -268,9 +318,8 @@ die() {
 set_varcolors
 
 DEVICES=("$@")
-if [[ -z "${DEVICES[@]}" || "$@" == '-h' || "$@" == '--help'  ]]; then
-	echo "${APPDESC}"
-	die "Uso: $0 /dev/sdX [/dev/sdY] [...]"
+if [[ -z "${DEVICES[@]}" || "$@" == '-h' || "$@" == '--help' ]]; then
+	die "$(gettext "Uso:") $0 /dev/sdX [/dev/sdY] [...]"
 	exit 1
 fi
 
@@ -278,12 +327,12 @@ sh_checkroot "$@"
 sh_checkDependencies
 
 for DEVICE in "${DEVICES[@]}"; do
-  if [[ ! -b "$DEVICE" ]]; then
-    log_err "${red}Dispositivo inválido: [${DEVICE}]. Pulando...${reset}"
-    continue
-  fi
-  replicate
-	echo -e "${black}=== Testes de leitura para ${yellow}${DEVICE} ${black}===${reset}"
+	if [[ ! -b "$DEVICE" ]]; then
+		log_err "${red}$(gettext "Dispositivo inválido:") [${DEVICE}]. $(gettext "Pulando...")${rst}"
+		continue
+	fi
+	replicate
+	echo -e "${black}=== $(gettext "Testes de leitura para") ${yellow}${DEVICE} ${black}===${reset}"
 
 	##############################
 	# Teste com dd
@@ -292,11 +341,11 @@ for DEVICE in "${DEVICES[@]}"; do
 	DD_OUT=$(dd if="$DEVICE" of=/dev/null bs=1M count=100 iflag=direct status=progress 2>&1)
 	if [ $? -eq 0 ]; then
 		DD_SPEED=$(echo "$DD_OUT" | tail -n1 | awk -F', ' '{print $4}')
-		log_ok "${green}dd concluído: ${DD_SPEED}${reset}"
+		log_ok "${green}dd $(gettext "concluído:") ${DD_SPEED}${reset}"
 		dd_result=$(log_ok "dd    : ($DD_SPEED)")
 	else
-		log_err "${red}dd falhou!${reset}"
-		dd_result=$(log_err "dd    : falhou!")
+		log_err "${red}dd $(gettext "falhou!")${reset}"
+		dd_result=$(log_err "dd    : $(gettext "falhou!")")
 	fi
 
 	##############################
@@ -307,10 +356,10 @@ for DEVICE in "${DEVICES[@]}"; do
 	if [ $? -eq 0 ]; then
 		# Pega a linha que contém MB/sec
 		HD_SPEED=$(echo "$HDPARM_OUT" | awk '/MB\/sec/ {print $11}')
-		log_ok "${green}hdparm concluído: ${HD_SPEED} MB/s${reset}"
+		log_ok "${green}hdparm $(gettext "concluído:") ${HD_SPEED} MB/s${reset}"
 		hdparm_result=$(log_ok "hdparm: ($HD_SPEED MB/s)")
 	else
-		log_err "${red}hdparm falhou!${reset}"
+		log_err "${red}hdparm $(gettext "falhou!")${reset}"
 		hdparm_result=$(log_err "hdparm: Falha")
 	fi
 
@@ -321,17 +370,17 @@ for DEVICE in "${DEVICES[@]}"; do
 	FIO_OUT=$(fio --name=seqread --filename="$DEVICE" --rw=read --bs=1M --size=100M --direct=1 --runtime=10 --time_based --ioengine=libaio 2>&1)
 	if [ $? -eq 0 ]; then
 		FIO_SPEED=$(echo "$FIO_OUT" | grep -oP 'BW=.*?\(\K[0-9.]+[KMG]B/s')
-		log_ok "${green}fio concluído: $FIO_SPEED${reset}"
+		log_ok "${green}fio $(gettext "concluído:") $FIO_SPEED${reset}"
 		fio_result=$(log_ok "fio   : ($FIO_SPEED)")
 	else
-		log_err "${red}fio falhou!${reset}"
+		log_err "${red}fio $(gettext "falhou!")${reset}"
 		fio_result=$(log_err "fio   : falhou!")
 	fi
 
 	##############################
 	# Resumo
 	##############################
-	echo -e "${yellow}=== Resumo de velocidades ===${reset}"
+	echo -e "${yellow}=== $(gettext "Resumo de velocidades") ===${reset}"
 	echo -e "$dd_result"
 	echo -e "$hdparm_result"
 	echo -e "$fio_result"
