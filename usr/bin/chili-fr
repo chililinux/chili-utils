@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 04 jan 2026 02:05:28 -04
+#  Updated: ter 13 jan 2026 10:09:01 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -30,6 +30,7 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
+export LANGUAGE="${LANGUAGE:-pt_BR}"
 export TEXTDOMAINDIR=/usr/share/locale
 export TEXTDOMAIN=chili-fr
 export TERM=${TERM:-xterm}
@@ -42,8 +43,8 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.01.04-20260104'
-readonly APPDESC='Wrapper lite para o qemu'
+readonly VERSION='3.01.13-20260113'
+readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
 	'qemu-system-x86_64'
@@ -67,6 +68,7 @@ readonly -A PACKAGEDEP=(
 	['brctl']='bridge-utils'
 )
 
+declare quiet=false
 declare HOME_DIR="$HOME/.chili-fr"
 declare iface_bridge='br0'
 declare bridge=false
@@ -288,9 +290,9 @@ log_msg() {
 		shift
 	}
 	if [[ $retval -eq 0 ]]; then
-		printf "%b %s\n" "${TICK}" "${*}"
+		$quiet || printf "%b %s\n" "${TICK}" "${*}"
 	else
-		printf "%b %s\n" "${CROSS}" "${*}"
+		$quiet || printf "%b %s\n" "${CROSS}" "${*}"
 	fi
 }
 
@@ -335,31 +337,20 @@ msg_run() {
 }
 export -f msg_run
 
-#msg_info() {
-#	local msg="$*"
-#	#local caller_function="${FUNCNAME[1]}" # Nome da função que chamou a função atual
-#	#local caller_line="${BASH_LINENO[1]}"  # Número da linha que chamou a função atual
-#	#echo -e "${caller_function}=>${yellow}info   : ${cyan}${msg}${reset}"
-#	#echo -e "${reset}  =>${yellow}info   : ${cyan}${msg}${reset}"
-#	printf "%s\n" "${yellow}[WARN] ${cyan}$msg${rst}"
-#}
-#export -f msg_info
-
-#msg_info() {  printf "%s\n" "${white}${pink}[INFO] ${rst}${*}${rst}"; }
-msg_info() { echo -e "${INFO} ${*}${reset}"; }
-msg() { echo -e "${INFO} ${*}${reset}"; }
-log_ok() { echo -e "${TICK} ${*}${reset}"; }
-log_err() { echo -e "${CROSS} ${*}${reset}"; }
-log_mid() { echo -e "${MID} ${*}${reset}"; }
-log_warn() { echo -e "${WARN} ${*}${reset}"; }
-msg_info_tab() { echo -e "  ${INFO} ${*}${reset}"; }
-msg_ex_tab() { echo -e "  👉   ${*}${reset}"; }
-msg_ex() { echo -e "👉   ${*}${reset}"; }
-msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
-log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
-log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
-log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
-log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
+msg_info() { $quiet || echo -e "${INFO} ${*}${reset}"; }
+msg_info_tab() { $quiet || echo -e "  ${INFO} ${*}${reset}"; }
+msg() { $quiet || echo -e "${INFO} ${*}${reset}"; }
+log_ok() { $quiet || echo -e "${TICK} ${*}${reset}"; }
+log_err() { $quiet || echo -e "${CROSS} ${*}${reset}"; }
+log_mid() { $quiet || echo -e "${MID} ${*}${reset}"; }
+log_warn() { $quiet || echo -e "${WARN} ${*}${reset}"; }
+msg_ex_tab() { $quiet || echo -e "  👉   ${*}${reset}"; }
+msg_ex() { $quiet || echo -e "👉   ${*}${reset}"; }
+msg_tab() { $quiet || echo -e "  ${INFO} ${*}${reset}"; }
+log_ok_tab() { $quiet || echo -e "  ${TICK} ${*}${reset}"; }
+log_err_tab() { $quiet || echo -e "  ${CROSS} ${*}${reset}"; }
+log_mid_tab() { $quiet || echo -e "  ${MID} ${*}${reset}"; }
+log_warn_tab() { $quiet || echo -e "  ${WARN} ${*}${reset}"; }
 die() {
 	echo -e "${CROSS} ${red}${*}${reset}"
 	exit 1
@@ -427,7 +418,7 @@ sh_checkDependencies() {
 
 	for d in "${DEPENDENCIES[@]}"; do
 		if ! command -v "$d" &>/dev/null; then
-			log_err "Check: ${red}ERROR${rst}: Não foi possível encontrar o comando ${cyan}'$d'${rst} -> instalar pacote ${cyan}${PACKAGEDEP[$d]}${rst}"
+			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o comando') ${cyan}'$d'${rst} -> $(gettext 'instalar pacote') ${cyan}${PACKAGEDEP[$d]}${rst}"
 			missing+=("$d")
 			errorFound=true
 		else
@@ -438,11 +429,11 @@ sh_checkDependencies() {
 
 	if $errorFound; then
 		replicate '='
-		echo "${yellow}             IMPOSSÍVEL CONTINUAR"
-		echo "${black}Este script precisa dos comandos listados acima"
-		echo "${black}Instale-os e/ou verifique se eles estão em seu ${red}\$PATH${rst}"
+		echo "${yellow}             $(gettext 'IMPOSSÍVEL CONTINUAR')"
+		echo "${black}$(gettext 'Este script precisa dos comandos listados acima')"
+		echo "${black}$(gettext 'Instale-os e/ou verifique se eles estão em seu') ${red}\$PATH${rst}"
 		replicate '='
-		if readconf "Deseja instalar os pacotes e criar os arquivos necessários ?"; then
+		if readconf "$(gettext 'Deseja instalar os pacotes e criar os arquivos necessários?')"; then
 			sh_setup
 		fi
 	fi
@@ -481,7 +472,7 @@ sh_checkOVMFFiles() {
 	aBlock_files+=('/usr/share/edk2/x64/OVMF_VARS.4m.fd')
 	for d in "${aBlock_files[@]}"; do
 		if [[ ! -e "$d" ]]; then
-			log_err "Check: ${red}ERROR${reset}: Não foi possível encontrar o arquivo ${cyan}'$d'${yellow} -> instalar pacote ${cyan}edk2-ovmf${reset}"
+			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o arquivo') ${cyan}'$d'${yellow} -> $(gettext 'instalar pacote') ${cyan}edk2-ovmf${reset}"
 			errorFound=true
 			break
 		else
@@ -553,7 +544,7 @@ ensure_qemu_bridge_allowed() {
 	fi
 
 	# adicionar no final do arquivo
-	msg_info "Adicionando 'allow ${br}' em $conf"
+	msg_info "$(gettext 'Adicionando') 'allow ${br}' $(gettext 'em') $conf"
 	cmd_sudo sh -c "echo 'allow ${br}' >> '$conf'"
 	return 0
 }
@@ -571,112 +562,112 @@ create_real_bridge() {
 	local bridge_gw
 
 	[[ -z "$bridge_name" ]] && {
-		msg_err "Uso correto: --create_real_bridge br0"
+		msg_err "$(gettext 'Uso correto'): --create_real_bridge br0"
 		return 1
 	}
 
-	msg_info "Verificando se a bridge '$bridge_name' já existe"
+	msg_info "$(gettext 'Verificando se a bridge') '$bridge_name' $(gettext 'já existe')"
 	if ip link show "$bridge_name" &>/dev/null; then
-		msg_warning "Bridge '${bridge_name}' já existe — nada a fazer."
+		msg_warning "$(gettext 'Ponte') '${bridge_name}' $(gettext 'já existe — nada a fazer.')"
 		cmd_sudo nmcli connection show
 		return 0
 	fi
 
 	# DETECTAR INTERFACES FÍSICAS (ETHERNET)
 	###########################################################################
-	msg_info "Detectando interfaces físicas (ethernet)"
+	msg_info "$(gettext 'Detectando interfaces físicas (ethernet)')"
 	local -a eth_list
 	mapfile -t eth_list < <(
 		nmcli -t -f DEVICE,TYPE device | awk -F: '$2=="ethernet"{print $1}'
 	)
 
 	if [[ ${#eth_list[@]} -eq 0 ]]; then
-		msg_err "Nenhuma interface ethernet disponível. WLAN não suporta bridge real."
+		msg_err "$(gettext 'Nenhuma interface ethernet disponível. WLAN não suporta bridge real.')"
 		return 1
 		#  elif [[ ${#eth_list[@]} -eq 1 ]]; then
 		#    iface_phys="${eth_list[0]}"
 		#    msg_info "Apenas uma interface física encontrada: $iface_phys"
 	else
-		msg_info "Múltiplas interfaces encontradas — exibindo menu de seleção"
-		create_menu_with_array "Escolha a interface física para a bridge:" eth_list[@]
+		msg_info "$(gettext 'Múltiplas interfaces encontradas — exibindo menu de seleção')"
+		create_menu_with_array "$(gettext 'Escolha a interface física para a bridge:')" eth_list[@]
 		iface_phys="$MENU_RESULT"
-		if [[ "$iface_phys" == "Encerrar" ]]; then
-			msg_info "Operação cancelada pelo usuário."
+		if [[ "$iface_phys" == "$(gettext 'Encerrar')" ]]; then
+			msg_info "$(gettext 'Operação cancelada pelo usuário.')"
 			return 1
 		fi
-		msg_info "Interface selecionada: $iface_phys"
+		msg_info "$(gettext 'Interface selecionada:') $iface_phys"
 	fi
 
 	# PROTEÇÃO — INTERFACE NÃO PODE SER WLAN
 	###########################################################################
 	if nmcli -t -f DEVICE,TYPE device | grep -q "^${iface_phys}:wifi$"; then
-		msg_err "A interface '$iface_phys' é Wi-Fi. Bridge real não funciona com WLAN."
+		msg_err "$(gettext 'A interface') '$iface_phys' $(gettext 'é Wi-Fi. Bridge real não funciona com WLAN.')"
 		return 1
 	fi
 
 	# VERIFICAR SE INTERFACE JÁ É SLAVE
 	###########################################################################
-	msg_info "Verificando se '$iface_phys' já pertence a outra bridge"
+	msg_info "$(gettext 'Verificando se') '$iface_phys' $(gettext 'já pertence a outra bridge')"
 	kernel_master=$(ip -o link show "$iface_phys" | sed -n 's/.*master \([^ ]*\).*/\1/p' || true)
 	if [[ -n "$kernel_master" ]]; then
-		msg_err "Interface '$iface_phys' já pertence à bridge '$kernel_master'."
-		msg_warning "Remova primeiro: chili-fr -r $kernel_master"
+		msg_err "$(gettext 'Interface') '$iface_phys' $(gettext 'já pertence à bridge') '$kernel_master'."
+		msg_warning "$(gettext 'Remova primeiro:') chili-fr -r $kernel_master"
 		return 1
 	fi
 
 	# MENU VLAN
 	###########################################################################
-	msg_info "Configuração de VLAN"
+	msg_info "$(gettext 'Configuração de VLAN')"
 	local -a vlan_options=(
-		"Sem VLAN (rede normal)"
-		"VLAN Tagged (criar ${iface_phys}.<id> e usar como slave)"
-		"VLAN Trunk (bridge vlan-filtering habilitado)"
+		"$(gettext 'Sem VLAN (rede normal)')"
+		"VLAN Tagged ($(gettext 'criar') ${iface_phys}.<id> $(gettext 'e usar como slave'))"
+		"VLAN Trunk (bridge vlan-filtering $(gettext 'habilitado'))"
 	)
-	create_menu_with_array "Selecione o modo VLAN:" vlan_options[@]
+	create_menu_with_array "$(gettext 'Selecione o modo VLAN:')" vlan_options[@]
 
 	local vlan_choice
 	case "$MENU_RESULT" in
-	"Sem VLAN (rede normal)") vlan_choice="none" ;;
-	"VLAN Tagged (criar ${iface_phys}.<id> e usar como slave)") vlan_choice="tagged" ;;
-	"VLAN Trunk (bridge vlan-filtering habilitado)") vlan_choice="trunk" ;;
+	"$(gettext 'Sem VLAN (rede normal)')") vlan_choice="none" ;;
+	"VLAN Tagged ($(gettext 'criar') ${iface_phys}.<id> $(gettext 'e usar como slave)')") vlan_choice="tagged" ;;
+	"VLAN Trunk (bridge vlan-filtering $(gettext 'habilitado')") vlan_choice="trunk" ;;
 	*)
-		msg_err "Erro inesperado no menu VLAN"
+		msg_err "$(gettext 'Erro inesperado no menu VLAN')"
 		return 1
 		;;
 	esac
-	msg_info "Modo VLAN selecionado: ${cyan}$vlan_choice${rst}"
+	msg_info "$(gettext 'Modo VLAN selecionado:') ${cyan}$vlan_choice${rst}"
 
 	local vlan_id="" slave_iface="" want_vlan_trunk=false
 	if [[ "$vlan_choice" == "tagged" ]]; then
 		while true; do
-			get 0 0 "Digite o VLAN ID (1–4094): " vlan_id ""
+			get 0 0 "$(gettext 'Digite o VLAN ID') (1–4094): " vlan_id ""
 			if [[ "$vlan_id" =~ ^[0-9]+$ && "$vlan_id" -ge 1 && "$vlan_id" -le 4094 ]]; then
 				slave_iface="${iface_phys}.${vlan_id}"
-				msg_info "Subinterface VLAN definida: $slave_iface"
+				msg_info "$(gettext 'Subinterface VLAN definida:') $slave_iface"
 				break
 			fi
-			msg_err "VLAN inválida: informe um número entre 1 e 4094."
+			msg_err "$(gettext 'VLAN inválida: informe um número entre 1 e 4094')."
 		done
 
 	elif [[ "$vlan_choice" == "trunk" ]]; then
 		want_vlan_trunk=true
-		msg_info "Bridge atuará como trunk (vlan-filtering)."
+		msg_info "$(gettext 'Bridge atuará como trunk') (vlan-filtering)."
 
 		local vlan_list_raw
 		while true; do
-			get 0 0 "Informe VLANs permitidas separadas por vírgula (ex: 10,20,30): " vlan_list_raw ""
+			get 0 0 "$(gettext 'Informe VLANs permitidas separadas por vírgula') (ex: 10,20,30): " vlan_list_raw ""
 			vlan_list_raw="${vlan_list_raw// /}"
 			IFS=',' read -r -a trunk_vlans <<<"$vlan_list_raw"
 			local ok=true
 			declare -A _seen=()
 			for v in "${trunk_vlans[@]}"; do
 				if ! [[ "$v" =~ ^[0-9]+$ && "$v" -ge 1 && "$v" -le 4094 ]]; then
-					msg_err "VLAN inválida: $v"
+					msg_err "$(gettext 'VLAN inválida:') $v"
 					ok=false
 					break
 				fi
 				if [[ -n "${_seen[$v]}" ]]; then
-					msg_err "VLAN duplicada: $v"
+					msg_err "$(gettext 'VLAN duplicada:') $v"
 					ok=false
 					break
 				fi
@@ -689,28 +680,28 @@ create_real_bridge() {
 	# CAPTURAR IP/GW
 	###########################################################################
 	if [[ -n "$slave_iface" ]]; then
-		msg_info "Detectando IP na subinterface VLAN '$slave_iface'"
+		msg_info "$(gettext 'Detectando IP na subinterface VLAN') '$slave_iface'"
 		bridge_ip=$(nmcli -g IP4.ADDRESS device show "$slave_iface" 2>/dev/null | head -n1 || true)
 		bridge_gw=$(nmcli -g IP4.GATEWAY device show "$slave_iface" 2>/dev/null | head -n1 || true)
 		if [[ -z "$bridge_ip" ]]; then
-			msg_info "Usando IP da interface física '$iface_phys'"
+			msg_info "$(gettext 'Usando IP da interface física') '$iface_phys'"
 			bridge_ip=$(nmcli -g IP4.ADDRESS device show "$iface_phys" | head -n1)
 			bridge_gw=$(nmcli -g IP4.GATEWAY device show "$iface_phys")
 		fi
 	else
-		msg_info "Obtendo IP atual da interface ${cyan}'$iface_phys'${rst}"
+		msg_info "$(gettext 'Obtendo IP atual da interface') ${cyan}'$iface_phys'${rst}"
 		bridge_ip=$(nmcli -g IP4.ADDRESS device show "$iface_phys" | head -n1)
 		bridge_gw=$(nmcli -g IP4.GATEWAY device show "$iface_phys")
 	fi
 
-	if [[ -z "$bridge_ip" ]]; then msg_warning "Nenhum IP detectado automaticamente."; fi
-	if [[ -z "$bridge_gw" ]]; then msg_warning "Nenhum gateway detectado."; fi
+	if [[ -z "$bridge_ip" ]]; then msg_warning "$(gettext 'Nenhum IP detectado automaticamente.')"; fi
+	if [[ -z "$bridge_gw" ]]; then msg_warning "$(gettext 'Nenhum gateway detectado.')"; fi
 
 	local original_ip_pure="${bridge_ip%%/*}"
 
 	# SOLICITAR E VALIDAR IP
 	###########################################################################
-	msg_info "Configurando IP da bridge ${cyan}'$bridge_name'${rst}"
+	msg_info "$(gettext 'Configurando IP da bridge') ${cyan}'$bridge_name'${rst}"
 
 	if readconf "Usar DHCP?"; then
 		use_dhcp=true
@@ -720,20 +711,20 @@ create_real_bridge() {
 			bridge_ip="${tmp_ip:-$bridge_ip}"
 
 			if [[ ! "$bridge_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]]; then
-				msg_err "Formato inválido."
+				msg_err "$(gettext 'Formato inválido.')"
 				continue
 			fi
 
 			local candidate_ip="${bridge_ip%%/*}"
 			if [[ "$candidate_ip" == "$original_ip_pure" ]]; then
-				msg_info "IP igual ao atual — pulando teste."
+				msg_info "$(gettext 'IP igual ao atual — pulando teste.')"
 				break
 			fi
 
-			msg_info "Validando se IP está em uso..."
+			msg_info "$(gettext 'Validando se IP está em uso...')"
 			if command -v arping >/dev/null 2>&1; then
 				if cmd_sudo arping -c2 -w1 -I "$iface_phys" "$candidate_ip" >/dev/null 2>&1; then
-					msg_err "Conflito ARP detectado."
+					msg_err "$(gettext 'Conflito ARP detectado.')"
 					continue
 				else
 					break
@@ -746,12 +737,12 @@ create_real_bridge() {
 			get 0 0 "Gateway (ex 192.168.2.1): " tmp_gw "$bridge_gw"
 			bridge_gw="${tmp_gw:-$bridge_gw}"
 			if [[ ! "$bridge_gw" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-				msg_err "Gateway inválido."
+				msg_err "$(gettext 'Gateway inválido')."
 				continue
 			fi
 			if ! ping -c1 -W1 "$bridge_gw" >/dev/null; then
-				msg_warning "Gateway não respondeu."
-				readconf "Continuar?" && break || continue
+				msg_warning "$(gettext 'Gateway não respondeu.')"
+				readconf "$(gettext 'Continuar?')" && break || continue
 			fi
 			break
 		done
@@ -759,20 +750,20 @@ create_real_bridge() {
 
 	# CRIAR BRIDGE E SLAVE
 	###########################################################################
-	msg_info "Criando bridge ${cyan}'$bridge_name'${rst}"
+	msg_info "$(gettext 'Criando ponte') ${cyan}'$bridge_name'${rst}"
 	cmd_sudo nmcli connection add type bridge ifname "$bridge_name" con-name "$bridge_name" \
 		stp no ipv6.method ignore autoconnect yes >/dev/null || {
-		msg_err "Falha ao criar bridge"
+		msg_err "$(gettext 'Falha ao criar ponte')"
 		return 1
 	}
 
 	local slave_to_use
 	if [[ -n "$slave_iface" ]]; then
 		if ! ip link show "$slave_iface" &>/dev/null; then
-			msg_info "Criando subinterface VLAN $slave_iface"
+			msg_info "$(gettext 'Criando subinterface') VLAN $slave_iface"
 			cmd_sudo nmcli connection add type vlan ifname "$slave_iface" dev "$iface_phys" id "$vlan_id" \
 				con-name "vlan-${iface_phys}.${vlan_id}" ipv4.method disabled ipv6.method ignore >/dev/null || {
-				msg_err "Falha ao criar VLAN"
+				msg_err "$(gettext 'Falha ao criar VLAN')"
 				return 1
 			}
 			sleep 1
@@ -783,31 +774,31 @@ create_real_bridge() {
 	fi
 
 	# criar slave da bridge apontando para slave_to_use
-	msg_info "Criando conexão slave para ${cyan}'$slave_to_use'${rst}"
+	msg_info "$(gettext 'Criando conexão slave para') ${cyan}'$slave_to_use'${rst}"
 	local slave_name="${bridge_name}-${slave_to_use}-$(uuidgen | cut -c1-8)"
 
 	cmd_sudo nmcli connection add type bridge-slave ifname "$slave_to_use" con-name "$slave_name" \
 		master "$bridge_name" autoconnect yes >/dev/null || {
-		msg_err "Falha ao criar slave '$slave_name'"
+		msg_err "$(gettext 'Falha ao criar slave') '$slave_name'"
 		return 1
 	}
 
 	# VLAN TRUNK
 	###########################################################################
 	if [[ "$vlan_choice" == "trunk" ]]; then
-		msg_info "Ativando vlan-filtering"
+		msg_info "$(gettext 'Ativando') vlan-filtering"
 		cmd_sudo nmcli connection modify "$bridge_name" bridge.vlan-filtering yes
 
 		for v in "${trunk_vlans[@]}"; do
-			msg_info "Adicionando VLAN $v ao trunk"
+			msg_info "$(gettext 'Adicionando') VLAN $v $(gettext 'ao') trunk"
 			cmd_sudo bridge vlan add dev "$iface_phys" vid "$v" master "$bridge_name" 2>/dev/null ||
-				msg_warning "Falha ao adicionar VLAN $v"
+				msg_warning "$(gettext 'Falha ao adicionar') VLAN $v"
 		done
 	fi
 
 	# DESATIVAR CONEXÃO ANTIGA
 	###########################################################################
-	msg_info "Desativando conexão antiga da interface física"
+	msg_info "$(gettext 'Desativando conexão antiga da interface física')"
 	old_con=$(nmcli -t -f NAME,DEVICE connection show | grep ":$iface_phys$" | cut -d: -f1 || true)
 	if [[ -n "$old_con" ]]; then
 		cmd_sudo nmcli connection down "$old_con" &>/dev/null
@@ -817,10 +808,10 @@ create_real_bridge() {
 	# CONFIGURAR IP NA BRIDGE
 	###########################################################################
 	if [[ "$use_dhcp" == true ]]; then
-		msg_info "Ativando DHCP na bridge ${cyan}'$bridge_name'${rst}"
+		msg_info "$(gettext 'Ativando DHCP na ponte') ${cyan}'$bridge_name'${rst}"
 		cmd_sudo nmcli connection modify "$bridge_name" ipv4.method auto ipv4.never-default no >/dev/null
 	else
-		msg_info "Aplicando IP manual"
+		msg_info "$(gettext 'Aplicando IP manual')"
 		cmd_sudo nmcli connection modify "$bridge_name" \
 			ipv4.method manual \
 			ipv4.addresses "$bridge_ip" \
@@ -831,19 +822,19 @@ create_real_bridge() {
 
 	# ATIVAR A BRIDGE
 	###########################################################################
-	msg_info "Ativando bridge ${cyan}'$bridge_name'${rst}"
+	msg_info "$(gettext 'Ativando ponte') ${cyan}'$bridge_name'${rst}"
 	cmd_sudo nmcli connection up "$bridge_name" >/dev/null
 
 	# RESUMO
 	###########################################################################
-	msg_info_tab "${green}---------- RESUMO ----------${rst}"
-	msg_info_tab "Bridge           : ${green}$bridge_name${rst}"
-	msg_info_tab "Interface física : ${green}$iface_phys${rst}"
+	msg_info_tab "${green}---------- $(gettext 'RESUMO') ----------${rst}"
+	msg_info_tab "$(gettext 'Ponte')            : ${green}$bridge_name${rst}"
+	msg_info_tab "$(gettext 'Interface física') : ${green}$iface_phys${rst}"
 	msg_info_tab "Slave            : ${green}$slave_to_use${rst}"
-	msg_info_tab "Conexão slave    : ${green}$slave_name${rst}"
+	msg_info_tab "$(gettext 'Conexão') slave    : ${green}$slave_name${rst}"
 
 	case "$vlan_choice" in
-	none) msg_info_tab "VLAN             : ${green}nenhuma${rst}" ;;
+	none) msg_info_tab "VLAN             : ${green}$(gettext 'nenhuma')${rst}" ;;
 	tagged) msg_info_tab "VLAN Tagged      : ${green}$vlan_id${rst}" ;;
 	trunk) msg_info_tab "Trunk            : ${green}VLANs ${trunk_vlans[*]}${rst}" ;;
 	esac
@@ -851,13 +842,13 @@ create_real_bridge() {
 	if [[ "$use_dhcp" == true ]]; then
 		msg_info_tab "IP               : ${green}DHCP${rst}"
 	else
-		msg_info_tab "IP aplicado      : ${green}$bridge_ip${rst}"
+		msg_info_tab "IP $(gettext 'aplicado')      : ${green}$bridge_ip${rst}"
 		msg_info_tab "Gateway          : ${green}$bridge_gw${rst}"
 	fi
 
 	msg_info_tab "${green}-----------------------------${rst}"
 	ensure_qemu_bridge_allowed "$bridge_name"
-	msg_ok "Bridge ${cyan}'$bridge_name'${rst} criada e configurada com sucesso."
+	msg_ok "$(gettext 'Ponte') ${cyan}'$bridge_name'${rst} $(gettext 'criada e configurada com sucesso.')"
 	return 0
 }
 
@@ -875,7 +866,7 @@ remove_real_bridge() {
 
 	# DETECTAR INTERFACE FÍSICA SLAVE
 	###########################################################################
-	msg_info "Removendo bridge '$bridge_name' com segurança (sem derrubar SSH)"
+	msg_info "$(gettext 'Removendo') bridge '$bridge_name' $(gettext 'com segurança (sem derrubar SSH)')"
 	iface_phys=$(ip -o link show | grep -w "master $bridge_name" | awk -F: '{print $2}' | awk '{print $1}')
 	#   iface_phys=$(
 	#     ip -o link show \
@@ -889,11 +880,11 @@ remove_real_bridge() {
 	#   )
 
 	if [[ -z "$iface_phys" ]]; then
-		msg_err "Não foi possível detectar interface física slave."
+		msg_err "$(gettext 'Não foi possível detectar interface física slave.')"
 		return 1
 	fi
 
-	msg_info "Interface física slave detectada: ${cyan}$iface_phys${rst}"
+	msg_info "$(gettext 'Interface física slave detectada:') ${cyan}$iface_phys${rst}"
 
 	# ACHAR PERFIL SLAVE (fácil)
 	###########################################################################
@@ -904,9 +895,9 @@ remove_real_bridge() {
 	)
 
 	if [[ -z "$slave_con" ]]; then
-		msg_warning "Nenhum perfil slave encontrado — talvez já removido."
+		msg_warning "$(gettext 'Nenhum perfil slave encontrado — talvez já removido.')"
 	else
-		msg_info "Perfil slave encontrado: ${cyan}$slave_con${rst}"
+		msg_info "$(gettext 'Perfil slave encontrado:') ${cyan}$slave_con${rst}"
 	fi
 
 	###########################################################################
@@ -915,7 +906,7 @@ remove_real_bridge() {
 	bridge_ip=$(nmcli -g IP4.ADDRESS device show "$bridge_name" | head -n1)
 	bridge_gw=$(nmcli -g IP4.GATEWAY device show "$bridge_name" | head -n1)
 
-	msg_info "IP atual na bridge: ${cyan}${bridge_ip:-nenhum}${rst}"
+	msg_info "$(gettext 'IP atual na') bridge: ${cyan}${bridge_ip:-nenhum}${rst}"
 	msg_info "Gateway: ${cyan}${bridge_gw:-nenhum}${rst}"
 
 	# IDENTIFICAR PERFIL FÍSICO CORRETO  (teu método definitivo)
@@ -928,37 +919,37 @@ remove_real_bridge() {
 	)
 
 	if [[ -z "$phys_con" ]]; then
-		msg_err "Não foi possível localizar o perfil físico verdadeiro para '$iface_phys'."
+		msg_err "$(gettext 'Não foi possível localizar o perfil físico verdadeiro para') '$iface_phys'."
 		return 1
 	fi
-	msg_info "Perfil físico real: ${cyan}$phys_con${rst}"
+	msg_info "$(gettext 'Perfil físico real:') ${cyan}$phys_con${rst}"
 
 	# RESTAURAR AUTOCONNECT + IP NA FÍSICA (ANTES DE REMOVER A BRIDGE)
 	###########################################################################
-	msg_info_tab "Restaurando autoconnect da interface física"
+	msg_info_tab "$(gettext 'Restaurando autoconnect da interface física')"
 	cmd_sudo nmcli connection modify "$phys_con" connection.autoconnect yes
 
 	if [[ -n "$bridge_ip" ]]; then
-		msg_info_tab "Aplicando IP ($bridge_ip) de volta na interface física"
+		msg_info_tab "$(gettext 'Aplicando') IP ($bridge_ip) $(gettext 'de volta na interface física')"
 		cmd_sudo nmcli connection modify "$phys_con" ipv4.method manual
 		cmd_sudo nmcli connection modify "$phys_con" ipv4.addresses "$bridge_ip"
 		[[ -n "$bridge_gw" ]] && cmd_sudo nmcli connection modify "$phys_con" ipv4.gateway "$bridge_gw"
 	else
-		msg_info_tab "Sem IP detectado — configurando interface física para DHCP"
+		msg_info_tab "$(gettext 'Sem IP detectado — configurando interface física para DHCP')"
 		cmd_sudo nmcli connection modify "$phys_con" ipv4.method auto
 	fi
 
 	# SUBIR INTERFACE FÍSICA AGORA (ANTES DE REMOVER A BRIDGE)
 	###########################################################################
-	msg_info_tab "Subindo interface física ANTES de remover a bridge"
+	msg_info_tab "$(gettext 'Subindo interface física ANTES de remover a bridge')"
 	echo -n "$green"
-	cmd_sudo nmcli connection up "$phys_con" || msg_warning "Falha ao subir interface física — pode ser esperado via SSH"
+	cmd_sudo nmcli connection up "$phys_con" || msg_warning "$(gettext 'Falha ao subir interface física — pode ser esperado via SSH')"
 	echo -n "$rst"
 
 	# REMOVER PERFIL SLAVE
 	###########################################################################
 	if [[ -n "$slave_con" ]]; then
-		msg_info_tab "Removendo conexão slave '$slave_con'"
+		msg_info_tab "$(gettext 'Removendo conexão slave') '$slave_con'"
 		echo -n "$green"
 		cmd_sudo nmcli connection delete "$slave_con"
 		echo -n "$rst"
@@ -966,33 +957,33 @@ remove_real_bridge() {
 
 	# REMOVER A BRIDGE
 	###########################################################################
-	msg_info_tab "Desativando bridge '$bridge_name'"
+	msg_info_tab "$(gettext 'Desativando') bridge '$bridge_name'"
 	echo -n "$green"
 	cmd_sudo nmcli connection down "$bridge_name" 2>/dev/null
 	echo -n "$rst"
 
-	msg_info_tab "Removendo perfil da bridge"
+	msg_info_tab "$(gettext 'Removendo perfil da') bridge"
 	echo -n "$green"
 	cmd_sudo nmcli connection delete "$bridge_name" 2>/dev/null
 	echo -n "$rst"
 
-	msg_ok "Bridge '$bridge_name' removida com sucesso e interface '$iface_phys' restaurada."
+	msg_ok "Bridge '$bridge_name' $(gettext 'removida com sucesso e interface') '$iface_phys' $(gettext 'restaurada.')"
 }
 
 create_bridge_virbr() {
 	local bridge_name="$1"
 
 	if sudo virsh -c qemu:///system net-list --all &>/dev/null; then
-		msg_info "virsh está funcionando e conseguiu listar as redes."
+		msg_info "virsh $(gettext 'está funcionando e conseguiu listar as redes.')"
 	else
-		msg_warning "virsh não conseguiu se conectar ao libvirt."
-		msg_warning "Verifique se o serviço libvirtd está ativo com os comandos abaixo:\n\
+		msg_warning "virsh $(gettext 'não conseguiu se conectar ao libvirt.')"
+		msg_warning "$(gettext 'Verifique se o serviço libvirtd está ativo com os comandos abaixo:')\n\
 sudo systemctl status libvirtd.service
 sudo systemctl status libvirtd.socket"
-		msg_warning "DICA: Tente ativar com os comandos abaixo:\n\
+		msg_warning "$(gettext 'DICA: Tente ativar com os comandos abaixo:')\n\
 sudo systemctl enable --now libvirtd virtqemud
 sudo systemctl restart libvirtd.service"
-		die "Erro fatal"
+		die "$(gettext 'Erro fatal')"
 	fi
 
 	if [[ -z "$bridge_name" ]]; then
@@ -1003,7 +994,7 @@ sudo systemctl restart libvirtd.service"
 	# Criar a rede virsh correspondente à nova bridge
 	if sudo virsh net-list --all 1>/dev/null; then
 		if ! sudo virsh net-list --all | grep -q "$bridge_name" 1>/dev/null; then
-			msg_info "Criando a rede $bridge_name..."
+			msg_info "$(gettext 'Criando a rede') $bridge_name..."
 
 			# Calcular a faixa de IP com base no nome da bridge
 			# O número da bridge será extraído (ex: virbr1 -> 1, virbr2 -> 2, etc.)
@@ -1043,16 +1034,16 @@ EOF
 			sudo rm -f "$tmp_net_config"
 		fi
 	else
-		die "erro fatal!"
+		die "$(gettext 'erro fatal!')"
 	fi
 
 	# Tornar a nova bridge persistente
-	msg_info "Tornando $bridge_name persistente..."
-	msg_info "Iniciando a rede $bridge_name..."
+	msg_info "$(gettext 'Tornando') $bridge_name $(gettext 'persistente...')"
+	msg_info "$(gettext 'Iniciando a rede') $bridge_name..."
 	sudo virsh net-autostart "$bridge_name" 1>/dev/null
 
 	if ! sudo virsh net-start "$bridge_name" 1>/dev/null; then
-		msg_err "Falha ao iniciar a rede $bridge_name. Tentando novamente."
+		msg_err "$(gettext 'Falha ao iniciar a rede') $bridge_name. $(gettext 'Tentando novamente.')"
 		sudo virsh net-destroy "$bridge_name" 1>/dev/null
 		sudo virsh net-start "$bridge_name" 1>/dev/null
 	fi
@@ -1062,28 +1053,28 @@ EOF
 	tap_name="tap-$bridge_name"
 
 	# Criar a interface TAP (ex: tap0, tap1, tap2...)
-	msg_info "Criando a interface TAP $tap_name..."
+	msg_info "$(gettext 'Criando a interface') TAP $tap_name..."
 	sudo ip tuntap add dev "$tap_name" mode tap 1>/dev/null
 
 	# Colocar a interface TAP para up
-	msg_info "Ativando a interface TAP $tap_name..."
+	msg_info "$(gettext 'Ativando a interface') TAP $tap_name..."
 	sudo ip link set "$tap_name" up 1>/dev/null
 
 	# Adicionar a interface TAP à bridge recém-criada
-	msg_info "Adicionando $tap_name à bridge $bridge_name..."
+	msg_info "$(gettext 'Adicionando') $tap_name $(gettext 'à') bridge $bridge_name..."
 	sudo brctl addif "$bridge_name" "$tap_name" 1>/dev/null
 
 	# Verificar se a bridge e o TAP foram configurados corretamente
-	msg_info "Verificando a associação de interfaces à bridge $bridge_name..."
+	msg_info "$(gettext 'Verificando a associação de interfaces à') bridge $bridge_name..."
 	brctl show "$bridge_name" 1>/dev/null
 
 	# Exibir as interfaces para verificar se tudo está funcionando
-	msg_info "Verificando as interfaces de rede..."
+	msg_info "$(gettext 'Verificando as interfaces de rede...')"
 	ip addr show "$bridge_name" 1>/dev/null
 	ip addr show "$tap_name" 1>/dev/null
 
 	sudo virsh net-info "$bridge_name"
-	msg_info "Configuração concluída!"
+	msg_info "$(gettext 'Configuração concluída!')"
 	exit
 }
 
@@ -1095,21 +1086,21 @@ remove_virbr_bridge_and_tap() {
 	tap_name="tap-$bridge_name"
 
 	# Remover a bridge
-	msg_info "Removendo a bridge $bridge_name..."
+	msg_info "$(gettext 'Removendo') bridge $bridge_name..."
 	sudo ip link set "$bridge_name" down 1>/dev/null
 	sudo brctl delbr "$bridge_name" 1>/dev/null
 
 	# Remover a interface TAP associada
 	if ip link show "$tap_name" &>/dev/null; then
-		msg_info "Removendo a interface TAP $tap_name..."
+		msg_info "$(gettext 'Removendo') interface TAP $tap_name..."
 		sudo ip link set "$tap_name" down 1>/dev/null
 		sudo ip tuntap del dev "$tap_name" mode tap 1>/dev/null
 	else
-		msg_err "A interface TAP $tap_name não existe."
+		msg_err "$(gettext 'A interface') TAP $tap_name $(gettext 'não existe.')"
 	fi
 
 	# Remover a rede do libvirt
-	msg_info "Removendo a rede do libvirt..."
+	msg_info "$(gettext 'Removendo a rede do') libvirt..."
 	sudo virsh net-destroy "$bridge_name" 1>/dev/null
 	sudo virsh net-autostart --disable "$bridge_name" 1>/dev/null
 	sudo virsh net-undefine "$bridge_name" 1>/dev/null
@@ -1119,7 +1110,7 @@ remove_virbr_bridge_and_tap() {
 	# Remover a configuração da rede do libvirt, caso fique residuos
 	local network_config="/etc/libvirt/qemu/networks/${bridge_name}.xml"
 	local network_config_autostart="/etc/libvirt/qemu/networks/autostart/${bridge_name}.xml"
-	msg_info "Removendo o arquivo de configuração da rede $bridge_name..."
+	msg_info "$(gettext 'Removendo o arquivo de configuração da rede') $bridge_name..."
 	sudo rm -fv "$network_config" 1>/dev/null
 	sudo rm -fv "$network_config_autostart" 1>/dev/null
 
@@ -1214,12 +1205,12 @@ sh_version() {
 		${bold}${black}Copyright (C) 2019-2025 ChiliLinux Development Team${black}
 		${bold}${black}Copyright (C) 2019-2025 Vilmar Catafesta${black}
 
-		  Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
-		  O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
-		  inclui software de código aberto sob uma variedade de outras licenças.
-		  Você pode ler instruções sobre como baixar e criar para você mesmo
-		  o código fonte específico usado para criar esta cópia.
-		  ${red}Este programa vem com absolutamente NENHUMA garantia.
+		  $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
+		  $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
+		  $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
+		  $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
+		  $(gettext 'o código fonte específico usado para criar esta cópia.')
+		  ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')
 		  ${rst}
 	EOF
 	exit 0
@@ -1227,38 +1218,38 @@ sh_version() {
 
 function sh_usage {
 	cat <<EOF
-uso: ${orange}$APP${reset} [Opções]
-${cyan}Opções:${reset}
-  ${rst}-b|--bridge ${orange}<name>                     ${cyan}# inicia rede em modo bridge - ex: -b br0 (default: NAT)
-  ${rst}-c|--create_real_bridge ${orange}<name>         ${cyan}# criar real bridge - ex: -c br0
-  ${rst}-r|--remove_real_bridge ${orange}<name>         ${cyan}# remover real bridge - ex: -r br0
-  ${rst}   --create_virbr_bridge ${orange}<name>        ${cyan}# criar virbr bridge - ex: --create_virbr_bridge br0
-  ${rst}   --remove_virbr_bridge ${orange}<name>        ${cyan}# remover virbr bridge - ex: --remove_virbr_bridge br0
-  ${rst}-d|--drive ${orange}<device>                    ${cyan}# anexa disco externo - ex: -d /dev/sdX (default: none)
-  ${rst}-m|--memory ${orange}<mem>                      ${cyan}# memória inicial de convidado - ex: -m 16G (default: 8GB)
-  ${rst}-v|--vdisk ${orange}<filename.img|qcow2>        ${cyan}# usa um disco virtual interno - ( default: none)
-  ${rst}   --cvdisk ${orange}<filename>                 ${cyan}# cria um disco virtual para uso interno
-  ${rst}   --rvdisk ${orange}<filename>                 ${cyan}# remove um disco virtual
+$(gettext 'uso:') ${orange}$APP${reset} [$(gettext 'Opções')]
+${cyan}$(gettext 'Opções:')${reset}
+  ${rst}-b|--bridge ${orange}<name>                     ${cyan}# $(gettext 'inicia rede em modo') bridge - ex: -b br0 (default: NAT)
+  ${rst}-c|--create_real_bridge ${orange}<name>         ${cyan}# $(gettext 'criar real') bridge - ex: -c br0
+  ${rst}-r|--remove_real_bridge ${orange}<name>         ${cyan}# $(gettext 'remover real') bridge - ex: -r br0
+  ${rst}   --create_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'criar') virbr bridge - ex: --create_virbr_bridge br0
+  ${rst}   --remove_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'remover') virbr bridge - ex: --remove_virbr_bridge br0
+  ${rst}-d|--drive ${orange}<device>                    ${cyan}# $(gettext 'anexa disco externo') - ex: -d /dev/sdX (default: none)
+  ${rst}-m|--memory ${orange}<mem>                      ${cyan}# $(gettext 'memória inicial de convidado') - ex: -m 16G (default: 8GB)
+  ${rst}-v|--vdisk ${orange}<filename.img|qcow2>        ${cyan}# $(gettext 'usa um disco virtual interno') - ( default: none)
+  ${rst}   --cvdisk ${orange}<filename>                 ${cyan}# $(gettext 'cria um disco virtual para uso interno')
+  ${rst}   --rvdisk ${orange}<filename>                 ${cyan}# $(gettext 'remove um disco virtual')
   ${rst}-g|--video ${orange}<video_driver>              ${cyan}# virtio-vga,virtio-gpu-pci,qxl-vga,VGA,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display - default: VGA
   ${rst}-N|--network ${orange}<net_driver>              ${cyan}# virtio-net-pci,e1000,rtl8139,vmxnet3 (default: virtio-pc)
-  ${rst}-n|--nocolor                           ${cyan}# remover cores da saída - (default: color)
-  ${rst}-s|--spice                             ${cyan}# ativar o spice - (default: desligado)
-  ${rst}-t|--tty                               ${cyan}# ativar modo tty only - (default: desligado)
-  ${rst}-l|--list                              ${cyan}# listar discos virtuais
-  ${rst}-u|--uefi                              ${cyan}# inicialização em UEFI - (default: BIOS)
-  ${rst}-V|--version                           ${cyan}# exibe a versão do aplicativo
-  ${rst}-o|--output                            ${cyan}# exibe a saída gerada pelo comando e sai
-  ${rst}-h|--help                              ${cyan}# imprime este ajuda
+  ${rst}-n|--nocolor                           ${cyan}# $(gettext 'remover cores da saída') - (default: color)
+  ${rst}-s|--spice                             ${cyan}# $(gettext 'ativar o') spice - (default: $(gettext 'desligado'))
+  ${rst}-t|--tty                               ${cyan}# $(gettext 'ativar modo') tty only - (default: $(gettext 'desligado'))
+  ${rst}-l|--list                              ${cyan}# $(gettext 'listar discos virtuais')
+  ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: BIOS)
+  ${rst}-V|--version                           ${cyan}# $(gettext 'exibe a versão do aplicativo')
+  ${rst}-o|--output                            ${cyan}# $(gettext 'exibe a saída gerada pelo comando e sai')
+  ${rst}-h|--help                              ${cyan}# $(gettext 'imprime este ajuda')
 ${cyan}Exemplos:${rst}
-  $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#Execute uma imagem, em ponte, usando UEFI ${rst}
-  $ ${orange}$APP${reset} -u -s -b br0 file.iso       ${cyan}#Execute uma imagem, em ponte, usando spice, usando UEFI ${rst}
-  $ ${orange}$APP${reset} -u file.img                 ${cyan}#Execute uma imagem, em NAT, usando UEFI ${rst}
-  $ ${orange}$APP${reset} -b br0 /dev/sdX             ${cyan}#Execute uma device, em ponte, usando UEFI ${rst}
-  $ ${orange}$APP${reset} -u -m 16G -b br0 /dev/sdX   ${cyan}#Execute uma device, em ponte, 16Gb memória, usando UEFI ${rst}
-  $ ${orange}$APP${reset} -a pipewire /dev/sdX        ${cyan}#Execute uma device, em NAT, usando audio pipewire ${rst}
-  $ ${orange}$APP${reset} file.iso                    ${cyan}#Execute uma imagem usando BIOS${rst}
-  $ ${orange}$APP${reset} -b file.img                 ${cyan}#Execute uma imagem, em ponte, usando BIOS ${rst}
-  $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#Execute uma device, 16GB memória, usando BIOS ${rst}
+  $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando') UEFI ${rst}
+  $ ${orange}$APP${reset} -u -s -b br0 file.iso       ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando spice, usando UEFI') ${rst}
+  $ ${orange}$APP${reset} -u file.img                 ${cyan}#$(gettext 'Execute uma imagem, em NAT, usando UEFI') ${rst}
+  $ ${orange}$APP${reset} -b br0 /dev/sdX             ${cyan}#$(gettext 'Execute uma device, em ponte, usando UEFI') ${rst}
+  $ ${orange}$APP${reset} -u -m 16G -b br0 /dev/sdX   ${cyan}#$(gettext 'Execute uma device, em ponte, 16Gb memória, usando UEFI') ${rst}
+  $ ${orange}$APP${reset} -a pipewire /dev/sdX        ${cyan}#$(gettext 'Execute uma device, em NAT, usando audio pipewire') ${rst}
+  $ ${orange}$APP${reset} file.iso                    ${cyan}#$(gettext 'Execute uma imagem usando BIOS')${rst}
+  $ ${orange}$APP${reset} -b file.img                 ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando BIOS')${rst}
+  $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#$(gettext 'Execute uma device, 16GB memória, usando BIOS') ${rst}
 ${cyan}Forma de uso mais comum:${rst}
   $ ${orange}$APP${reset} filename.iso ${rst}
   $ ${orange}$APP${reset} -u filename.iso ${rst}
@@ -1270,10 +1261,10 @@ ${cyan}Forma de uso mais comum:${rst}
   $ ${orange}$APP${reset} -u -v vdisk_name.img filename.iso ${rst}
   $ ${orange}$APP${reset} $HOME_DIR/vdisk/vdisk_name.img ${rst}
 ${cyan}acesso a vm/convidado via ssh:${rst}
-  $ ${rst} ssh live@vsock/555                 ${cyan}# via vsock ${rst}
-  $ ${rst} ssh live@127.0.0.1 -p 60022        ${cyan}# via redirecionamento ${rst}
-  $ ${rst} ssh <ip_vm>                        ${cyan}# via bridge (caso vm iniciada com -b) ${rst}
-  $ ${rst} ssh $USER@127.0.0.1 -p 60022    ${cyan}# via redirecionamento ${rst}
+  $ ${rst} ssh live@vsock/555                 ${cyan}# $(gettext 'via') vsock ${rst}
+  $ ${rst} ssh live@127.0.0.1 -p 60022        ${cyan}# $(gettext 'via redirecionamento') ${rst}
+  $ ${rst} ssh <ip_vm>                        ${cyan}# $(gettext 'via ponte (caso vm iniciada com -b)') ${rst}
+  $ ${rst} ssh $USER@127.0.0.1 -p 60022    ${cyan}# $(gettext 'via redirecionamento') ${rst}
 EOF
 	exit 0
 }
@@ -1284,22 +1275,22 @@ sh_createVdiskFiles() {
 	local file
 
 	if [[ ! -d "$HOME_DIR/vdisk/" ]]; then
-		msg_info "Criando diretórios de trabalho"
+		msg_info "$(gettext 'Criando diretórios de trabalho')"
 		mkdir -p "$HOME_DIR/vdisk/" &>/dev/null
 	fi
 
-	msg_info "Setando permissões no diretórios de trabalho"
+	msg_info "$(gettext 'Setando permissões no diretórios de trabalho')"
 	sudo chmod 1777 "$HOME_DIR/" &>/dev/null
 
 	for file in "${aBlockDisk[@]}"; do
 		if [[ ! -e $HOME_DIR/vdisk/$file ]]; then
-			msg_info "Criando disco virtual '$file' no diretórios de trabalho"
+			msg_info "$(gettext 'Criando disco virtual') '$file' $(gettext 'no diretórios de trabalho')"
 			qemu-img create $HOME_DIR/vdisk/$file -f raw 32G &>/dev/null
 		fi
 	done
 	for file in "${aBlockDiskQcow2[@]}"; do
 		if [[ ! -e $HOME_DIR/vdisk/$file ]]; then
-			msg_info "Criando disco virtual '$file' no diretórios de trabalho"
+			msg_info "$(gettext 'Criando disco virtual') '$file' $(gettext 'no diretórios de trabalho')"
 			qemu-img create -f qcow2 $HOME_DIR/vdisk/$file 32G &>/dev/null
 		fi
 	done
@@ -1307,11 +1298,11 @@ sh_createVdiskFiles() {
 
 sh_setup() {
 	local DISTRO=$(detect_distro)
-	msg_info "Instalando necessários pacotes"
+	msg_info "$(gettext 'Instalando necessários pacotes')"
 
 	case "$DISTRO" in
 	void)
-		msg_ex "Rodando no VOID 🐺"
+		msg_ex "$(gettext 'Rodando no') VOID"
 		if ! cmd_sudo xbps-install -Sy \
 			qemu \
 			edk2-ovmf \
@@ -1325,11 +1316,11 @@ sh_setup() {
 			bridge-utils \
 			seabios \
 			1>/dev/null 2>&1; then
-			die "[ERRO] Falha ao instalar pacotes."
+			die "$(gettext '[ERRO] Falha ao instalar pacotes.')"
 		fi
 		;;
 	chililinux | arch)
-		msg_ex "Rodando no ${DISTRO^^}  ARCH 🏹"
+		msg_ex "$(gettext 'Rodando no') ${DISTRO^^}"
 		cmd_sudo pacman -S --needed --quiet --noconfirm \
 			qemu-full \
 			edk2-ovmf \
@@ -1350,7 +1341,7 @@ sh_setup() {
 	fedora) : ;;
 	endeavouros) : ;;
 	*)
-		echo "Outra distro: $DISTRO"
+		echo "$(gettext 'Outra distro:') $DISTRO"
 		;;
 	esac
 
@@ -1359,30 +1350,30 @@ sh_setup() {
 }
 
 sh_create_vdisk_file() {
-	msg_info "Criando diretórios de trabalho"
+	msg_info "$(gettext 'Criando diretórios de trabalho')"
 	mkdir -p "$HOME_DIR/vdisk" &>/dev/null
-	msg_info "Setando permissões no diretórios de trabalho"
+	msg_info "$(gettext 'Setando permissões no diretórios de trabalho')"
 	sudo chmod 1777 "$HOME_DIR/" &>/dev/null
 	sudo chown $USER:$USER "$HOME_DIR/" -R &>/dev/null
 
 	while true; do
 		sh_list_vdisks
-		get 10 10 "Entre com o nome do disco (sem extensão) - ex vda  : " cvdisk_name
-		get 11 10 "Entre com o tamanho do disco virtual em GB - ex 32 : " cvdisk_size
+		get 10 10 "$(gettext 'Entre com o nome do disco (sem extensão)') - ex vda  : " cvdisk_name
+		get 11 10 "$(gettext 'Entre com o tamanho do disco virtual em GB') - ex 32 : " cvdisk_size
 
 		if test -e $HOME_DIR/vdisk/$cvdisk_name.img &>/dev/null; then
-			if readconf "Disco virtual já existe, escolha outro nome. Tentar novamente?"; then
+			if readconf "$(gettext 'Disco virtual já existe, escolha outro nome. Tentar novamente?')"; then
 				continue
 			fi
 		else
 			if qemu-img create $HOME_DIR/vdisk/$cvdisk_name.img -f raw "$cvdisk_size"G &>/dev/null; then
-				msg_ok "Disco virtual '$HOME_DIR/vdisk/$cvdisk_name.img' criado com sucesso"
+				msg_ok "$(gettext 'Disco virtual '$HOME_DIR/vdisk/$cvdisk_name.img' criado com sucesso')"
 				echo -n $green
 				ls -lh $HOME_DIR/vdisk
 				echo -n $rst
 				replicate '='
 			else
-				die "Falha na criação do disco virtual $HOME_DIR/vdisk/$cvdisk_name.img"
+				die "$(gettext 'Falha na criação do disco virtual') $HOME_DIR/vdisk/$cvdisk_name.img"
 			fi
 		fi
 		break
@@ -1390,7 +1381,7 @@ sh_create_vdisk_file() {
 }
 
 sh_list_vdisks() {
-	replicate "================== DISCOS VIRTUAIS DISPONÍVEIS em $HOME_DIR/vdisk ===================" 1
+	replicate "================== $(gettext 'DISCOS VIRTUAIS DISPONÍVEIS em') $HOME_DIR/vdisk ===================" 1
 	echo -n $green
 	ls -lh $HOME_DIR/vdisk
 	echo -n $rst
@@ -1398,25 +1389,25 @@ sh_list_vdisks() {
 }
 
 sh_remove_vdisk_file() {
-	msg_info "Criando diretórios de trabalho"
+	msg_info "$(gettext 'Criando diretórios de trabalho')"
 	mkdir -p "$HOME_DIR/vdisk" &>/dev/null
-	msg_info "Setando permissões no diretórios de trabalho"
+	msg_info "$(gettext 'Setando permissões no diretórios de trabalho')"
 	sudo chmod 1777 "$HOME_DIR/" &>/dev/null
 	sudo chown $USER:$USER "$HOME_DIR/" -R &>/dev/null
 
 	sh_list_vdisks
-	get 10 10 "Entre com o nome do disco para remover - ex vda.img : " cvdisk_name
+	get 10 10 "$(gettext 'Entre com o nome do disco para remover') - ex vda.img : " cvdisk_name
 
 	if test -e $HOME_DIR/vdisk/$cvdisk_name &>/dev/null; then
-		if readconf "PERGUNTA: Deseja realmente excluir o disco virtual ?"; then
+		if readconf "$(gettext 'PERGUNTA: Deseja realmente excluir o disco virtual ?')"; then
 			if rm -f $HOME_DIR/vdisk/$cvdisk_name &>/dev/null; then
-				msg_ok "Disco virtual '$HOME_DIR/vdisk/$cvdisk_name' foi removido com sucesso"
+				msg_ok "$(gettext 'Disco virtual') '$HOME_DIR/vdisk/$cvdisk_name' $(gettext 'foi removido com sucesso')"
 				exit 0
 			fi
 		fi
 		exit $?
 	else
-		die "Disco virtual digitado não existe"!
+		die "$(gettext 'Disco virtual digitado não existe!')"
 	fi
 }
 
@@ -1424,7 +1415,7 @@ sh_start_vdagentd() {
 	local DISTRO=$(detect_distro)
 
 	if ! pgrep spice-vdagentd; then
-		msg_info "Ativando serviço spice-vdaagentd na distro: ${cyan}${DISTRO^^}"
+		msg_info "$(gettext 'Ativando serviço') spice-vdaagentd $(gettext 'na distro:') ${cyan}${DISTRO^^}"
 		case "$DISTRO" in
 		void)
 			cmd_sudo ln -sf /etc/sv/spice-vdagentd /var/service/ &>/dev/null
@@ -1433,7 +1424,7 @@ sh_start_vdagentd() {
 			cmd_sudo systemctl enable -now spice-vdagentd &>/dev/null
 			;;
 		*)
-			msg_info_tab "Outra distro: $DISTRO"
+			msg_info_tab "$(gettext 'Outra distro:') $DISTRO"
 			;;
 		esac
 	fi
@@ -1460,9 +1451,9 @@ print_avaiable_bridges() {
 	#	bridges=($(get_bridge_interfaces))
 	mapfile -t bridges < <(list_bridges_detailed)
 
-	echo -e "${cyan}Bridges disponíveis:${rst}"
+	echo -e "${cyan}$(gettext 'Pontes disponíveis:')${rst}"
 	if [[ ${#bridges[@]} -eq 0 ]]; then
-		echo -e "  ${yellow}(nenhuma bridge disponível)${rst}"
+		echo -e "  ${yellow}($(gettext 'nenhuma ponte disponível'))${rst}"
 	else
 		for b in "${bridges[@]}"; do
 			echo -e "  ${yellow}${b}${rst}"
@@ -1484,18 +1475,22 @@ add_smb_share() {
 
 print_summary_access_vm() {
    if $bridge; then
-     msg_info "Iniciando VM em modo BRIDGE (IP via DHCP)"
+     msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'informado. Iniciando VM em modo') ${yellow}BRIDGE${rst} (IP via DHCP)"
    else
-     msg_info "Iniciando VM em modo NAT (hostfwd ativo)"
+     msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'não informado. Iniciando VM em modo') ${yellow}NAT${rst} (hostfwd ativo)"
    fi
 
 	msg_info "acesso a VM via ${cyan}ssh:"
-	msg_info_tab "$ ssh $USER@vsock/$GUEST_CID                     ${cyan}# via vsock (se habilitado do guest)"
+   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado do guest)')")"
+   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado do guest)')")"
    if ! $bridge; then
-   	msg_info_tab "$ ssh $USER@127.0.0.1 -p $HOST_FWD            ${cyan}# via redirecionamento NAT"
+      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
+      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
+      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh live@127.0.0.1 -p $HOST_FWD"   "# $(gettext 'via redirecionamento NAT')")"
+      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh anon@127.0.0.1 -p $HOST_FWD"   "# $(gettext 'via redirecionamento NAT')")"
    else
       bloco_br=$(ip -4 route show dev "$iface_bridge" | awk '$1 ~ "/" {print $1; exit}')
-      msg_info_tab "$ ssh ${violet}<IP-da-VM>                         ${cyan}# IP atribuído na VM via DHCP ($bloco_br) ${rst}"
+      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh <IP-da-VM>         "     "# $(gettext 'IP atribuído na VM via DHCP') ($bloco_br")"
    fi
 }
 
@@ -1504,7 +1499,7 @@ function sh_start_with_spice() {
 
 	# Informar as portas usadas
 	msg_info_tab "SPICE running on port : ${cyan}$random_spice_port${rst}"
-	msg_info_tab "Cliente SPICE (GUI)   : ${cyan}remote-viewer spice://localhost:$random_spice_port${rst}"
+	msg_info_tab "$(gettext 'Cliente') SPICE (GUI)   : ${cyan}remote-viewer spice://localhost:$random_spice_port${rst}"
 
 	# Configurar SPICE
 	#qemu_options+=(-chardev spicevmc,id=vdagent,debug=0,name=vdagent)
@@ -1563,7 +1558,7 @@ main() {
 			[[ ! -e "$HOME_DIR/vdisk/$img" ]] && {
 				log_msg 1 "Check input ${yellow}#${count}: ${cyan}$img"
 				sh_list_vdisks
-				die "Erro: vdisk/iso/device #${count} ${cyan}${img} ${red}não localizada, tente os listados acima!${reset}"
+				die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'não localizada, tente os listados acima!')${reset}"
 			}
 			img="$HOME_DIR/vdisk/$img"
 		fi
@@ -1581,7 +1576,7 @@ main() {
 	# Forçar UEFI, se solicitado
 	if $uefi; then
 		sh_checkOVMFFiles
-		msg_info "Forçando inicialização UEFI..."
+		msg_info "$(gettext 'Forçando inicialização UEFI...')"
 		#[[ ! -e $HOME_DIR/OVMF_VARS.4m.fd ]] && cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
 		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
 		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
@@ -1610,12 +1605,12 @@ main() {
 		#		qemu_options+=(-boot menu=on)
 #		if [[ "${media_type}" == "application/x-iso9660-image" ]]; then
       if [[ "$img" == *.iso ]]; then
-			msg_info "Anexando iso #${bootindex}: ${yellow}${img}"
+			msg_info "$(gettext 'Anexando iso') #${bootindex}: ${yellow}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
 			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
 			((bootindex++))
 		elif [[ "${img}" == *.qcow2 ]]; then
-			msg_info "Anexando vdisk #${bootindex}: ${yellow}${img}"
+			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 			((bootindex++))
@@ -1639,7 +1634,7 @@ main() {
          # - Disco virtual → política de cache configurável (ver bloco seguinte)
          # Disco físico (/dev): usa I/O direto (cache=none,aio=native) para evitar
          # cache duplo e reduzir risco de corrupção. Política fixa por segurança.
-         msg_info "Anexando device #${bootindex}: ${yellow}${img}"
+         msg_info "$(gettext 'Anexando device') #${bootindex}: ${yellow}${img}"
          qemu_options+=(
             -drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
          )
@@ -1667,7 +1662,7 @@ main() {
          # IDE/AHCI NÃO é usado aqui de propósito:
          # virtio-blk é o caminho moderno, mais rápido e esperado para sistemas atuais.
          # IDE fica restrito a compatibilidade legada explícita.
-         msg_info "Anexando vdisk #${bootindex}: ${yellow}${img} (raw)"
+         msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img} (raw)"
          qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
          qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
          ((bootindex++))
@@ -1680,7 +1675,7 @@ main() {
 			[[ ! -e "$vdsk" ]] && continue
 
 			if [[ "${vdsk}" == *.img ]]; then
-				msg_info "Anexando vdisk #${bootindex}: ${yellow}${vdsk}"
+				msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${vdsk}"
 				qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
 				qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 				((bootindex++))
@@ -1776,8 +1771,8 @@ fi
 sh_checkDependencies
 sh_checkVdiskFiles
 
-OPTIONS=m:ub:Vnhd:stg:v:i:N:c:r:l:o
-LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output
+OPTIONS=m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
+LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
 
@@ -1787,13 +1782,13 @@ while test ${#opts[*]} -gt 0; do
 		sh_unsetvarcolors
 		;;
 	-u | --uefi)
-      msg_info "Parametro ${yellow}--uefi${rst} detectado: usando uefi ${rst}"
+      msg_info "$(gettext 'Parametro') ${yellow}--uefi${rst} $(gettext 'detectado: usando uefi') ${rst}"
 
 		uefi=true
 		;;
 	-i | --image)
 		if [[ -z "$2" ]]; then
-			die "Argumento inválido para ${1}, falta parâmetro de imagem/disco/device" >&2
+			die "$(gettext 'Argumento inválido para') ${1}, $(gettext 'falta parâmetro de imagem/disco/device')" >&2
 		else
 			img="$2"
 			shift
@@ -1801,7 +1796,7 @@ while test ${#opts[*]} -gt 0; do
 		;;
 	-c | --create_real_bridge)
 		if [[ -z "$2" ]]; then
-			die "Argumento inválido para --create_real_bridge. Ex: --create_real_bridge br0"
+			die "$(gettext 'Argumento inválido para') --create_real_bridge. Ex: --create_real_bridge br0"
 		else
 			create_real_bridge "$2"
 			exit 0
@@ -1813,17 +1808,17 @@ while test ${#opts[*]} -gt 0; do
 			remove_real_bridge "$bridge_name"
 			exit 0
 		else
-			echo -e "${red}Erro:${rst} Argumento inválido para ${cyan} ${1} ${rst}" >&2
+			echo -e "${red}Error:${rst} $(gettext 'Argumento inválido para') ${cyan} ${1} ${rst}" >&2
 			print_avaiable_bridges
 			exit 1
 		fi
 		;;
 	--create_virbr_bridge)
 		if [[ -z "$2" ]]; then
-			die "Argumento inválido para --create_virbr_bridge, falta nome para bridge \nEx.: --create_virbr_bridge br0" >&2
+			die "$(gettext 'Argumento inválido para') --create_virbr_bridge, $(gettext 'falta nome para ponte') \nEx.: --create_virbr_bridge br0" >&2
 		else
 			if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
-				die "Argumento inválido para ${cyan}--create_virbr_bridge${red}. BRIDGE ${cyan}$2 ${red}já existe" >&2
+				die "$(gettext 'Argumento inválido para') ${cyan}--create_virbr_bridge${red}. BRIDGE ${cyan}$2 ${red}$(gettext 'já existe')" >&2
 			else
 				bridge_name="$2"
 				create_virbr_bridge "$bridge_name"
@@ -1837,30 +1832,33 @@ while test ${#opts[*]} -gt 0; do
 			remove_virbr_bridge_and_tap "$bridge_name"
 			shift
 		else
-			echo -e "${red}Erro:${rst} Argumento inválido para ${cyan}${1}${rst}" >&2
+			echo -e "${red}Erro:${rst} $(gettext 'Argumento inválido para') ${cyan}${1}${rst}" >&2
 			print_avaiable_bridges
 			exit 1
 		fi
 		;;
+	-q | --quiet)
+	   quiet=true
+	   ;;
 	-b | --bridge)
 		if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
 			iface_bridge="$2"
-			msg_info "Parametro ${yellow}--bridge${rst} detectado: usando bridge ${cyan}'$iface_bridge'${rst}"
+			msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'detectado: usando ponte') ${cyan}'$iface_bridge'${rst}"
 			bridge=true
 			shift
 		else
-			echo -e "${red}Erro:${rst} Argumento inválido para ${cyan}${1}${rst}" >&2
+			echo -e "${red}Erro:${rst} $(gettext 'Argumento inválido para') ${cyan}${1}${rst}" >&2
 			print_avaiable_bridges
 			exit 1
 		fi
 		;;
 	-s | --spice)
 		spice=true
-		log_msg "Parametro ${yellow}--spice ${rst}detectado: usando spice..."
+		log_msg "$(gettext 'Parametro') ${yellow}--spice ${rst}$(gettext 'detectado: usando spice...')"
 		;;
 	-t | --tty)
 		spice=false
-		log_msg "Parametro --tty detectado: ativando tty only..."
+		log_msg "$(gettext 'Parametro') --tty $(gettext 'detectado: ativando') tty only..."
 		only_tty=true
 		;;
 	-g | --video)
@@ -1868,7 +1866,7 @@ while test ${#opts[*]} -gt 0; do
 			videodevice="$2"
 			shift
 		else
-			die "Argumento inválido para -v. Use VGA,virtio-vga,virtio-gpu-pci,qxl-vga,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display ou ramfb" >&2
+			die "$(gettext 'Argumento inválido para') -v. $(gettext 'Use') VGA,virtio-vga,virtio-gpu-pci,qxl-vga,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display ou ramfb" >&2
 		fi
 		;;
 	-l | --list)
@@ -1884,7 +1882,7 @@ while test ${#opts[*]} -gt 0; do
 			shift
 		else
 			sh_list_vdisks
-			die "Argumento inválido para ${cyan}--vdisk ${rst}Válidos são: ${yellow}$(get_raw_images)${rst}" >&2
+			die "$(gettext 'Argumento inválido para') ${cyan}--vdisk ${rst}$(gettext 'Válidos são:') ${yellow}$(get_raw_images)${rst}" >&2
 		fi
 		;;
 	--cvdisk)
@@ -1900,10 +1898,10 @@ while test ${#opts[*]} -gt 0; do
 			netdevice="$2"
 			anetdevices+=("$netdevice")
 			netchoosedriver=true
-			msg_info "Anexando placa de rede, driver: ${yellow}$netdevice"
+			msg_info "$(gettext 'Anexando placa de rede'), driver: ${yellow}$netdevice"
 			shift
 		else
-			die "Argumento inválido para --network. Use virtio-net-pci,e1000,rtl8139,vmxnet3,ne2k_pci,ne2k_isa,pcnet,smc91c111,i82551,i82557b,i82559er" >&2
+			die "$(gettext 'Argumento inválido para') --network. $(gettext 'Use') virtio-net-pci,e1000,rtl8139,vmxnet3,ne2k_pci,ne2k_isa,pcnet,smc91c111,i82551,i82557b,i82559er" >&2
 		fi
 		;;
 	-o | --output)
@@ -1914,22 +1912,22 @@ while test ${#opts[*]} -gt 0; do
 			drive=true
 			drive_path=$2
 			if lsblk $drive_path &>/dev/null; then
-				log_msg "Parametro -d,--drive detectado: $drive_path"
+				log_msg "$(gettext 'Parametro') -d,--drive $(gettext 'detectado:') $drive_path"
 			else
-				die "${cyan}Parametro -d,--drive => ${red}$drive_path: não é um dispositivo de bloco"
+				die "${cyan}$(gettext 'Parametro') -d,--drive => ${red}$drive_path: $(gettext 'não é um dispositivo de bloco')"
 			fi
 			shift
 		else
-			die "Argumento inválido para --drive. Use formato device, como /dev/sdX (por exemplo)." >&2
+			die "$(gettext 'Argumento inválido para') --drive. $(gettext 'Use formato device, como /dev/sdX (por exemplo).')" >&2
 		fi
 		;;
 	-m | --memory)
 		if [[ $2 =~ ^[0-9]+[MG]$ ]]; then
 			xmem=$2
-			log_msg "Parametro ${yellow}$1 ${rst}detectado: Usando $2"
+			log_msg "$(gettext 'Parametro') ${yellow}$1 ${rst}$(gettext 'detectado: Usando') $2"
 			shift
 		else
-			die "Argumento inválido para ${yellow}${1}${red}. Use um formato como 16G (por exemplo)." >&2
+			die "$(gettext 'Argumento inválido para') ${yellow}${1}${red}. $(gettext 'Use um formato como 16G (por exemplo).')" >&2
 		fi
 		;;
 	--)
@@ -1937,10 +1935,10 @@ while test ${#opts[*]} -gt 0; do
 		break
 		;;
 	:)
-		die "-$OPTARG requer um argumento" >&2
+		die "-$OPTARG $(gettext 'requer um argumento')" >&2
 		;;
 	*)
-		die "operação não suportada: $1 (usar -h para ajuda"
+		die "$(gettext 'operação não suportada:') $1 $(gettext '(usar -h para ajuda')"
 		;;
 	esac
 	shift
@@ -1966,11 +1964,11 @@ if [[ $# > 0 ]]; then
 	export HOST_FWD=$((RANDOM % 6 + 60022))
 
 	if ! $uefi; then
-		msg_warn "Parametro --uefi não informado, usando BIOS legacy (padrão)..."
+		msg_warn "$(gettext 'Parametro --uefi não informado, usando BIOS legacy (padrão)...')"
 	fi
 
 	if ! is_graphical; then
-		msg_warn "Nenhum ambiente gráfico detectado — forçando modo TTY."
+		msg_warn "$(gettext 'Nenhum ambiente gráfico detectado — forçando modo TTY.')"
 		spice=false
 		only_tty=true
 	fi
@@ -2018,12 +2016,12 @@ if [[ $# > 0 ]]; then
 #   fi
 
 	if $drive; then
-		msg_info "Anexando disco/drive externo: ${yellow}$drive_path"
+		msg_info "$(gettext 'Anexando disco/drive externo:') ${yellow}$drive_path"
 		qemu_options+=(-drive file=$drive_path,format=raw,media=disk)
 	fi
 	main "$@"
 else
-	log_err "${red}Erro${rst}: Falta parâmetro de imagem/disco/device. ${cyan}Tente os vdisks listados abaixo. ${yellow}(usar -h para ajuda)"
+	log_err "${red}Error${rst}: $(gettext 'Falta parâmetro de imagem/disco/device.') ${cyan}$(gettext 'Tente os vdisks listados abaixo.') ${yellow}$(gettext '(usar -h para ajuda)')"
 	msg_ex_tab "${green}$ ${reset}${APP} ${params} ${rst}vda.img"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}/path/filename.img|qcow2|iso|raw"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}/dev/sdX"
