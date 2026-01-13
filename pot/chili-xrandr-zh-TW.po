@@ -1,0 +1,51 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 19:39-0400\n"
+"PO-Revision-Date: 2026-01-13 19:39-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Language: zh-TW\n"
+
+#: chili-xrandr:81
+msgid "Wrapper para configuração de resolução usando xrandr, umc e cvt"
+msgstr "使用 xrandr、umc 和 cvt 進行分辨率配置的包裝器"
+
+#: chili-xrandr:357
+msgid "Erro fatal"
+msgstr "致命錯誤"
+
+#: chili-xrandr:372
+msgid "Menu DISPOSITIVO DE VÍDEO"
+msgstr "視頻設備菜單"
+
+#: chili-xrandr:373
+msgid "Selecione a saída do dispositivo para o conjunto:"
+msgstr "選擇該集的設備輸出："
+
+#: chili-xrandr:379 chili-xrandr:419
+msgid "Cancelado!"
+msgstr "取消！"
+
+#: chili-xrandr:411
+msgid "Menu ESCOLHER RESOLUÇÃO"
+msgstr "選擇分辨率菜單"
+
+#: chili-xrandr:412
+msgid "Adicionar"
+msgstr "添加"
+
+#: chili-xrandr:413
+msgid "Remover"
+msgstr "消除"
+
+#: chili-xrandr:414
+msgid "Escolha a resolução para o conjunto:"
+msgstr "選擇該集的分辨率："
