@@ -1,0 +1,68 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 12:20-0400\n"
+"PO-Revision-Date: 2026-01-13 12:20-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: ru\n"
+
+#: /chili/chili-dialog-theme-selector:46
+msgid "Seletor de temas para o Dialog"
+msgstr "Выбор темы для диалога"
+
+#: /chili/chili-dialog-theme-selector:48
+msgid "Menu de Temas"
+msgstr "Меню тем"
+
+#: /chili/chili-dialog-theme-selector:148
+msgid "Use as teclas"
+msgstr "Используйте ключи"
+
+#: /chili/chili-dialog-theme-selector:149
+msgid "PARA CIMA"
+msgstr "ВВЕРХ"
+
+#: /chili/chili-dialog-theme-selector:150
+msgid "e"
+msgstr "и"
+
+#: /chili/chili-dialog-theme-selector:151
+msgid "PARA BAIXO"
+msgstr "ВНИЗ"
+
+#: /chili/chili-dialog-theme-selector:152
+msgid "para navegar"
+msgstr "ориентироваться"
+
+#: /chili/chili-dialog-theme-selector:153
+msgid "Use"
+msgstr "Использовать"
+
+#: /chili/chili-dialog-theme-selector:154
+msgid "para alternar entre os botões"
+msgstr "для переключения между кнопками"
+
+#: /chili/chili-dialog-theme-selector:155
+msgid "para selecionar"
+msgstr "выбрать"
+
+#: /chili/chili-dialog-theme-selector:321
+msgid "Selecionar"
+msgstr "Выбирать"
+
+#: /chili/chili-dialog-theme-selector:322
+msgid "Sair"
+msgstr "Чтобы выйти"
+
+#: /chili/chili-dialog-theme-selector:323
+msgid "Escolha o tema desejado"
+msgstr "Выберите желаемую тему"

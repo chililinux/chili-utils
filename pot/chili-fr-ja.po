@@ -1,0 +1,900 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 12:07-0400\n"
+"PO-Revision-Date: 2026-01-13 12:07-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: ja\n"
+
+#: chili-fr:47
+msgid "Wrapper lite para o qemu"
+msgstr "qemu用ラッパーライト"
+
+#: chili-fr:421
+msgid "Não foi possível encontrar o comando"
+msgstr "コマンドが見つかりません"
+
+#: chili-fr:421 chili-fr:475
+msgid "instalar pacote"
+msgstr "パッケージをインストールする"
+
+#: chili-fr:432
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "続行不可能"
+
+#: chili-fr:433
+msgid "Este script precisa dos comandos listados acima"
+msgstr "このスクリプトには上記のコマンドが必要です"
+
+#: chili-fr:434
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "それらをインストールするか、それらがコンピュータ上にあることを確認してください。"
+
+#: chili-fr:436
+msgid "Deseja instalar os pacotes e criar os arquivos necessários?"
+msgstr "パッケージをインストールして必要なファイルを作成しますか?"
+
+#: chili-fr:475
+msgid "Não foi possível encontrar o arquivo"
+msgstr "ファイルが見つかりません"
+
+#: chili-fr:547 chili-fr:793 chili-fr:1064
+msgid "Adicionando"
+msgstr "追加"
+
+#: chili-fr:547
+msgid "em"
+msgstr "で"
+
+#: chili-fr:565
+msgid "Uso correto"
+msgstr "正しい使い方"
+
+#: chili-fr:569
+msgid "Verificando se a bridge"
+msgstr "ブリッジかどうかを確認する"
+
+#: chili-fr:569 chili-fr:1821
+msgid "já existe"
+msgstr "すでに存在します"
+
+#: chili-fr:571 chili-fr:831 chili-fr:851
+msgid "Ponte"
+msgstr "橋"
+
+#: chili-fr:571
+msgid "já existe — nada a fazer."
+msgstr "すでに存在します - 何もする必要はありません。"
+
+#: chili-fr:578
+msgid "Detectando interfaces físicas (ethernet)"
+msgstr "物理インターフェース（イーサネット）の検出"
+
+#: chili-fr:585
+msgid "Nenhuma interface ethernet disponível. WLAN não suporta bridge real."
+msgstr "使用可能なイーサネット インターフェイスがありません。 WLAN はリアル ブリッジングをサポートしていません。"
+
+#: chili-fr:591
+msgid "Múltiplas interfaces encontradas — exibindo menu de seleção"
+msgstr "複数のインターフェースが見つかりました - 選択メニューを表示しています"
+
+#: chili-fr:592
+msgid "Escolha a interface física para a bridge:"
+msgstr "ブリッジの物理インターフェイスを選択します。"
+
+#: chili-fr:594
+msgid "Encerrar"
+msgstr "近い"
+
+#: chili-fr:595
+msgid "Operação cancelada pelo usuário."
+msgstr "操作はユーザーによってキャンセルされました。"
+
+#: chili-fr:598
+msgid "Interface selecionada:"
+msgstr "選択したインターフェース:"
+
+#: chili-fr:604 chili-fr:1099
+msgid "A interface"
+msgstr "インターフェース"
+
+#: chili-fr:604
+msgid "é Wi-Fi. Bridge real não funciona com WLAN."
+msgstr "それはWi-Fiです。実際のブリッジは WLAN では機能しません。"
+
+#: chili-fr:610
+msgid "Verificando se"
+msgstr "どうかを確認しています"
+
+#: chili-fr:610
+msgid "já pertence a outra bridge"
+msgstr "すでに別の橋に属しています"
+
+#: chili-fr:613
+msgid "Interface"
+msgstr "インタフェース"
+
+#: chili-fr:613
+msgid "já pertence à bridge"
+msgstr "すでにブリッジに属しています"
+
+#: chili-fr:614
+msgid "Remova primeiro:"
+msgstr "最初に削除します。"
+
+#: chili-fr:620
+msgid "Configuração de VLAN"
+msgstr "VLAN設定"
+
+#: chili-fr:622 chili-fr:630
+msgid "Sem VLAN (rede normal)"
+msgstr "VLANなし（通常のネットワーク）"
+
+#: chili-fr:623 chili-fr:631 chili-fr:1226
+msgid "criar"
+msgstr "作成する"
+
+#: chili-fr:623
+msgid "e usar como slave"
+msgstr "そして奴隷として使う"
+
+#: chili-fr:624 chili-fr:632
+msgid "habilitado"
+msgstr "有効"
+
+#: chili-fr:626
+msgid "Selecione o modo VLAN:"
+msgstr "VLAN モードを選択します。"
+
+#: chili-fr:631
+msgid "e usar como slave)"
+msgstr "奴隷として使用します）"
+
+#: chili-fr:634
+msgid "Erro inesperado no menu VLAN"
+msgstr "VLAN メニューでの予期しないエラー"
+
+#: chili-fr:638
+msgid "Modo VLAN selecionado:"
+msgstr "選択した VLAN モード:"
+
+#: chili-fr:643
+msgid "Digite o VLAN ID"
+msgstr "VLAN IDを入力してください"
+
+#: chili-fr:646
+msgid "Subinterface VLAN definida:"
+msgstr "VLAN サブインターフェイスが定義されています:"
+
+#: chili-fr:649
+msgid "VLAN inválida: informe um número entre 1 e 4094"
+msgstr "無効な VLAN: 1 ～ 4094 の数値を入力してください"
+
+#: chili-fr:654
+msgid "Bridge atuará como trunk"
+msgstr "ブリッジはトランクとして機能します"
+
+#: chili-fr:658
+msgid "Informe VLANs permitidas separadas por vírgula"
+msgstr "許可される VLAN をカンマで区切って入力します"
+
+#: chili-fr:665
+msgid "VLAN inválida:"
+msgstr "無効な VLAN:"
+
+#: chili-fr:670
+msgid "VLAN duplicada:"
+msgstr "重複した VLAN:"
+
+#: chili-fr:683
+msgid "Detectando IP na subinterface VLAN"
+msgstr "VLAN サブインターフェイス上の IP の検出"
+
+#: chili-fr:687
+msgid "Usando IP da interface física"
+msgstr "物理インターフェイスIPの使用"
+
+#: chili-fr:692
+msgid "Obtendo IP atual da interface"
+msgstr "現在のインターフェースIPの取得"
+
+#: chili-fr:697
+msgid "Nenhum IP detectado automaticamente."
+msgstr "IP が自動的に検出されませんでした。"
+
+#: chili-fr:698
+msgid "Nenhum gateway detectado."
+msgstr "ゲートウェイが検出されませんでした。"
+
+#: chili-fr:704
+msgid "Configurando IP da bridge"
+msgstr "ブリッジIPの構成"
+
+#: chili-fr:714
+msgid "Formato inválido."
+msgstr "無効な形式です。"
+
+#: chili-fr:720
+msgid "IP igual ao atual — pulando teste."
+msgstr "IP は現在と同じ - テストをスキップします。"
+
+#: chili-fr:724
+msgid "Validando se IP está em uso..."
+msgstr "IP が使用されているかどうかを検証しています..."
+
+#: chili-fr:727
+msgid "Conflito ARP detectado."
+msgstr "ARP 競合が検出されました。"
+
+#: chili-fr:740
+msgid "Gateway inválido"
+msgstr "無効なゲートウェイ"
+
+#: chili-fr:744
+msgid "Gateway não respondeu."
+msgstr "ゲートウェイが応答しませんでした。"
+
+#: chili-fr:745
+msgid "Continuar?"
+msgstr "続く？"
+
+#: chili-fr:753
+msgid "Criando ponte"
+msgstr "橋の作成"
+
+#: chili-fr:756
+msgid "Falha ao criar ponte"
+msgstr "ブリッジの作成に失敗しました"
+
+#: chili-fr:763
+msgid "Criando subinterface"
+msgstr "サブインターフェースの作成"
+
+#: chili-fr:766
+msgid "Falha ao criar VLAN"
+msgstr "VLANの作成に失敗しました"
+
+#: chili-fr:777
+msgid "Criando conexão slave para"
+msgstr "へのスレーブ接続の作成"
+
+#: chili-fr:782
+msgid "Falha ao criar slave"
+msgstr "スレーブの作成に失敗しました"
+
+#: chili-fr:789
+msgid "Ativando"
+msgstr "アクティブ化中"
+
+#: chili-fr:793
+msgid "ao"
+msgstr "に"
+
+#: chili-fr:795
+msgid "Falha ao adicionar"
+msgstr "追加に失敗しました"
+
+#: chili-fr:801
+msgid "Desativando conexão antiga da interface física"
+msgstr "古い物理インターフェイス接続の無効化"
+
+#: chili-fr:811
+msgid "Ativando DHCP na ponte"
+msgstr "ブリッジで DHCP を有効にする"
+
+#: chili-fr:814
+msgid "Aplicando IP manual"
+msgstr "手動IPの適用"
+
+#: chili-fr:825
+msgid "Ativando ponte"
+msgstr "ブリッジを起動中"
+
+#: chili-fr:830
+msgid "RESUMO"
+msgstr "まとめ"
+
+#: chili-fr:832
+msgid "Interface física"
+msgstr "物理インターフェース"
+
+#: chili-fr:834
+msgid "Conexão"
+msgstr "繋がり"
+
+#: chili-fr:837
+msgid "nenhuma"
+msgstr "なし"
+
+#: chili-fr:845
+msgid "aplicado"
+msgstr "適用済み"
+
+#: chili-fr:851
+msgid "criada e configurada com sucesso."
+msgstr "正常に作成および構成されました。"
+
+#: chili-fr:869 chili-fr:1089 chili-fr:1095
+msgid "Removendo"
+msgstr "削除中"
+
+#: chili-fr:869
+msgid "com segurança (sem derrubar SSH)"
+msgstr "安全に（SSHを切断せずに）"
+
+#: chili-fr:883
+msgid "Não foi possível detectar interface física slave."
+msgstr "スレーブ物理インターフェイスを検出できません。"
+
+#: chili-fr:887
+msgid "Interface física slave detectada:"
+msgstr "スレーブ物理インターフェイスが検出されました:"
+
+#: chili-fr:898
+msgid "Nenhum perfil slave encontrado — talvez já removido."
+msgstr "スレーブ プロファイルが見つかりません - おそらくすでに削除されています。"
+
+#: chili-fr:900
+msgid "Perfil slave encontrado:"
+msgstr "スレーブ プロファイルが見つかりました:"
+
+#: chili-fr:909
+msgid "IP atual na"
+msgstr "現在の IP がオン"
+
+#: chili-fr:922
+msgid "Não foi possível localizar o perfil físico verdadeiro para"
+msgstr "真の物理的プロファイルが見つかりません"
+
+#: chili-fr:925
+msgid "Perfil físico real:"
+msgstr "実際の身体的プロファイル:"
+
+#: chili-fr:929
+msgid "Restaurando autoconnect da interface física"
+msgstr "物理インターフェイスの自動接続を復元しています"
+
+#: chili-fr:933
+msgid "Aplicando"
+msgstr "申請中"
+
+#: chili-fr:933
+msgid "de volta na interface física"
+msgstr "物理インターフェイスに戻る"
+
+#: chili-fr:938
+msgid "Sem IP detectado — configurando interface física para DHCP"
+msgstr "IP が検出されません - DHCP 用に物理インターフェイスを構成しています"
+
+#: chili-fr:944
+msgid "Subindo interface física ANTES de remover a bridge"
+msgstr "ブリッジを削除する前に物理インターフェイスをアップグレードする"
+
+#: chili-fr:946
+msgid "Falha ao subir interface física — pode ser esperado via SSH"
+msgstr "物理インターフェイスのアップロードに失敗しました - SSH 経由で発生する可能性があります"
+
+#: chili-fr:952
+msgid "Removendo conexão slave"
+msgstr "スレーブ接続の削除"
+
+#: chili-fr:960
+msgid "Desativando"
+msgstr "無効化"
+
+#: chili-fr:965
+msgid "Removendo perfil da"
+msgstr "プロファイルを削除しています"
+
+#: chili-fr:970
+msgid "removida com sucesso e interface"
+msgstr "インターフェイスが正常に削除されました"
+
+#: chili-fr:970
+msgid "restaurada."
+msgstr "復元されました。"
+
+#: chili-fr:977
+msgid "está funcionando e conseguiu listar as redes."
+msgstr "動作しており、ネットワークをリストすることができます。"
+
+#: chili-fr:979
+msgid "não conseguiu se conectar ao libvirt."
+msgstr "libvirt への接続に失敗しました。"
+
+#: chili-fr:980
+msgid "Verifique se o serviço libvirtd está ativo com os comandos abaixo:"
+msgstr "以下のコマンドを使用して、libvirtd サービスがアクティブであるかどうかを確認します。"
+
+#: chili-fr:983
+msgid "DICA: Tente ativar com os comandos abaixo:"
+msgstr "ヒント: 以下のコマンドを使用してアクティブ化してみてください。"
+
+#: chili-fr:986
+msgid "Erro fatal"
+msgstr "致命的なエラー"
+
+#: chili-fr:997
+msgid "Criando a rede"
+msgstr "ネットワークの作成"
+
+#: chili-fr:1037
+msgid "erro fatal!"
+msgstr "致命的なエラーです！"
+
+#: chili-fr:1041
+msgid "Tornando"
+msgstr "作る"
+
+#: chili-fr:1041
+msgid "persistente..."
+msgstr "持続的..."
+
+#: chili-fr:1042
+msgid "Iniciando a rede"
+msgstr "ネットワークを開始する"
+
+#: chili-fr:1046
+msgid "Falha ao iniciar a rede"
+msgstr "ネットワークの起動に失敗しました"
+
+#: chili-fr:1046
+msgid "Tentando novamente."
+msgstr "もう一度試してみます。"
+
+#: chili-fr:1056
+msgid "Criando a interface"
+msgstr "インターフェースの作成"
+
+#: chili-fr:1060
+msgid "Ativando a interface"
+msgstr "インターフェースのアクティブ化"
+
+#: chili-fr:1064
+msgid "à"
+msgstr "の"
+
+#: chili-fr:1068
+msgid "Verificando a associação de interfaces à"
+msgstr "インターフェイスの関連付けを確認しています。"
+
+#: chili-fr:1072
+msgid "Verificando as interfaces de rede..."
+msgstr "ネットワークインターフェイスをチェックしています..."
+
+#: chili-fr:1077
+msgid "Configuração concluída!"
+msgstr "セットアップ完了！"
+
+#: chili-fr:1099
+msgid "não existe."
+msgstr "存在しません。"
+
+#: chili-fr:1103
+msgid "Removendo a rede do"
+msgstr "からのネットワークの削除"
+
+#: chili-fr:1113
+msgid "Removendo o arquivo de configuração da rede"
+msgstr "ネットワーク構成ファイルの削除"
+
+#: chili-fr:1208
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "これはフリー ソフトウェアです。自由に変更したり再配布したりできます。"
+
+#: chili-fr:1209
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-fr:1210
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "他のさまざまなライセンスに基づくオープンソース ソフトウェアが含まれます。"
+
+#: chili-fr:1211
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "ダウンロードして自分で作成する方法についての説明を読むことができます"
+
+#: chili-fr:1212
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "このコピーの作成に使用された特定のソース コード。"
+
+#: chili-fr:1213
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "このプログラムには一切の保証がありません。"
+
+#: chili-fr:1221
+msgid "uso:"
+msgstr "使用："
+
+#: chili-fr:1221
+msgid "Opções"
+msgstr "オプション"
+
+#: chili-fr:1222
+msgid "Opções:"
+msgstr "オプション:"
+
+#: chili-fr:1223
+msgid "inicia rede em modo"
+msgstr "モードでネットワークを開始します"
+
+#: chili-fr:1224
+msgid "criar real"
+msgstr "本物を作る"
+
+#: chili-fr:1225
+msgid "remover real"
+msgstr "本物を削除する"
+
+#: chili-fr:1227
+msgid "remover"
+msgstr "取り除く"
+
+#: chili-fr:1228
+msgid "anexa disco externo"
+msgstr "外部ディスクを接続します"
+
+#: chili-fr:1229
+msgid "memória inicial de convidado"
+msgstr "ゲストの初期記憶"
+
+#: chili-fr:1230
+msgid "usa um disco virtual interno"
+msgstr "内部仮想ディスクを使用します"
+
+#: chili-fr:1231
+msgid "cria um disco virtual para uso interno"
+msgstr "内部使用のために仮想ディスクを作成します"
+
+#: chili-fr:1232
+msgid "remove um disco virtual"
+msgstr "仮想ディスクを削除する"
+
+#: chili-fr:1235
+msgid "remover cores da saída"
+msgstr "出力から色を削除する"
+
+#: chili-fr:1236
+msgid "ativar o"
+msgstr "をアクティブにする"
+
+#: chili-fr:1236 chili-fr:1237
+msgid "desligado"
+msgstr "オフ"
+
+#: chili-fr:1237
+msgid "ativar modo"
+msgstr "モードをアクティブにする"
+
+#: chili-fr:1238
+msgid "listar discos virtuais"
+msgstr "仮想ディスクのリストを表示する"
+
+#: chili-fr:1239
+msgid "inicialização em"
+msgstr "ブートする"
+
+#: chili-fr:1240
+msgid "exibe a versão do aplicativo"
+msgstr "アプリケーションのバージョンを表示します"
+
+#: chili-fr:1241
+msgid "exibe a saída gerada pelo comando e sai"
+msgstr "コマンドによって生成された出力を表示して終了します"
+
+#: chili-fr:1242
+msgid "imprime este ajuda"
+msgstr "このヘルプを印刷する"
+
+#: chili-fr:1243
+msgid "Exemplos:"
+msgstr "例:"
+
+#: chili-fr:1244
+msgid "Execute uma imagem, em ponte, usando"
+msgstr "ブリッジされたイメージを実行します。"
+
+#: chili-fr:1245
+msgid "Execute uma imagem, em ponte, usando spice, usando UEFI"
+msgstr "ブリッジ、スパイス、UEFI を使用してイメージを実行する"
+
+#: chili-fr:1246
+msgid "Execute uma imagem, em NAT, usando UEFI"
+msgstr "UEFI を使用して、NAT の下でイメージを実行する"
+
+#: chili-fr:1247
+msgid "Execute uma device, em ponte, usando UEFI"
+msgstr "UEFIを使用してブリッジデバイスを実行する"
+
+#: chili-fr:1248
+msgid "Execute uma device, em ponte, 16Gb memória, usando UEFI"
+msgstr "UEFI を使用して、ブリッジされた 16Gb メモリのデバイスを実行する"
+
+#: chili-fr:1249
+msgid "Execute uma device, em NAT, usando audio pipewire"
+msgstr "オーディオ パイプワイヤを使用して、NAT でデバイスを実行する"
+
+#: chili-fr:1250
+msgid "Execute uma imagem usando BIOS"
+msgstr "BIOS を使用してイメージを実行する"
+
+#: chili-fr:1251
+msgid "Execute uma imagem, em ponte, usando BIOS"
+msgstr "BIOS を使用してブリッジされたイメージを実行する"
+
+#: chili-fr:1252
+msgid "Execute uma device, 16GB memória, usando BIOS"
+msgstr "BIOS を使用して、16GB メモリのデバイスを実行する"
+
+#: chili-fr:1253
+msgid "Forma de uso mais comum:"
+msgstr "最も一般的な使用形態:"
+
+#: chili-fr:1263
+msgid "acesso a vm/convidado via ssh:"
+msgstr "SSH 経由で vm/guest にアクセスします。"
+
+#: chili-fr:1264
+msgid "via"
+msgstr "経由"
+
+#: chili-fr:1265 chili-fr:1267
+msgid "via redirecionamento"
+msgstr "リダイレクト経由"
+
+#: chili-fr:1266
+msgid "via ponte (caso vm iniciada com -b)"
+msgstr "ブリッジ経由 (-b で開始した場合)"
+
+#: chili-fr:1278 chili-fr:1353 chili-fr:1392
+msgid "Criando diretórios de trabalho"
+msgstr "作業ディレクトリの作成"
+
+#: chili-fr:1282 chili-fr:1355 chili-fr:1394
+msgid "Setando permissões no diretórios de trabalho"
+msgstr "作業ディレクトリへのアクセス許可の設定"
+
+#: chili-fr:1287 chili-fr:1293
+msgid "Criando disco virtual"
+msgstr "仮想ディスクの作成"
+
+#: chili-fr:1287 chili-fr:1293
+msgid "no diretórios de trabalho"
+msgstr "作業ディレクトリ内"
+
+#: chili-fr:1301
+msgid "Instalando necessários pacotes"
+msgstr "必要なパッケージのインストール"
+
+#: chili-fr:1305 chili-fr:1323
+msgid "Rodando no"
+msgstr "走り込み"
+
+#: chili-fr:1319
+msgid "[ERRO] Falha ao instalar pacotes."
+msgstr "[エラー] パッケージのインストールに失敗しました。"
+
+#: chili-fr:1344 chili-fr:1427
+msgid "Outra distro:"
+msgstr "他のディストリビューション:"
+
+#: chili-fr:1361
+msgid "Entre com o nome do disco (sem extensão)"
+msgstr "ディスク名を入力します（拡張子なし）"
+
+#: chili-fr:1362
+msgid "Entre com o tamanho do disco virtual em GB"
+msgstr "仮想ディスクのサイズを GB 単位で入力します"
+
+#: chili-fr:1365
+msgid "Disco virtual já existe, escolha outro nome. Tentar novamente?"
+msgstr "仮想ディスクはすでに存在します。別の名前を選択してください。もう一度やり直してください？"
+
+#: chili-fr:1376
+msgid "Falha na criação do disco virtual"
+msgstr "仮想ディスクの作成に失敗しました"
+
+#: chili-fr:1384
+msgid "DISCOS VIRTUAIS DISPONÍVEIS em"
+msgstr "仮想ディスクは次の場所で入手可能です"
+
+#: chili-fr:1399
+msgid "Entre com o nome do disco para remover"
+msgstr "削除するディスク名を入力してください"
+
+#: chili-fr:1402
+msgid "PERGUNTA: Deseja realmente excluir o disco virtual ?"
+msgstr "質問: 本当に仮想ディスクを削除してもよろしいですか?"
+
+#: chili-fr:1404
+msgid "Disco virtual"
+msgstr "仮想ディスク"
+
+#: chili-fr:1404
+msgid "foi removido com sucesso"
+msgstr "正常に削除されました"
+
+#: chili-fr:1410
+msgid "Disco virtual digitado não existe!"
+msgstr "タイプされた仮想ディスクは存在しません。"
+
+#: chili-fr:1418
+msgid "Ativando serviço"
+msgstr "サービスの有効化"
+
+#: chili-fr:1418
+msgid "na distro:"
+msgstr "ディストリビューション:"
+
+#: chili-fr:1454
+msgid "Pontes disponíveis:"
+msgstr "利用可能なブリッジ:"
+
+#: chili-fr:1456
+msgid "nenhuma ponte disponível"
+msgstr "利用可能な橋がありません"
+
+#: chili-fr:1478 chili-fr:1480 chili-fr:1785 chili-fr:1846 chili-fr:1857
+#: chili-fr:1861 chili-fr:1915 chili-fr:1917 chili-fr:1927
+msgid "Parametro"
+msgstr "パラメータ"
+
+#: chili-fr:1478
+msgid "informado. Iniciando VM em modo"
+msgstr "知らされた。モードで VM を起動する"
+
+#: chili-fr:1480
+msgid "não informado. Iniciando VM em modo"
+msgstr "知らされていない。モードで VM を起動する"
+
+#: chili-fr:1483
+msgid "acesso a VM via"
+msgstr "VM アクセス経由"
+
+#: chili-fr:1484 chili-fr:1485
+msgid "via vsock (se habilitado do guest)"
+msgstr "vsock 経由 (ゲストから有効になっている場合)"
+
+#: chili-fr:1487 chili-fr:1488 chili-fr:1489 chili-fr:1490
+msgid "via redirecionamento NAT"
+msgstr "NATリダイレクト経由"
+
+#: chili-fr:1493
+msgid "IP atribuído na VM via DHCP"
+msgstr "DHCP 経由で VM に割り当てられた IP"
+
+#: chili-fr:1502
+msgid "Cliente"
+msgstr "お客様"
+
+#: chili-fr:1561
+msgid "Erro:"
+msgstr "エラー："
+
+#: chili-fr:1561
+msgid "não localizada, tente os listados acima!"
+msgstr "見つからない場合は、上記のリストを試してください。"
+
+#: chili-fr:1579
+msgid "Forçando inicialização UEFI..."
+msgstr "UEFI ブートを強制しています..."
+
+#: chili-fr:1608
+msgid "Anexando iso"
+msgstr "ISOの添付"
+
+#: chili-fr:1613 chili-fr:1665 chili-fr:1678
+msgid "Anexando vdisk"
+msgstr "vdisk の接続"
+
+#: chili-fr:1637
+msgid "Anexando device"
+msgstr "取り付け装置"
+
+#: chili-fr:1785
+msgid "detectado: usando uefi"
+msgstr "検出されました: uefi を使用しています"
+
+#: chili-fr:1791 chili-fr:1799 chili-fr:1811 chili-fr:1818 chili-fr:1821
+#: chili-fr:1835 chili-fr:1850 chili-fr:1869 chili-fr:1885 chili-fr:1904
+#: chili-fr:1921 chili-fr:1930
+msgid "Argumento inválido para"
+msgstr "の引数が無効です"
+
+#: chili-fr:1791
+msgid "falta parâmetro de imagem/disco/device"
+msgstr "イメージ/ディスク/デバイスパラメータがありません"
+
+#: chili-fr:1818
+msgid "falta nome para ponte"
+msgstr "橋の名前がありません"
+
+#: chili-fr:1846
+msgid "detectado: usando ponte"
+msgstr "検出: ブリッジを使用"
+
+#: chili-fr:1857
+msgid "detectado: usando spice..."
+msgstr "検出されました: スパイスを使用しています..."
+
+#: chili-fr:1861
+msgid "detectado: ativando"
+msgstr "検出: アクティブ化"
+
+#: chili-fr:1869 chili-fr:1904
+msgid "Use"
+msgstr "使用"
+
+#: chili-fr:1885
+msgid "Válidos são:"
+msgstr "有効なものは次のとおりです。"
+
+#: chili-fr:1901
+msgid "Anexando placa de rede"
+msgstr "ネットワークカードの取り付け"
+
+#: chili-fr:1915
+msgid "detectado:"
+msgstr "検出されました:"
+
+#: chili-fr:1917
+msgid "não é um dispositivo de bloco"
+msgstr "ブロックデバイスではありません"
+
+#: chili-fr:1921
+msgid "Use formato device, como /dev/sdX (por exemplo)."
+msgstr "/dev/sdX などのデバイス形式を使用します (たとえば)。"
+
+#: chili-fr:1927
+msgid "detectado: Usando"
+msgstr "検出されました: 使用中"
+
+#: chili-fr:1930
+msgid "Use um formato como 16G (por exemplo)."
+msgstr "(たとえば) 16G のような形式を使用します。"
+
+#: chili-fr:1938
+msgid "requer um argumento"
+msgstr "引数が必要です"
+
+#: chili-fr:1941
+msgid "operação não suportada:"
+msgstr "サポートされていない操作:"
+
+#: chili-fr:1941
+msgid "(usar -h para ajuda"
+msgstr "(ヘルプを表示するには -h を使用してください"
+
+#: chili-fr:1967
+msgid "Parametro --uefi não informado, usando BIOS legacy (padrão)..."
+msgstr "--uefi パラメータが通知されず、レガシー BIOS (デフォルト) を使用しています..."
+
+#: chili-fr:1971
+msgid "Nenhum ambiente gráfico detectado — forçando modo TTY."
+msgstr "グラフィック環境が検出されませんでした - TTY モードを強制します。"
+
+#: chili-fr:2019
+msgid "Anexando disco/drive externo:"
+msgstr "外部ディスク/ドライブの接続:"
+
+#: chili-fr:2024
+msgid "Falta parâmetro de imagem/disco/device."
+msgstr "イメージ/ディスク/デバイスのパラメータがありません。"
+
+#: chili-fr:2024
+msgid "Tente os vdisks listados abaixo."
+msgstr "以下にリストされている vdisk を試してください。"
+
+#: chili-fr:2024
+msgid "(usar -h para ajuda)"
+msgstr "(ヘルプには -h を使用してください)"

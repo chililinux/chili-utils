@@ -1,0 +1,899 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 12:07-0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-fr:47
+msgid "Wrapper lite para o qemu"
+msgstr ""
+
+#: chili-fr:421
+msgid "Não foi possível encontrar o comando"
+msgstr ""
+
+#: chili-fr:421 chili-fr:475
+msgid "instalar pacote"
+msgstr ""
+
+#: chili-fr:432
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr ""
+
+#: chili-fr:433
+msgid "Este script precisa dos comandos listados acima"
+msgstr ""
+
+#: chili-fr:434
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr ""
+
+#: chili-fr:436
+msgid "Deseja instalar os pacotes e criar os arquivos necessários?"
+msgstr ""
+
+#: chili-fr:475
+msgid "Não foi possível encontrar o arquivo"
+msgstr ""
+
+#: chili-fr:547 chili-fr:793 chili-fr:1064
+msgid "Adicionando"
+msgstr ""
+
+#: chili-fr:547
+msgid "em"
+msgstr ""
+
+#: chili-fr:565
+msgid "Uso correto"
+msgstr ""
+
+#: chili-fr:569
+msgid "Verificando se a bridge"
+msgstr ""
+
+#: chili-fr:569 chili-fr:1821
+msgid "já existe"
+msgstr ""
+
+#: chili-fr:571 chili-fr:831 chili-fr:851
+msgid "Ponte"
+msgstr ""
+
+#: chili-fr:571
+msgid "já existe — nada a fazer."
+msgstr ""
+
+#: chili-fr:578
+msgid "Detectando interfaces físicas (ethernet)"
+msgstr ""
+
+#: chili-fr:585
+msgid "Nenhuma interface ethernet disponível. WLAN não suporta bridge real."
+msgstr ""
+
+#: chili-fr:591
+msgid "Múltiplas interfaces encontradas — exibindo menu de seleção"
+msgstr ""
+
+#: chili-fr:592
+msgid "Escolha a interface física para a bridge:"
+msgstr ""
+
+#: chili-fr:594
+msgid "Encerrar"
+msgstr ""
+
+#: chili-fr:595
+msgid "Operação cancelada pelo usuário."
+msgstr ""
+
+#: chili-fr:598
+msgid "Interface selecionada:"
+msgstr ""
+
+#: chili-fr:604 chili-fr:1099
+msgid "A interface"
+msgstr ""
+
+#: chili-fr:604
+msgid "é Wi-Fi. Bridge real não funciona com WLAN."
+msgstr ""
+
+#: chili-fr:610
+msgid "Verificando se"
+msgstr ""
+
+#: chili-fr:610
+msgid "já pertence a outra bridge"
+msgstr ""
+
+#: chili-fr:613
+msgid "Interface"
+msgstr ""
+
+#: chili-fr:613
+msgid "já pertence à bridge"
+msgstr ""
+
+#: chili-fr:614
+msgid "Remova primeiro:"
+msgstr ""
+
+#: chili-fr:620
+msgid "Configuração de VLAN"
+msgstr ""
+
+#: chili-fr:622 chili-fr:630
+msgid "Sem VLAN (rede normal)"
+msgstr ""
+
+#: chili-fr:623 chili-fr:631 chili-fr:1226
+msgid "criar"
+msgstr ""
+
+#: chili-fr:623
+msgid "e usar como slave"
+msgstr ""
+
+#: chili-fr:624 chili-fr:632
+msgid "habilitado"
+msgstr ""
+
+#: chili-fr:626
+msgid "Selecione o modo VLAN:"
+msgstr ""
+
+#: chili-fr:631
+msgid "e usar como slave)"
+msgstr ""
+
+#: chili-fr:634
+msgid "Erro inesperado no menu VLAN"
+msgstr ""
+
+#: chili-fr:638
+msgid "Modo VLAN selecionado:"
+msgstr ""
+
+#: chili-fr:643
+msgid "Digite o VLAN ID"
+msgstr ""
+
+#: chili-fr:646
+msgid "Subinterface VLAN definida:"
+msgstr ""
+
+#: chili-fr:649
+msgid "VLAN inválida: informe um número entre 1 e 4094"
+msgstr ""
+
+#: chili-fr:654
+msgid "Bridge atuará como trunk"
+msgstr ""
+
+#: chili-fr:658
+msgid "Informe VLANs permitidas separadas por vírgula"
+msgstr ""
+
+#: chili-fr:665
+msgid "VLAN inválida:"
+msgstr ""
+
+#: chili-fr:670
+msgid "VLAN duplicada:"
+msgstr ""
+
+#: chili-fr:683
+msgid "Detectando IP na subinterface VLAN"
+msgstr ""
+
+#: chili-fr:687
+msgid "Usando IP da interface física"
+msgstr ""
+
+#: chili-fr:692
+msgid "Obtendo IP atual da interface"
+msgstr ""
+
+#: chili-fr:697
+msgid "Nenhum IP detectado automaticamente."
+msgstr ""
+
+#: chili-fr:698
+msgid "Nenhum gateway detectado."
+msgstr ""
+
+#: chili-fr:704
+msgid "Configurando IP da bridge"
+msgstr ""
+
+#: chili-fr:714
+msgid "Formato inválido."
+msgstr ""
+
+#: chili-fr:720
+msgid "IP igual ao atual — pulando teste."
+msgstr ""
+
+#: chili-fr:724
+msgid "Validando se IP está em uso..."
+msgstr ""
+
+#: chili-fr:727
+msgid "Conflito ARP detectado."
+msgstr ""
+
+#: chili-fr:740
+msgid "Gateway inválido"
+msgstr ""
+
+#: chili-fr:744
+msgid "Gateway não respondeu."
+msgstr ""
+
+#: chili-fr:745
+msgid "Continuar?"
+msgstr ""
+
+#: chili-fr:753
+msgid "Criando ponte"
+msgstr ""
+
+#: chili-fr:756
+msgid "Falha ao criar ponte"
+msgstr ""
+
+#: chili-fr:763
+msgid "Criando subinterface"
+msgstr ""
+
+#: chili-fr:766
+msgid "Falha ao criar VLAN"
+msgstr ""
+
+#: chili-fr:777
+msgid "Criando conexão slave para"
+msgstr ""
+
+#: chili-fr:782
+msgid "Falha ao criar slave"
+msgstr ""
+
+#: chili-fr:789
+msgid "Ativando"
+msgstr ""
+
+#: chili-fr:793
+msgid "ao"
+msgstr ""
+
+#: chili-fr:795
+msgid "Falha ao adicionar"
+msgstr ""
+
+#: chili-fr:801
+msgid "Desativando conexão antiga da interface física"
+msgstr ""
+
+#: chili-fr:811
+msgid "Ativando DHCP na ponte"
+msgstr ""
+
+#: chili-fr:814
+msgid "Aplicando IP manual"
+msgstr ""
+
+#: chili-fr:825
+msgid "Ativando ponte"
+msgstr ""
+
+#: chili-fr:830
+msgid "RESUMO"
+msgstr ""
+
+#: chili-fr:832
+msgid "Interface física"
+msgstr ""
+
+#: chili-fr:834
+msgid "Conexão"
+msgstr ""
+
+#: chili-fr:837
+msgid "nenhuma"
+msgstr ""
+
+#: chili-fr:845
+msgid "aplicado"
+msgstr ""
+
+#: chili-fr:851
+msgid "criada e configurada com sucesso."
+msgstr ""
+
+#: chili-fr:869 chili-fr:1089 chili-fr:1095
+msgid "Removendo"
+msgstr ""
+
+#: chili-fr:869
+msgid "com segurança (sem derrubar SSH)"
+msgstr ""
+
+#: chili-fr:883
+msgid "Não foi possível detectar interface física slave."
+msgstr ""
+
+#: chili-fr:887
+msgid "Interface física slave detectada:"
+msgstr ""
+
+#: chili-fr:898
+msgid "Nenhum perfil slave encontrado — talvez já removido."
+msgstr ""
+
+#: chili-fr:900
+msgid "Perfil slave encontrado:"
+msgstr ""
+
+#: chili-fr:909
+msgid "IP atual na"
+msgstr ""
+
+#: chili-fr:922
+msgid "Não foi possível localizar o perfil físico verdadeiro para"
+msgstr ""
+
+#: chili-fr:925
+msgid "Perfil físico real:"
+msgstr ""
+
+#: chili-fr:929
+msgid "Restaurando autoconnect da interface física"
+msgstr ""
+
+#: chili-fr:933
+msgid "Aplicando"
+msgstr ""
+
+#: chili-fr:933
+msgid "de volta na interface física"
+msgstr ""
+
+#: chili-fr:938
+msgid "Sem IP detectado — configurando interface física para DHCP"
+msgstr ""
+
+#: chili-fr:944
+msgid "Subindo interface física ANTES de remover a bridge"
+msgstr ""
+
+#: chili-fr:946
+msgid "Falha ao subir interface física — pode ser esperado via SSH"
+msgstr ""
+
+#: chili-fr:952
+msgid "Removendo conexão slave"
+msgstr ""
+
+#: chili-fr:960
+msgid "Desativando"
+msgstr ""
+
+#: chili-fr:965
+msgid "Removendo perfil da"
+msgstr ""
+
+#: chili-fr:970
+msgid "removida com sucesso e interface"
+msgstr ""
+
+#: chili-fr:970
+msgid "restaurada."
+msgstr ""
+
+#: chili-fr:977
+msgid "está funcionando e conseguiu listar as redes."
+msgstr ""
+
+#: chili-fr:979
+msgid "não conseguiu se conectar ao libvirt."
+msgstr ""
+
+#: chili-fr:980
+msgid "Verifique se o serviço libvirtd está ativo com os comandos abaixo:"
+msgstr ""
+
+#: chili-fr:983
+msgid "DICA: Tente ativar com os comandos abaixo:"
+msgstr ""
+
+#: chili-fr:986
+msgid "Erro fatal"
+msgstr ""
+
+#: chili-fr:997
+msgid "Criando a rede"
+msgstr ""
+
+#: chili-fr:1037
+msgid "erro fatal!"
+msgstr ""
+
+#: chili-fr:1041
+msgid "Tornando"
+msgstr ""
+
+#: chili-fr:1041
+msgid "persistente..."
+msgstr ""
+
+#: chili-fr:1042
+msgid "Iniciando a rede"
+msgstr ""
+
+#: chili-fr:1046
+msgid "Falha ao iniciar a rede"
+msgstr ""
+
+#: chili-fr:1046
+msgid "Tentando novamente."
+msgstr ""
+
+#: chili-fr:1056
+msgid "Criando a interface"
+msgstr ""
+
+#: chili-fr:1060
+msgid "Ativando a interface"
+msgstr ""
+
+#: chili-fr:1064
+msgid "à"
+msgstr ""
+
+#: chili-fr:1068
+msgid "Verificando a associação de interfaces à"
+msgstr ""
+
+#: chili-fr:1072
+msgid "Verificando as interfaces de rede..."
+msgstr ""
+
+#: chili-fr:1077
+msgid "Configuração concluída!"
+msgstr ""
+
+#: chili-fr:1099
+msgid "não existe."
+msgstr ""
+
+#: chili-fr:1103
+msgid "Removendo a rede do"
+msgstr ""
+
+#: chili-fr:1113
+msgid "Removendo o arquivo de configuração da rede"
+msgstr ""
+
+#: chili-fr:1208
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr ""
+
+#: chili-fr:1209
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-fr:1210
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr ""
+
+#: chili-fr:1211
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr ""
+
+#: chili-fr:1212
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr ""
+
+#: chili-fr:1213
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr ""
+
+#: chili-fr:1221
+msgid "uso:"
+msgstr ""
+
+#: chili-fr:1221
+msgid "Opções"
+msgstr ""
+
+#: chili-fr:1222
+msgid "Opções:"
+msgstr ""
+
+#: chili-fr:1223
+msgid "inicia rede em modo"
+msgstr ""
+
+#: chili-fr:1224
+msgid "criar real"
+msgstr ""
+
+#: chili-fr:1225
+msgid "remover real"
+msgstr ""
+
+#: chili-fr:1227
+msgid "remover"
+msgstr ""
+
+#: chili-fr:1228
+msgid "anexa disco externo"
+msgstr ""
+
+#: chili-fr:1229
+msgid "memória inicial de convidado"
+msgstr ""
+
+#: chili-fr:1230
+msgid "usa um disco virtual interno"
+msgstr ""
+
+#: chili-fr:1231
+msgid "cria um disco virtual para uso interno"
+msgstr ""
+
+#: chili-fr:1232
+msgid "remove um disco virtual"
+msgstr ""
+
+#: chili-fr:1235
+msgid "remover cores da saída"
+msgstr ""
+
+#: chili-fr:1236
+msgid "ativar o"
+msgstr ""
+
+#: chili-fr:1236 chili-fr:1237
+msgid "desligado"
+msgstr ""
+
+#: chili-fr:1237
+msgid "ativar modo"
+msgstr ""
+
+#: chili-fr:1238
+msgid "listar discos virtuais"
+msgstr ""
+
+#: chili-fr:1239
+msgid "inicialização em"
+msgstr ""
+
+#: chili-fr:1240
+msgid "exibe a versão do aplicativo"
+msgstr ""
+
+#: chili-fr:1241
+msgid "exibe a saída gerada pelo comando e sai"
+msgstr ""
+
+#: chili-fr:1242
+msgid "imprime este ajuda"
+msgstr ""
+
+#: chili-fr:1243
+msgid "Exemplos:"
+msgstr ""
+
+#: chili-fr:1244
+msgid "Execute uma imagem, em ponte, usando"
+msgstr ""
+
+#: chili-fr:1245
+msgid "Execute uma imagem, em ponte, usando spice, usando UEFI"
+msgstr ""
+
+#: chili-fr:1246
+msgid "Execute uma imagem, em NAT, usando UEFI"
+msgstr ""
+
+#: chili-fr:1247
+msgid "Execute uma device, em ponte, usando UEFI"
+msgstr ""
+
+#: chili-fr:1248
+msgid "Execute uma device, em ponte, 16Gb memória, usando UEFI"
+msgstr ""
+
+#: chili-fr:1249
+msgid "Execute uma device, em NAT, usando audio pipewire"
+msgstr ""
+
+#: chili-fr:1250
+msgid "Execute uma imagem usando BIOS"
+msgstr ""
+
+#: chili-fr:1251
+msgid "Execute uma imagem, em ponte, usando BIOS"
+msgstr ""
+
+#: chili-fr:1252
+msgid "Execute uma device, 16GB memória, usando BIOS"
+msgstr ""
+
+#: chili-fr:1253
+msgid "Forma de uso mais comum:"
+msgstr ""
+
+#: chili-fr:1263
+msgid "acesso a vm/convidado via ssh:"
+msgstr ""
+
+#: chili-fr:1264
+msgid "via"
+msgstr ""
+
+#: chili-fr:1265 chili-fr:1267
+msgid "via redirecionamento"
+msgstr ""
+
+#: chili-fr:1266
+msgid "via ponte (caso vm iniciada com -b)"
+msgstr ""
+
+#: chili-fr:1278 chili-fr:1353 chili-fr:1392
+msgid "Criando diretórios de trabalho"
+msgstr ""
+
+#: chili-fr:1282 chili-fr:1355 chili-fr:1394
+msgid "Setando permissões no diretórios de trabalho"
+msgstr ""
+
+#: chili-fr:1287 chili-fr:1293
+msgid "Criando disco virtual"
+msgstr ""
+
+#: chili-fr:1287 chili-fr:1293
+msgid "no diretórios de trabalho"
+msgstr ""
+
+#: chili-fr:1301
+msgid "Instalando necessários pacotes"
+msgstr ""
+
+#: chili-fr:1305 chili-fr:1323
+msgid "Rodando no"
+msgstr ""
+
+#: chili-fr:1319
+msgid "[ERRO] Falha ao instalar pacotes."
+msgstr ""
+
+#: chili-fr:1344 chili-fr:1427
+msgid "Outra distro:"
+msgstr ""
+
+#: chili-fr:1361
+msgid "Entre com o nome do disco (sem extensão)"
+msgstr ""
+
+#: chili-fr:1362
+msgid "Entre com o tamanho do disco virtual em GB"
+msgstr ""
+
+#: chili-fr:1365
+msgid "Disco virtual já existe, escolha outro nome. Tentar novamente?"
+msgstr ""
+
+#: chili-fr:1376
+msgid "Falha na criação do disco virtual"
+msgstr ""
+
+#: chili-fr:1384
+msgid "DISCOS VIRTUAIS DISPONÍVEIS em"
+msgstr ""
+
+#: chili-fr:1399
+msgid "Entre com o nome do disco para remover"
+msgstr ""
+
+#: chili-fr:1402
+msgid "PERGUNTA: Deseja realmente excluir o disco virtual ?"
+msgstr ""
+
+#: chili-fr:1404
+msgid "Disco virtual"
+msgstr ""
+
+#: chili-fr:1404
+msgid "foi removido com sucesso"
+msgstr ""
+
+#: chili-fr:1410
+msgid "Disco virtual digitado não existe!"
+msgstr ""
+
+#: chili-fr:1418
+msgid "Ativando serviço"
+msgstr ""
+
+#: chili-fr:1418
+msgid "na distro:"
+msgstr ""
+
+#: chili-fr:1454
+msgid "Pontes disponíveis:"
+msgstr ""
+
+#: chili-fr:1456
+msgid "nenhuma ponte disponível"
+msgstr ""
+
+#: chili-fr:1478 chili-fr:1480 chili-fr:1785 chili-fr:1846 chili-fr:1857
+#: chili-fr:1861 chili-fr:1915 chili-fr:1917 chili-fr:1927
+msgid "Parametro"
+msgstr ""
+
+#: chili-fr:1478
+msgid "informado. Iniciando VM em modo"
+msgstr ""
+
+#: chili-fr:1480
+msgid "não informado. Iniciando VM em modo"
+msgstr ""
+
+#: chili-fr:1483
+msgid "acesso a VM via"
+msgstr ""
+
+#: chili-fr:1484 chili-fr:1485
+msgid "via vsock (se habilitado do guest)"
+msgstr ""
+
+#: chili-fr:1487 chili-fr:1488 chili-fr:1489 chili-fr:1490
+msgid "via redirecionamento NAT"
+msgstr ""
+
+#: chili-fr:1493
+msgid "IP atribuído na VM via DHCP"
+msgstr ""
+
+#: chili-fr:1502
+msgid "Cliente"
+msgstr ""
+
+#: chili-fr:1561
+msgid "Erro:"
+msgstr ""
+
+#: chili-fr:1561
+msgid "não localizada, tente os listados acima!"
+msgstr ""
+
+#: chili-fr:1579
+msgid "Forçando inicialização UEFI..."
+msgstr ""
+
+#: chili-fr:1608
+msgid "Anexando iso"
+msgstr ""
+
+#: chili-fr:1613 chili-fr:1665 chili-fr:1678
+msgid "Anexando vdisk"
+msgstr ""
+
+#: chili-fr:1637
+msgid "Anexando device"
+msgstr ""
+
+#: chili-fr:1785
+msgid "detectado: usando uefi"
+msgstr ""
+
+#: chili-fr:1791 chili-fr:1799 chili-fr:1811 chili-fr:1818 chili-fr:1821
+#: chili-fr:1835 chili-fr:1850 chili-fr:1869 chili-fr:1885 chili-fr:1904
+#: chili-fr:1921 chili-fr:1930
+msgid "Argumento inválido para"
+msgstr ""
+
+#: chili-fr:1791
+msgid "falta parâmetro de imagem/disco/device"
+msgstr ""
+
+#: chili-fr:1818
+msgid "falta nome para ponte"
+msgstr ""
+
+#: chili-fr:1846
+msgid "detectado: usando ponte"
+msgstr ""
+
+#: chili-fr:1857
+msgid "detectado: usando spice..."
+msgstr ""
+
+#: chili-fr:1861
+msgid "detectado: ativando"
+msgstr ""
+
+#: chili-fr:1869 chili-fr:1904
+msgid "Use"
+msgstr ""
+
+#: chili-fr:1885
+msgid "Válidos são:"
+msgstr ""
+
+#: chili-fr:1901
+msgid "Anexando placa de rede"
+msgstr ""
+
+#: chili-fr:1915
+msgid "detectado:"
+msgstr ""
+
+#: chili-fr:1917
+msgid "não é um dispositivo de bloco"
+msgstr ""
+
+#: chili-fr:1921
+msgid "Use formato device, como /dev/sdX (por exemplo)."
+msgstr ""
+
+#: chili-fr:1927
+msgid "detectado: Usando"
+msgstr ""
+
+#: chili-fr:1930
+msgid "Use um formato como 16G (por exemplo)."
+msgstr ""
+
+#: chili-fr:1938
+msgid "requer um argumento"
+msgstr ""
+
+#: chili-fr:1941
+msgid "operação não suportada:"
+msgstr ""
+
+#: chili-fr:1941
+msgid "(usar -h para ajuda"
+msgstr ""
+
+#: chili-fr:1967
+msgid "Parametro --uefi não informado, usando BIOS legacy (padrão)..."
+msgstr ""
+
+#: chili-fr:1971
+msgid "Nenhum ambiente gráfico detectado — forçando modo TTY."
+msgstr ""
+
+#: chili-fr:2019
+msgid "Anexando disco/drive externo:"
+msgstr ""
+
+#: chili-fr:2024
+msgid "Falta parâmetro de imagem/disco/device."
+msgstr ""
+
+#: chili-fr:2024
+msgid "Tente os vdisks listados abaixo."
+msgstr ""
+
+#: chili-fr:2024
+msgid "(usar -h para ajuda)"
+msgstr ""
