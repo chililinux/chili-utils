@@ -1,0 +1,153 @@
+# Chili Tradutor Go - 2.1.17-20260116
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.17-20260116\n"
+"POT-Creation-Date: 2026-01-16 09:13-0400\n"
+"PO-Revision-Date: 2026-01-16 09:13-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_TW\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-find-dup:284
+msgid "This script must be run as root. Elevating privileges..."
+msgstr "該腳本必須以 root 身份運行。提升權限..."
+
+#: chili-find-dup:294
+msgid "Error: Unable to elevate privileges. Run manually as root."
+msgstr "錯誤：無法提升權限。以 root 身份手動運行。"
+
+#: chili-find-dup:363
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "這是免費軟件：您可以自由更改和重新分發它。"
+
+#: chili-find-dup:364
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-find-dup:365
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "包括各種其他許可證下的開源軟件。"
+
+#: chili-find-dup:366
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "您可以閱讀有關如何下載和自行創建的說明"
+
+#: chili-find-dup:367
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "用於創建此副本的特定源代碼。"
+
+#: chili-find-dup:368
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "該計劃絕對不提供任何保證。"
+
+#: chili-find-dup:409
+msgid "Não foi possível encontrar o comando"
+msgstr "找不到命令"
+
+#: chili-find-dup:410
+msgid "instalar pacote"
+msgstr "安裝包"
+
+#: chili-find-dup:426
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "無法繼續"
+
+#: chili-find-dup:427
+msgid "Este script precisa dos comandos listados acima"
+msgstr "該腳本需要上面列出的命令"
+
+#: chili-find-dup:428
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "安裝它們和/或確保它們在您的"
+
+#: chili-find-dup:436
+msgid "Instalar dependências base agora?"
+msgstr "現在安裝基本依賴項嗎？"
+
+#: chili-find-dup:437
+msgid "Preparando ambiente para"
+msgstr "準備環境"
+
+#: chili-find-dup:441
+msgid "Erro Crítico:"
+msgstr "嚴重錯誤："
+
+#: chili-find-dup:441
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "基礎包安裝失敗。"
+
+#: chili-find-dup:445
+msgid "Sucesso:"
+msgstr "成功："
+
+#: chili-find-dup:445
+msgid "Dependências instaladas."
+msgstr "安裝的依賴項。"
+
+#: chili-find-dup:477
+msgid "compara conteúdo via SHA256"
+msgstr "通過 SHA256 比較內容"
+
+#: chili-find-dup:478
+msgid "compara apenas nome/caminho"
+msgstr "僅比較名稱/路徑"
+
+#: chili-find-dup:479
+msgid "remove arquivo correspondente do DIR1 (se igual)"
+msgstr "從 DIR1 中刪除相應的文件（如果相等）"
+
+#: chili-find-dup:480
+msgid "remove arquivo correspondente do DIR2 (se igual)"
+msgstr "從 DIR2 中刪除相應的文件（如果相同）"
+
+#: chili-find-dup:481
+msgid "mostra o que faria, sem executar"
+msgstr "顯示它會做什麼，而不執行"
+
+#: chili-find-dup:482
+msgid "narra a execução"
+msgstr "敘述執行過程"
+
+#: chili-find-dup:483
+msgid "mostra esta ajuda"
+msgstr "顯示此幫助"
+
+#: chili-find-dup:485
+msgid "exemplos:"
+msgstr "例子："
+
+#: chili-find-dup:523
+msgid "precisa escolher --by-hash ou --by-name"
+msgstr "需要選擇 --by-hash 或 --by-name"
+
+#: chili-find-dup:537
+msgid "comparação"
+msgstr "比較"
+
+#: chili-find-dup:545
+msgid "faltando destino:"
+msgstr "缺少目的地："
+
+#: chili-find-dup:562
+msgid "IGUAL:"
+msgstr "平等的："
+
+#: chili-find-dup:569
+msgid "removido origem:"
+msgstr "已刪除來源："
+
+#: chili-find-dup:578
+msgid "removido destino:"
+msgstr "刪除的目的地："
+
+#: chili-find-dup:583
+msgid "diferente:"
+msgstr "不同的："
