@@ -44,7 +44,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #system
 readonly APP="${0##*/}"
 readonly VERSION='3.01.13-20260113'
-readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
+readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
 	'qemu-system-x86_64'
@@ -94,14 +94,14 @@ declare videodevice='ramfb'
 declare videodevice='virtio-gpu-gl'
 declare videodevice='virtio-gpu'
 
-declare videodevice='VGA'
 declare videodevice='qxl'
+declare videodevice='VGA'
 declare videodevice='virtio-vga'
 
 declare spice=false
+declare uefi=false
 declare only_tty=false
 declare drive=false
-declare uefi=false
 declare vdisk=false
 declare output=false
 declare vdisk_name=''
@@ -1730,26 +1730,27 @@ main() {
 		exit 0
 	else
 		qemu_options+=(-device "$videodevice")
-		qemu_options+=(-display gtk,gl=on)
+#		qemu_options+=(-display gtk,gl=on)
+		qemu_options+=(-display sdl)
 		if $only_tty; then
 		   if $output; then
 cat <<EOF
 # ${red}output${cyan}
-sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
 			   exit 0
 	      fi
-			cmd_sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+			cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		else
 		   if $output; then
 cat <<EOF
 # ${red}output ${cyan}
-sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
    			exit 0
 	      fi
-			sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+			sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		fi
 	fi
