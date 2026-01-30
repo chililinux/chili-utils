@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: ter 13 jan 2026 10:09:01 -04
+#  Updated: sex 30 jan 2026 00:29:42 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -43,8 +43,8 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.01.13-20260113'
-readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
+readonly VERSION='3.01.30-20260130'
+readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
 	'qemu-system-x86_64'
@@ -94,14 +94,14 @@ declare videodevice='ramfb'
 declare videodevice='virtio-gpu-gl'
 declare videodevice='virtio-gpu'
 
-declare videodevice='VGA'
 declare videodevice='qxl'
+declare videodevice='VGA'
 declare videodevice='virtio-vga'
 
 declare spice=false
+declare uefi=false
 declare only_tty=false
 declare drive=false
-declare uefi=false
 declare vdisk=false
 declare output=false
 declare vdisk_name=''
@@ -1709,7 +1709,9 @@ main() {
 		)
 	else
 #		qemu_options+=(-device virtio-scsi-pci,id=scsi0)
-		qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
+#		qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
+      audio="${audioserver:-$(detect_audio_server)}"
+      qemu_options+=(-audiodev "$audio",id=snd0)
 		qemu_options+=(-rtc base=localtime,clock=host)
 		qemu_options+=(-device ich9-intel-hda)
 		qemu_options+=(-device hda-output,audiodev=snd0)
@@ -1730,26 +1732,27 @@ main() {
 		exit 0
 	else
 		qemu_options+=(-device "$videodevice")
-		qemu_options+=(-display gtk,gl=on)
+#		qemu_options+=(-display gtk,gl=on)
+		qemu_options+=(-display sdl)
 		if $only_tty; then
 		   if $output; then
 cat <<EOF
 # ${red}output${cyan}
-sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
 			   exit 0
 	      fi
-			cmd_sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+			cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		else
 		   if $output; then
 cat <<EOF
 # ${red}output ${cyan}
-sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
    			exit 0
 	      fi
-			sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+			sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		fi
 	fi
@@ -1771,8 +1774,8 @@ fi
 sh_checkDependencies
 sh_checkVdiskFiles
 
-OPTIONS=m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
-LONGOPTIONS=memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet
+OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
+LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
 
@@ -1840,6 +1843,18 @@ while test ${#opts[*]} -gt 0; do
 	-q | --quiet)
 	   quiet=true
 	   ;;
+	-a | --audio)
+      next_arg="${2:-}"
+      next_arg="${next_arg,,}"
+      if [[ "$next_arg" =~ ^(pipewire|pa|jack|none)$ ]]; then
+			audioserver="$next_arg"
+			msg_info "$(gettext 'Parametro') ${yellow}--audio${rst} $(gettext 'detectado: usando') ${cyan}'$next_arg'${rst}"
+			shift
+		else
+			echo -e "${red}Erro:${rst} $(gettext 'Argumento inválido para') ${cyan}${1}${rst} - válidos: ${yellow}pipewire pa jack none"
+			exit 1
+		fi
+		;;
 	-b | --bridge)
 		if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
 			iface_bridge="$2"
@@ -2021,10 +2036,11 @@ if [[ $# > 0 ]]; then
 	fi
 	main "$@"
 else
-	log_err "${red}Error${rst}: $(gettext 'Falta parâmetro de imagem/disco/device.') ${cyan}$(gettext 'Tente os vdisks listados abaixo.') ${yellow}$(gettext '(usar -h para ajuda)')"
+   log_err "${red}Error${rst}: $(gettext 'Falta parâmetro de imagem/disco/device.') ${cyan}$(gettext 'Tente os vdisks listados abaixo.') ${yellow}$(gettext '(usar -h para ajuda)')"
 	msg_ex_tab "${green}$ ${reset}${APP} ${params} ${rst}vda.img"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}/path/filename.img|qcow2|iso|raw"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}/dev/sdX"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}filename.iso /dev/sdX"
 	sh_list_vdisks
+   :
 fi
