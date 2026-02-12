@@ -1714,7 +1714,8 @@ main() {
       qemu_options+=(-audiodev "$audio",id=snd0)
 		qemu_options+=(-rtc base=localtime,clock=host)
 		qemu_options+=(-device ich9-intel-hda)
-		qemu_options+=(-device hda-output,audiodev=snd0)
+#		qemu_options+=(-device hda-output,audiodev=snd0) # só saida de audio
+		qemu_options+=(-device hda-duplex,audiodev=snd0)
 		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
 		#	qemu_options+=(-device intel-iommu)
@@ -1937,7 +1938,7 @@ while test ${#opts[*]} -gt 0; do
 		fi
 		;;
 	-m | --memory)
-		if [[ $2 =~ ^[0-9]+[MG]$ ]]; then
+		if [[ $2 =~ ^[0-9]+[MGmg]$ ]]; then
 			xmem=$2
 			log_msg "$(gettext 'Parametro') ${yellow}$1 ${rst}$(gettext 'detectado: Usando') $2"
 			shift
