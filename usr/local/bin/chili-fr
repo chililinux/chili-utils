@@ -98,6 +98,7 @@ declare videodevice='qxl'
 declare videodevice='VGA'
 declare videodevice='virtio-vga'
 
+declare lsharepath=false
 declare spice=false
 declare uefi=false
 declare only_tty=false
@@ -1239,7 +1240,8 @@ ${cyan}$(gettext 'Opções:')${reset}
   ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: BIOS)
   ${rst}-V|--version                           ${cyan}# $(gettext 'exibe a versão do aplicativo')
   ${rst}-o|--output                            ${cyan}# $(gettext 'exibe a saída gerada pelo comando e sai')
-  ${rst}-h|--help                              ${cyan}# $(gettext 'imprime este ajuda')
+  ${rst}   --sharepath                         ${cyan}# $(gettext 'compartilha pasta local na VM - (ex: --sharepath /home/user/Imagens)')
+  ${rst}-h|-H|--help                           ${cyan}# $(gettext 'imprime este ajuda')
 ${cyan}$(gettext 'Exemplos:')${rst}
   $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando') UEFI ${rst}
   $ ${orange}$APP${reset} -u -s -b br0 file.iso       ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando spice, usando UEFI') ${rst}
@@ -1513,7 +1515,7 @@ function sh_start_with_spice() {
 	)
 
    if $output; then
-cat <<-EOF
+      cat <<EOF
 # ${red}output ${cyan}
 sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]} &
 qemu_pid=\$!
@@ -1718,8 +1720,14 @@ main() {
 		qemu_options+=(-device hda-duplex,audiodev=snd0)
 		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
-		#	qemu_options+=(-device intel-iommu)
-#		qemu_options+=(-display gtk,gl=on)
+		if $lsharepath; then
+         #compartilhamento
+         qemu_options+=(-fsdev local,id=fsdev0,path="${csharepath}",security_model=passthrough)
+         qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
+      fi
+      #
+      #qemu_options+=(-device intel-iommu)
+      #qemu_options+=(-display gtk,gl=on)
 	fi
 
 	if $spice; then
@@ -1737,7 +1745,7 @@ main() {
 		qemu_options+=(-display sdl)
 		if $only_tty; then
 		   if $output; then
-cat <<EOF
+            cat <<EOF
 # ${red}output${cyan}
 sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
@@ -1747,7 +1755,7 @@ EOF
 			exit 0
 		else
 		   if $output; then
-cat <<EOF
+            cat <<EOF
 # ${red}output ${cyan}
 sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
@@ -1765,7 +1773,7 @@ sh_setvarcolors
 #sh_copyright
 
 # Display usage information if no arguments are passed
-if [[ $# -eq 0 || $1 == @(-h|--help) ]]; then
+if [[ $# -eq 0 || $1 == @(-h|-H|--help) ]]; then
 	sh_usage
 fi
 if [[ $1 == @(-V|--version) ]]; then
@@ -1776,7 +1784,7 @@ sh_checkDependencies
 sh_checkVdiskFiles
 
 OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
-LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet
+LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,sharepath:
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
 
@@ -1867,6 +1875,12 @@ while test ${#opts[*]} -gt 0; do
 			print_avaiable_bridges
 			exit 1
 		fi
+		;;
+	--sharepath)
+		lsharepath=true
+		csharepath="$2"
+		msg "$(gettext 'Parametro') ${yellow}--sharepath ${rst}$(gettext 'detectado: usando') ${cyan}${csharepath}"
+		shift
 		;;
 	-s | --spice)
 		spice=true
