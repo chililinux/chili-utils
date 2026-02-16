@@ -1551,10 +1551,6 @@ main() {
 
 	# Anexar discos/imagens
 	for img in "${params[@]}"; do
-      if [[ ! -f "$img" || ! -r "$img" ]]; then
-  		   die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'inválido ou inacessivel - verifique permissôes/dono')${reset}"
-      fi
-
 		# Verificar se a imagem foi especificada
 		[[ -z "$img" ]] && {
 			sh_list_vdisks
