@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sex 30 jan 2026 00:29:42 -04
+#  Updated: seg 16 fev 2026 00:50:21 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -43,7 +43,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.01.30-20260130'
+readonly VERSION='3.02.16-20260216'
 readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1551,6 +1551,10 @@ main() {
 
 	# Anexar discos/imagens
 	for img in "${params[@]}"; do
+      if [[ ! -f "$img" || ! -r "$img" ]]; then
+  		   die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'inválido ou inacessivel - verifique permissôes/dono')${reset}"
+      fi
+
 		# Verificar se a imagem foi especificada
 		[[ -z "$img" ]] && {
 			sh_list_vdisks
