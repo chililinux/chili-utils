@@ -5,9 +5,9 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: seg 16 fev 2026 00:50:21 -04
+#  Updated: qua 18 fev 2026 00:36:04 -04
 #
-#  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.02.16-20260216'
+readonly VERSION='3.02.18-20260218'
 readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1879,7 +1879,9 @@ while test ${#opts[*]} -gt 0; do
 	--share)
 		lshare=true
 		cshare="$2"
-		msg "$(gettext 'Parametro') ${yellow}--share ${rst}$(gettext 'detectado: usando') ${cyan}${cshare}"
+		msg "$(gettext 'Parametro') ${yellow}--share ${rst}$(gettext 'detectado: usando share') ${cyan}${cshare}"
+		msg_tab "montar share na vm (mount): ${cyan}$ sudo mount vmshare -t 9p -o rw,relatime,cache=0xf,access=client,msize=262144,trans=virtio /mnt/"
+		msg_tab "montar share na vm (fstab): ${cyan}vmshare  /mnt  9p nofail,trans=virtio,version=9p2000.L,msize=262144,cache=loose  0  0"
 		shift
 		;;
 	-s | --spice)
