@@ -98,7 +98,7 @@ declare videodevice='qxl'
 declare videodevice='VGA'
 declare videodevice='virtio-vga'
 
-declare lsharepath=false
+declare lshare=false
 declare spice=false
 declare uefi=false
 declare only_tty=false
@@ -1240,7 +1240,7 @@ ${cyan}$(gettext 'Opções:')${reset}
   ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: BIOS)
   ${rst}-V|--version                           ${cyan}# $(gettext 'exibe a versão do aplicativo')
   ${rst}-o|--output                            ${cyan}# $(gettext 'exibe a saída gerada pelo comando e sai')
-  ${rst}   --sharepath                         ${cyan}# $(gettext 'compartilha pasta local na VM - (ex: --sharepath /home/user/Imagens)')
+  ${rst}   --share                             ${cyan}# $(gettext 'compartilha pasta local na VM - (ex: --share /home/user/Imagens)')
   ${rst}-h|-H|--help                           ${cyan}# $(gettext 'imprime este ajuda')
 ${cyan}$(gettext 'Exemplos:')${rst}
   $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando') UEFI ${rst}
@@ -1720,9 +1720,9 @@ main() {
 		qemu_options+=(-device hda-duplex,audiodev=snd0)
 		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
-		if $lsharepath; then
+		if $lshare; then
          #compartilhamento
-         qemu_options+=(-fsdev local,id=fsdev0,path="${csharepath}",security_model=passthrough)
+         qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
          qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
       fi
       #
@@ -1784,7 +1784,7 @@ sh_checkDependencies
 sh_checkVdiskFiles
 
 OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
-LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,sharepath:
+LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
 
@@ -1876,10 +1876,10 @@ while test ${#opts[*]} -gt 0; do
 			exit 1
 		fi
 		;;
-	--sharepath)
-		lsharepath=true
-		csharepath="$2"
-		msg "$(gettext 'Parametro') ${yellow}--sharepath ${rst}$(gettext 'detectado: usando') ${cyan}${csharepath}"
+	--share)
+		lshare=true
+		cshare="$2"
+		msg "$(gettext 'Parametro') ${yellow}--share ${rst}$(gettext 'detectado: usando') ${cyan}${cshare}"
 		shift
 		;;
 	-s | --spice)
