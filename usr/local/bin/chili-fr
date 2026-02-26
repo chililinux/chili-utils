@@ -1993,7 +1993,8 @@ if [[ $# > 0 ]]; then
 	# intervalo de 555 a 560 → tamanho = 560−555+1 = 6
 	export GUEST_CID=$((RANDOM % 6 + 555))
 #	export HOST_FWD=$((RANDOM % 10000 + 20000))
-	export HOST_FWD=$((RANDOM % 6 + 60022))
+   export HOST_FWD=$((RANDOM % 6 + 60022))
+   export HOST_GOTIFY=$((HOST_FWD + 1))
 
 	if ! $uefi; then
 		msg_warn "$(gettext 'Parametro --uefi não informado, usando BIOS legacy (padrão)...')"
@@ -2016,7 +2017,8 @@ if [[ $# > 0 ]]; then
          else
             # Apenas o primeiro dispositivo recebe hostfwd e smb
             if (( nId == 1 )); then
-               qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
+               #qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
+               qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
             else
                qemu_options+=(-netdev user,id="$netdev_id")
             fi
@@ -2030,7 +2032,8 @@ if [[ $# > 0 ]]; then
       if $bridge; then
          qemu_options+=(-netdev bridge,id="$netdev_id",br="$iface_bridge")
       else
-         qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
+#        qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
+         qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
       fi
       qemu_options+=(-device "$netdevice",netdev="$netdev_id")
    fi
