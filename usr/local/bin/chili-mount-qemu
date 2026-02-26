@@ -1,0 +1,137 @@
+#!/bin/bash
+#set -e
+
+c0="\033[0m"
+c1="\033[1;36m"
+c2="\033[1;33m"
+c3="\033[1;32m"
+c4="\033[1;31m"
+c5="\033[1;37m"
+
+msg() { echo -e "${c1}==>${c0} ${c5}$*${c0}"; }
+ok() { echo -e "${c3}==>${c0} $*"; }
+warn() { echo -e "${c2}==>${c0} $*"; }
+die() {
+	echo -e "${c4}Erro:${c0} $*" >&2
+	exit 1
+}
+
+IMGDIR="$HOME/.chili-fr/vdisk"
+mapfile -t IMGS < <(
+    find "$IMGDIR" -maxdepth 1 -type f \( -name '*.qcow2' -o -name '*.img' \) | sort
+)
+
+NBDS=()
+for i in "${!IMGS[@]}"; do
+    NBDS+=( "/dev/nbd$i" )
+done
+
+sh_loadmodules() {
+	msg "Carregando modulos"
+	sudo modprobe -r nbd 2>/dev/null || true
+	sudo modprobe nbd max_part=16
+}
+
+sh_connect() {
+	msg "Conectando imagens"
+	local i=0
+	for img in "${IMGS[@]}"; do
+		dev="/dev/nbd$i"
+		fmt="raw"
+		[[ "$img" == *.qcow2 ]] && fmt="qcow2"
+		# teste correto: size > 0 significa conectado
+		if [ -r "/sys/block/nbd$i/size" ] && [ "$(cat /sys/block/nbd$i/size)" -gt 0 ]; then
+			msg "$dev já está conectado, ignorando"
+		else
+			msg "Conectando $(basename "$img") → $dev ($fmt)"
+			#           sudo qemu-nbd -v --fork --connect="$dev" "$img"
+			sudo qemu-nbd -v --fork --connect="$dev" --format="$fmt" "$img"
+			until [ -b "$dev" ]; do sleep 0.1; done
+			sudo partprobe "$dev" 2>/dev/null || true
+			sudo udevadm settle
+		fi
+		((++i))
+	done
+
+	# lsblk | grep nbd
+	sudo ps -ef | grep qemu-nbd | grep -v grep
+
+	#   for d in /sys/block/nbd*; do
+	#     printf "%s: " "$(basename "$d")"
+	#     cat "$d/size"
+	#   done
+
+	lsblk -Ao NAME,PATH,SIZE,TRAN,MODEL,LABEL,SERIAL,PTTYPE | grep nbd
+}
+
+sh_disconnect() {
+	msg "Desconectando imagens"
+	local i=0
+	for img in "${IMGS[@]}"; do
+		dev="/dev/nbd$i"
+		sudo umount -R ${dev}* 2>/dev/null || true
+		sudo qemu-nbd --disconnect "${dev}" 2>/dev/null || true
+		((++i))
+	done
+
+	# lsblk | grep nbd
+	sudo ps -ef | grep qemu-nbd | grep -v grep
+
+	#   for d in /sys/block/nbd*; do
+	#     printf "%s: " "$(basename "$d")"
+	#     cat "$d/size"
+	#   done
+	lsblk -Ao NAME,PATH,SIZE,TRAN,MODEL,LABEL,SERIAL,PTTYPE | grep nbd
+}
+
+sh_status() {
+	msg "Status dos dispositivos"
+	sudo ps -ef | grep qemu-nbd | grep -v grep
+	if lsblk | grep -q nbd; then
+		lsblk -Ao NAME,SIZE,TYPE,MOUNTPOINT | grep nbd
+	else
+		warn "Nenhum dispositivo conectado"
+	fi
+}
+
+sh_copia() {
+	sudo dd if=/dev/nbd0 of=/dev/sdX status=progress conv=fsync
+}
+
+usage() {
+	echo -e "${c1}Uso:${c0}"
+	echo -e "  ${c5}$0${c0} ${c3}{on|off|status}${c0}"
+	echo
+	echo -e "${c1}Descrição:${c0}"
+	echo -e "  ${c3}on${c0} conecta todas imagens (.qcow2 e .img)"
+	echo -e "  ${c3}off${c0} desconecta todos dispositivos nbd"
+	echo -e "  ${c3}status${c0} mostra dispositivos conectados"
+	echo
+	echo -e "${c1}Diretório:${c0}"
+	echo -e "  ${c5}$IMGDIR${c0}"
+	echo
+	echo -e "${c1}Exemplos:${c0}"
+	echo -e "  ${c2}$0 on${c0}"
+	echo -e "  ${c2}$0 status${c0}"
+	echo -e "  ${c2}$0 off${c0}"
+	exit 1
+}
+
+case "$1" in
+on)
+	#     sh_disconnect
+	sh_loadmodules
+	sh_connect
+	;;
+off)
+	sh_disconnect
+	msg "Descarregando modulos"
+	sudo modprobe -r nbd 2>/dev/null || true
+	;;
+status)
+	sh_status
+	;;
+*)
+	usage
+	;;
+esac
