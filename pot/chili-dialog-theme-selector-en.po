@@ -1,0 +1,67 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 12:20-0400\n"
+"PO-Revision-Date: 2026-01-13 12:20-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: en\n"
+
+#: /chili/chili-dialog-theme-selector:46
+msgid "Seletor de temas para o Dialog"
+msgstr "Theme selector for Dialog"
+
+#: /chili/chili-dialog-theme-selector:48
+msgid "Menu de Temas"
+msgstr "Themes Menu"
+
+#: /chili/chili-dialog-theme-selector:148
+msgid "Use as teclas"
+msgstr "Use the keys"
+
+#: /chili/chili-dialog-theme-selector:149
+msgid "PARA CIMA"
+msgstr "UP"
+
+#: /chili/chili-dialog-theme-selector:150
+msgid "e"
+msgstr "and"
+
+#: /chili/chili-dialog-theme-selector:151
+msgid "PARA BAIXO"
+msgstr "DOWN"
+
+#: /chili/chili-dialog-theme-selector:152
+msgid "para navegar"
+msgstr "to navigate"
+
+#: /chili/chili-dialog-theme-selector:153
+msgid "Use"
+msgstr "Use"
+
+#: /chili/chili-dialog-theme-selector:154
+msgid "para alternar entre os botões"
+msgstr "to switch between buttons"
+
+#: /chili/chili-dialog-theme-selector:155
+msgid "para selecionar"
+msgstr "to select"
+
+#: /chili/chili-dialog-theme-selector:321
+msgid "Selecionar"
+msgstr "Select"
+
+#: /chili/chili-dialog-theme-selector:322
+msgid "Sair"
+msgstr "To go out"
+
+#: /chili/chili-dialog-theme-selector:323
+msgid "Escolha o tema desejado"
+msgstr "Choose the desired theme"

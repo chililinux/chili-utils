@@ -1,0 +1,107 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 14:04-0400\n"
+"PO-Revision-Date: 2026-01-13 14:04-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: ru\n"
+
+#: chili-disk-test-bench:49
+msgid "Wraper para testes com dd, hdparm e fio"
+msgstr "Обертка для тестирования с помощью dd, hdparm и fio"
+
+#: chili-disk-test-bench:193
+msgid "Você não pode realizar esta operação a menos que seja root."
+msgstr "Вы не сможете выполнить эту операцию, если вы не являетесь пользователем root."
+
+#: chili-disk-test-bench:194
+msgid "Elevando privilégios..."
+msgstr "Повышение привилегий..."
+
+#: chili-disk-test-bench:204
+msgid ""
+"Erro: Não foi possível elevar os privilégios. Execute manualmente como root."
+msgstr ""
+
+#: chili-disk-test-bench:214
+msgid "Não foi possível encontrar o comando"
+msgstr "Не удалось найти команду"
+
+#: chili-disk-test-bench:215
+msgid "instalar pacote"
+msgstr "установить пакет"
+
+#: chili-disk-test-bench:231
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "НЕВОЗМОЖНО ПРОДОЛЖАТЬ"
+
+#: chili-disk-test-bench:232
+msgid "Este script precisa dos comandos listados acima"
+msgstr "Этот скрипт нуждается в командах, перечисленных выше."
+
+#: chili-disk-test-bench:233
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "Установите их и/или убедитесь, что они есть на вашем компьютере."
+
+#: chili-disk-test-bench:241
+msgid "Instalar dependências base agora?"
+msgstr "Установить базовые зависимости сейчас?"
+
+#: chili-disk-test-bench:242
+msgid "Preparando ambiente para"
+msgstr "Подготовка окружающей среды для"
+
+#: chili-disk-test-bench:246
+msgid "Erro Crítico:"
+msgstr "Критическая ошибка:"
+
+#: chili-disk-test-bench:246
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "Установка базовых пакетов не удалась."
+
+#: chili-disk-test-bench:250
+msgid "Sucesso:"
+msgstr "Успех:"
+
+#: chili-disk-test-bench:250
+msgid "Dependências instaladas."
+msgstr "Установленные зависимости."
+
+#: chili-disk-test-bench:322
+msgid "Uso:"
+msgstr "использовать:"
+
+#: chili-disk-test-bench:331
+msgid "Dispositivo inválido:"
+msgstr "Неверное устройство:"
+
+#: chili-disk-test-bench:331
+msgid "Pulando..."
+msgstr "Прыжки..."
+
+#: chili-disk-test-bench:335
+msgid "Testes de leitura para"
+msgstr "Чтение тестов на"
+
+#: chili-disk-test-bench:344 chili-disk-test-bench:359
+#: chili-disk-test-bench:373
+msgid "concluído:"
+msgstr "завершенный:"
+
+#: chili-disk-test-bench:347 chili-disk-test-bench:348
+#: chili-disk-test-bench:362 chili-disk-test-bench:376
+msgid "falhou!"
+msgstr "неуспешный!"
+
+#: chili-disk-test-bench:383
+msgid "Resumo de velocidades"
+msgstr "Сводка по скорости"

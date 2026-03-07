@@ -1,0 +1,153 @@
+# Chili Tradutor Go - 2.1.17-20260116
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.17-20260116\n"
+"POT-Creation-Date: 2026-01-16 09:13-0400\n"
+"PO-Revision-Date: 2026-01-16 09:13-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-find-dup:284
+msgid "This script must be run as root. Elevating privileges..."
+msgstr "Ce script doit être exécuté en tant que root. Des privilèges élevés..."
+
+#: chili-find-dup:294
+msgid "Error: Unable to elevate privileges. Run manually as root."
+msgstr "Erreur : Impossible d'élever les privilèges. Exécutez manuellement en tant que root."
+
+#: chili-find-dup:363
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "Il s'agit d'un logiciel libre : vous êtes libre de le modifier et de le redistribuer."
+
+#: chili-find-dup:364
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-find-dup:365
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "comprend des logiciels open source sous diverses autres licences."
+
+#: chili-find-dup:366
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "Vous pouvez lire les instructions sur la façon de télécharger et de créer par vous-même"
+
+#: chili-find-dup:367
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "le code source spécifique utilisé pour créer cette copie."
+
+#: chili-find-dup:368
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "Ce programme est livré avec absolument AUCUNE garantie."
+
+#: chili-find-dup:409
+msgid "Não foi possível encontrar o comando"
+msgstr "Impossible de trouver la commande"
+
+#: chili-find-dup:410
+msgid "instalar pacote"
+msgstr "installer le paquet"
+
+#: chili-find-dup:426
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "IMPOSSIBLE DE CONTINUER"
+
+#: chili-find-dup:427
+msgid "Este script precisa dos comandos listados acima"
+msgstr "Ce script nécessite les commandes répertoriées ci-dessus"
+
+#: chili-find-dup:428
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "Installez-les et/ou assurez-vous qu'ils sont sur votre"
+
+#: chili-find-dup:436
+msgid "Instalar dependências base agora?"
+msgstr "Installer les dépendances de base maintenant ?"
+
+#: chili-find-dup:437
+msgid "Preparando ambiente para"
+msgstr "Préparation de l'environnement pour"
+
+#: chili-find-dup:441
+msgid "Erro Crítico:"
+msgstr "Erreur critique :"
+
+#: chili-find-dup:441
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "L'installation des packages de base a échoué."
+
+#: chili-find-dup:445
+msgid "Sucesso:"
+msgstr "Succès:"
+
+#: chili-find-dup:445
+msgid "Dependências instaladas."
+msgstr "Dépendances installées."
+
+#: chili-find-dup:477
+msgid "compara conteúdo via SHA256"
+msgstr "compare le contenu via SHA256"
+
+#: chili-find-dup:478
+msgid "compara apenas nome/caminho"
+msgstr "compare uniquement le nom/le chemin"
+
+#: chili-find-dup:479
+msgid "remove arquivo correspondente do DIR1 (se igual)"
+msgstr "supprimer le fichier correspondant de DIR1 (si égal)"
+
+#: chili-find-dup:480
+msgid "remove arquivo correspondente do DIR2 (se igual)"
+msgstr "supprimer le fichier correspondant de DIR2 (si égal)"
+
+#: chili-find-dup:481
+msgid "mostra o que faria, sem executar"
+msgstr "montre ce qu'il ferait, sans exécuter"
+
+#: chili-find-dup:482
+msgid "narra a execução"
+msgstr "raconte l'exécution"
+
+#: chili-find-dup:483
+msgid "mostra esta ajuda"
+msgstr "montrer cette aide"
+
+#: chili-find-dup:485
+msgid "exemplos:"
+msgstr "exemples :"
+
+#: chili-find-dup:523
+msgid "precisa escolher --by-hash ou --by-name"
+msgstr "vous devez choisir --by-hash ou --by-name"
+
+#: chili-find-dup:537
+msgid "comparação"
+msgstr "comparaison"
+
+#: chili-find-dup:545
+msgid "faltando destino:"
+msgstr "destination manquante :"
+
+#: chili-find-dup:562
+msgid "IGUAL:"
+msgstr "ÉGAL:"
+
+#: chili-find-dup:569
+msgid "removido origem:"
+msgstr "source supprimée :"
+
+#: chili-find-dup:578
+msgid "removido destino:"
+msgstr "destination supprimée :"
+
+#: chili-find-dup:583
+msgid "diferente:"
+msgstr "différent:"

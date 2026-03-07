@@ -1,0 +1,51 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 19:39-0400\n"
+"PO-Revision-Date: 2026-01-13 19:39-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: ko\n"
+
+#: chili-xrandr:81
+msgid "Wrapper para configuração de resolução usando xrandr, umc e cvt"
+msgstr "xrandr, umc 및 cvt를 사용한 해상도 구성을 위한 래퍼"
+
+#: chili-xrandr:357
+msgid "Erro fatal"
+msgstr "치명적인 오류"
+
+#: chili-xrandr:372
+msgid "Menu DISPOSITIVO DE VÍDEO"
+msgstr "비디오 장치 메뉴"
+
+#: chili-xrandr:373
+msgid "Selecione a saída do dispositivo para o conjunto:"
+msgstr "세트에 대한 장치 출력을 선택하십시오."
+
+#: chili-xrandr:379 chili-xrandr:419
+msgid "Cancelado!"
+msgstr "취소!"
+
+#: chili-xrandr:411
+msgid "Menu ESCOLHER RESOLUÇÃO"
+msgstr "해상도 메뉴 선택"
+
+#: chili-xrandr:412
+msgid "Adicionar"
+msgstr "추가하려면"
+
+#: chili-xrandr:413
+msgid "Remover"
+msgstr "제거하다"
+
+#: chili-xrandr:414
+msgid "Escolha a resolução para o conjunto:"
+msgstr "세트의 해상도를 선택하세요."

@@ -1,0 +1,900 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 12:07-0400\n"
+"PO-Revision-Date: 2026-01-13 12:07-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: ko\n"
+
+#: chili-fr:47
+msgid "Wrapper lite para o qemu"
+msgstr "Qemu용 래퍼 라이트"
+
+#: chili-fr:421
+msgid "Não foi possível encontrar o comando"
+msgstr "명령을 찾을 수 없습니다"
+
+#: chili-fr:421 chili-fr:475
+msgid "instalar pacote"
+msgstr "패키지 설치"
+
+#: chili-fr:432
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "계속할 수 없습니다"
+
+#: chili-fr:433
+msgid "Este script precisa dos comandos listados acima"
+msgstr "이 스크립트에는 위에 나열된 명령이 필요합니다."
+
+#: chili-fr:434
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "이를 설치하거나 귀하의 컴퓨터에 있는지 확인하십시오."
+
+#: chili-fr:436
+msgid "Deseja instalar os pacotes e criar os arquivos necessários?"
+msgstr "패키지를 설치하고 필요한 파일을 생성하시겠습니까?"
+
+#: chili-fr:475
+msgid "Não foi possível encontrar o arquivo"
+msgstr "파일을 찾을 수 없습니다"
+
+#: chili-fr:547 chili-fr:793 chili-fr:1064
+msgid "Adicionando"
+msgstr "첨가"
+
+#: chili-fr:547
+msgid "em"
+msgstr "에서"
+
+#: chili-fr:565
+msgid "Uso correto"
+msgstr "올바른 사용"
+
+#: chili-fr:569
+msgid "Verificando se a bridge"
+msgstr "다리인지 확인 중"
+
+#: chili-fr:569 chili-fr:1821
+msgid "já existe"
+msgstr "이미 존재합니다"
+
+#: chili-fr:571 chili-fr:831 chili-fr:851
+msgid "Ponte"
+msgstr "다리"
+
+#: chili-fr:571
+msgid "já existe — nada a fazer."
+msgstr "이미 존재합니다. 할 일이 없습니다."
+
+#: chili-fr:578
+msgid "Detectando interfaces físicas (ethernet)"
+msgstr "물리적 인터페이스 감지(이더넷)"
+
+#: chili-fr:585
+msgid "Nenhuma interface ethernet disponível. WLAN não suporta bridge real."
+msgstr "사용할 수 있는 이더넷 인터페이스가 없습니다. WLAN은 실제 브리징을 지원하지 않습니다."
+
+#: chili-fr:591
+msgid "Múltiplas interfaces encontradas — exibindo menu de seleção"
+msgstr "여러 인터페이스가 발견됨 - 선택 메뉴 표시"
+
+#: chili-fr:592
+msgid "Escolha a interface física para a bridge:"
+msgstr "브리지의 물리적 인터페이스를 선택합니다."
+
+#: chili-fr:594
+msgid "Encerrar"
+msgstr "닫다"
+
+#: chili-fr:595
+msgid "Operação cancelada pelo usuário."
+msgstr "사용자가 작업을 취소했습니다."
+
+#: chili-fr:598
+msgid "Interface selecionada:"
+msgstr "선택한 인터페이스:"
+
+#: chili-fr:604 chili-fr:1099
+msgid "A interface"
+msgstr "인터페이스"
+
+#: chili-fr:604
+msgid "é Wi-Fi. Bridge real não funciona com WLAN."
+msgstr "그것은 Wi-Fi입니다. 실제 브리지는 WLAN에서 작동하지 않습니다."
+
+#: chili-fr:610
+msgid "Verificando se"
+msgstr "확인 중"
+
+#: chili-fr:610
+msgid "já pertence a outra bridge"
+msgstr "이미 다른 브리지에 속해 있습니다."
+
+#: chili-fr:613
+msgid "Interface"
+msgstr "인터페이스"
+
+#: chili-fr:613
+msgid "já pertence à bridge"
+msgstr "이미 브리지에 속해 있습니다."
+
+#: chili-fr:614
+msgid "Remova primeiro:"
+msgstr "먼저 제거:"
+
+#: chili-fr:620
+msgid "Configuração de VLAN"
+msgstr "VLAN 구성"
+
+#: chili-fr:622 chili-fr:630
+msgid "Sem VLAN (rede normal)"
+msgstr "VLAN 없음(일반 네트워크)"
+
+#: chili-fr:623 chili-fr:631 chili-fr:1226
+msgid "criar"
+msgstr "창조하다"
+
+#: chili-fr:623
+msgid "e usar como slave"
+msgstr "노예로 사용하고"
+
+#: chili-fr:624 chili-fr:632
+msgid "habilitado"
+msgstr "활성화됨"
+
+#: chili-fr:626
+msgid "Selecione o modo VLAN:"
+msgstr "VLAN 모드 선택:"
+
+#: chili-fr:631
+msgid "e usar como slave)"
+msgstr "노예로 사용)"
+
+#: chili-fr:634
+msgid "Erro inesperado no menu VLAN"
+msgstr "VLAN 메뉴에 예기치 않은 오류가 발생했습니다."
+
+#: chili-fr:638
+msgid "Modo VLAN selecionado:"
+msgstr "선택된 VLAN 모드:"
+
+#: chili-fr:643
+msgid "Digite o VLAN ID"
+msgstr "VLAN ID를 입력하세요"
+
+#: chili-fr:646
+msgid "Subinterface VLAN definida:"
+msgstr "정의된 VLAN 하위 인터페이스:"
+
+#: chili-fr:649
+msgid "VLAN inválida: informe um número entre 1 e 4094"
+msgstr "잘못된 VLAN: 1에서 4094 사이의 숫자를 입력하세요."
+
+#: chili-fr:654
+msgid "Bridge atuará como trunk"
+msgstr "브리지가 트렁크 역할을 합니다."
+
+#: chili-fr:658
+msgid "Informe VLANs permitidas separadas por vírgula"
+msgstr "허용된 VLAN을 쉼표로 구분하여 입력하세요."
+
+#: chili-fr:665
+msgid "VLAN inválida:"
+msgstr "잘못된 VLAN:"
+
+#: chili-fr:670
+msgid "VLAN duplicada:"
+msgstr "중복 VLAN:"
+
+#: chili-fr:683
+msgid "Detectando IP na subinterface VLAN"
+msgstr "VLAN 하위 인터페이스에서 IP 감지"
+
+#: chili-fr:687
+msgid "Usando IP da interface física"
+msgstr "물리적 인터페이스 IP 사용"
+
+#: chili-fr:692
+msgid "Obtendo IP atual da interface"
+msgstr "현재 인터페이스 IP 가져오기"
+
+#: chili-fr:697
+msgid "Nenhum IP detectado automaticamente."
+msgstr "IP가 자동으로 감지되지 않습니다."
+
+#: chili-fr:698
+msgid "Nenhum gateway detectado."
+msgstr "게이트웨이가 감지되지 않았습니다."
+
+#: chili-fr:704
+msgid "Configurando IP da bridge"
+msgstr "브리지 IP 구성"
+
+#: chili-fr:714
+msgid "Formato inválido."
+msgstr "형식이 잘못되었습니다."
+
+#: chili-fr:720
+msgid "IP igual ao atual — pulando teste."
+msgstr "현재와 동일한 IP - 테스트를 건너뜁니다."
+
+#: chili-fr:724
+msgid "Validando se IP está em uso..."
+msgstr "IP가 사용 중인지 확인하는 중..."
+
+#: chili-fr:727
+msgid "Conflito ARP detectado."
+msgstr "ARP 충돌이 감지되었습니다."
+
+#: chili-fr:740
+msgid "Gateway inválido"
+msgstr "잘못된 게이트웨이"
+
+#: chili-fr:744
+msgid "Gateway não respondeu."
+msgstr "게이트웨이가 응답하지 않았습니다."
+
+#: chili-fr:745
+msgid "Continuar?"
+msgstr "계속하다?"
+
+#: chili-fr:753
+msgid "Criando ponte"
+msgstr "브리지 만들기"
+
+#: chili-fr:756
+msgid "Falha ao criar ponte"
+msgstr "브리지를 생성하지 못했습니다."
+
+#: chili-fr:763
+msgid "Criando subinterface"
+msgstr "하위 인터페이스 생성"
+
+#: chili-fr:766
+msgid "Falha ao criar VLAN"
+msgstr "VLAN을 생성하지 못했습니다."
+
+#: chili-fr:777
+msgid "Criando conexão slave para"
+msgstr "슬레이브 연결 생성"
+
+#: chili-fr:782
+msgid "Falha ao criar slave"
+msgstr "슬레이브 생성 실패"
+
+#: chili-fr:789
+msgid "Ativando"
+msgstr "활성화"
+
+#: chili-fr:793
+msgid "ao"
+msgstr "에"
+
+#: chili-fr:795
+msgid "Falha ao adicionar"
+msgstr "추가하지 못했습니다."
+
+#: chili-fr:801
+msgid "Desativando conexão antiga da interface física"
+msgstr "이전 물리적 인터페이스 연결 비활성화"
+
+#: chili-fr:811
+msgid "Ativando DHCP na ponte"
+msgstr "브리지에서 DHCP 활성화"
+
+#: chili-fr:814
+msgid "Aplicando IP manual"
+msgstr "수동 IP 적용"
+
+#: chili-fr:825
+msgid "Ativando ponte"
+msgstr "브리지 활성화"
+
+#: chili-fr:830
+msgid "RESUMO"
+msgstr "요약"
+
+#: chili-fr:832
+msgid "Interface física"
+msgstr "물리적 인터페이스"
+
+#: chili-fr:834
+msgid "Conexão"
+msgstr "연결"
+
+#: chili-fr:837
+msgid "nenhuma"
+msgstr "없음"
+
+#: chili-fr:845
+msgid "aplicado"
+msgstr "적용된"
+
+#: chili-fr:851
+msgid "criada e configurada com sucesso."
+msgstr "성공적으로 생성 및 구성되었습니다."
+
+#: chili-fr:869 chili-fr:1089 chili-fr:1095
+msgid "Removendo"
+msgstr "풀이"
+
+#: chili-fr:869
+msgid "com segurança (sem derrubar SSH)"
+msgstr "안전하게(SSH를 삭제하지 않고)"
+
+#: chili-fr:883
+msgid "Não foi possível detectar interface física slave."
+msgstr "슬레이브 물리적 인터페이스를 감지할 수 없습니다."
+
+#: chili-fr:887
+msgid "Interface física slave detectada:"
+msgstr "슬레이브 물리적 인터페이스가 감지되었습니다."
+
+#: chili-fr:898
+msgid "Nenhum perfil slave encontrado — talvez já removido."
+msgstr "슬레이브 프로필을 찾을 수 없습니다. 이미 제거되었을 수 있습니다."
+
+#: chili-fr:900
+msgid "Perfil slave encontrado:"
+msgstr "슬레이브 프로필이 발견되었습니다:"
+
+#: chili-fr:909
+msgid "IP atual na"
+msgstr "현재 IP는 다음과 같습니다."
+
+#: chili-fr:922
+msgid "Não foi possível localizar o perfil físico verdadeiro para"
+msgstr "에 대한 실제 물리적 프로필을 찾을 수 없습니다."
+
+#: chili-fr:925
+msgid "Perfil físico real:"
+msgstr "실제 신체 프로필:"
+
+#: chili-fr:929
+msgid "Restaurando autoconnect da interface física"
+msgstr "물리적 인터페이스 자동 연결 복원 중"
+
+#: chili-fr:933
+msgid "Aplicando"
+msgstr "신청"
+
+#: chili-fr:933
+msgid "de volta na interface física"
+msgstr "물리적 인터페이스로 돌아가기"
+
+#: chili-fr:938
+msgid "Sem IP detectado — configurando interface física para DHCP"
+msgstr "IP가 감지되지 않음 - DHCP에 대한 물리적 인터페이스 구성"
+
+#: chili-fr:944
+msgid "Subindo interface física ANTES de remover a bridge"
+msgstr "브리지를 제거하기 전에 물리적 인터페이스 업그레이드"
+
+#: chili-fr:946
+msgid "Falha ao subir interface física — pode ser esperado via SSH"
+msgstr "물리적 인터페이스를 업로드하지 못했습니다. SSH를 통해 예상할 수 있습니다."
+
+#: chili-fr:952
+msgid "Removendo conexão slave"
+msgstr "슬레이브 연결 제거"
+
+#: chili-fr:960
+msgid "Desativando"
+msgstr "비활성화 중"
+
+#: chili-fr:965
+msgid "Removendo perfil da"
+msgstr "다음에서 프로필 삭제 중"
+
+#: chili-fr:970
+msgid "removida com sucesso e interface"
+msgstr "성공적으로 제거 및 인터페이스"
+
+#: chili-fr:970
+msgid "restaurada."
+msgstr "복원되었습니다."
+
+#: chili-fr:977
+msgid "está funcionando e conseguiu listar as redes."
+msgstr "네트워크 목록을 표시하기 위해 작동하고 관리됩니다."
+
+#: chili-fr:979
+msgid "não conseguiu se conectar ao libvirt."
+msgstr "libvirt에 연결하지 못했습니다."
+
+#: chili-fr:980
+msgid "Verifique se o serviço libvirtd está ativo com os comandos abaixo:"
+msgstr "아래 명령을 사용하여 libvirtd 서비스가 활성화되어 있는지 확인하십시오."
+
+#: chili-fr:983
+msgid "DICA: Tente ativar com os comandos abaixo:"
+msgstr "팁: 아래 명령을 사용하여 활성화해 보세요."
+
+#: chili-fr:986
+msgid "Erro fatal"
+msgstr "치명적인 오류"
+
+#: chili-fr:997
+msgid "Criando a rede"
+msgstr "네트워크 만들기"
+
+#: chili-fr:1037
+msgid "erro fatal!"
+msgstr "치명적인 오류!"
+
+#: chili-fr:1041
+msgid "Tornando"
+msgstr "만들기"
+
+#: chili-fr:1041
+msgid "persistente..."
+msgstr "지속성 있는..."
+
+#: chili-fr:1042
+msgid "Iniciando a rede"
+msgstr "네트워크 시작"
+
+#: chili-fr:1046
+msgid "Falha ao iniciar a rede"
+msgstr "네트워크를 시작하지 못했습니다."
+
+#: chili-fr:1046
+msgid "Tentando novamente."
+msgstr "다시 시도 중입니다."
+
+#: chili-fr:1056
+msgid "Criando a interface"
+msgstr "인터페이스 만들기"
+
+#: chili-fr:1060
+msgid "Ativando a interface"
+msgstr "인터페이스 활성화"
+
+#: chili-fr:1064
+msgid "à"
+msgstr "그만큼"
+
+#: chili-fr:1068
+msgid "Verificando a associação de interfaces à"
+msgstr "인터페이스와 인터페이스의 연결 확인"
+
+#: chili-fr:1072
+msgid "Verificando as interfaces de rede..."
+msgstr "네트워크 인터페이스를 확인하는 중..."
+
+#: chili-fr:1077
+msgid "Configuração concluída!"
+msgstr "설정이 완료되었습니다."
+
+#: chili-fr:1099
+msgid "não existe."
+msgstr "존재하지 않습니다."
+
+#: chili-fr:1103
+msgid "Removendo a rede do"
+msgstr "네트워크 제거"
+
+#: chili-fr:1113
+msgid "Removendo o arquivo de configuração da rede"
+msgstr "네트워크 구성 파일 제거"
+
+#: chili-fr:1208
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "이것은 무료 소프트웨어이므로 자유롭게 변경하고 재배포할 수 있습니다."
+
+#: chili-fr:1209
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-fr:1210
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "다양한 기타 라이센스에 따른 오픈 소스 소프트웨어가 포함되어 있습니다."
+
+#: chili-fr:1211
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "직접 다운로드하고 생성하는 방법에 대한 지침을 읽을 수 있습니다."
+
+#: chili-fr:1212
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "이 복사본을 만드는 데 사용된 특정 소스 코드."
+
+#: chili-fr:1213
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "이 프로그램은 전혀 보장하지 않습니다."
+
+#: chili-fr:1221
+msgid "uso:"
+msgstr "사용:"
+
+#: chili-fr:1221
+msgid "Opções"
+msgstr "옵션"
+
+#: chili-fr:1222
+msgid "Opções:"
+msgstr "옵션:"
+
+#: chili-fr:1223
+msgid "inicia rede em modo"
+msgstr "모드에서 네트워크 시작"
+
+#: chili-fr:1224
+msgid "criar real"
+msgstr "진짜를 창조하다"
+
+#: chili-fr:1225
+msgid "remover real"
+msgstr "진짜를 제거하다"
+
+#: chili-fr:1227
+msgid "remover"
+msgstr "제거하다"
+
+#: chili-fr:1228
+msgid "anexa disco externo"
+msgstr "외부 디스크 연결"
+
+#: chili-fr:1229
+msgid "memória inicial de convidado"
+msgstr "게스트 초기 메모리"
+
+#: chili-fr:1230
+msgid "usa um disco virtual interno"
+msgstr "내부 가상 디스크를 사용합니다."
+
+#: chili-fr:1231
+msgid "cria um disco virtual para uso interno"
+msgstr "내부용 가상 디스크 생성"
+
+#: chili-fr:1232
+msgid "remove um disco virtual"
+msgstr "가상 디스크 제거"
+
+#: chili-fr:1235
+msgid "remover cores da saída"
+msgstr "출력에서 색상 제거"
+
+#: chili-fr:1236
+msgid "ativar o"
+msgstr "활성화하다"
+
+#: chili-fr:1236 chili-fr:1237
+msgid "desligado"
+msgstr "끄다"
+
+#: chili-fr:1237
+msgid "ativar modo"
+msgstr "활성화 모드"
+
+#: chili-fr:1238
+msgid "listar discos virtuais"
+msgstr "가상 디스크 나열"
+
+#: chili-fr:1239
+msgid "inicialização em"
+msgstr "부팅하다"
+
+#: chili-fr:1240
+msgid "exibe a versão do aplicativo"
+msgstr "애플리케이션 버전을 표시합니다"
+
+#: chili-fr:1241
+msgid "exibe a saída gerada pelo comando e sai"
+msgstr "명령으로 생성된 출력을 표시하고 종료합니다."
+
+#: chili-fr:1242
+msgid "imprime este ajuda"
+msgstr "이 도움말을 인쇄하세요"
+
+#: chili-fr:1243
+msgid "Exemplos:"
+msgstr "예:"
+
+#: chili-fr:1244
+msgid "Execute uma imagem, em ponte, usando"
+msgstr "다음을 사용하여 브리지된 이미지 실행"
+
+#: chili-fr:1245
+msgid "Execute uma imagem, em ponte, usando spice, usando UEFI"
+msgstr "UEFI를 사용하여 Spice를 사용하여 브리지된 이미지 실행"
+
+#: chili-fr:1246
+msgid "Execute uma imagem, em NAT, usando UEFI"
+msgstr "UEFI를 사용하여 NAT에서 이미지 실행"
+
+#: chili-fr:1247
+msgid "Execute uma device, em ponte, usando UEFI"
+msgstr "UEFI를 사용하여 브리지 장치 실행"
+
+#: chili-fr:1248
+msgid "Execute uma device, em ponte, 16Gb memória, usando UEFI"
+msgstr "UEFI를 사용하여 브리지된 16Gb 메모리 장치 실행"
+
+#: chili-fr:1249
+msgid "Execute uma device, em NAT, usando audio pipewire"
+msgstr "오디오 파이프와이어를 사용하여 NAT에서 장치 실행"
+
+#: chili-fr:1250
+msgid "Execute uma imagem usando BIOS"
+msgstr "BIOS를 사용하여 이미지 실행"
+
+#: chili-fr:1251
+msgid "Execute uma imagem, em ponte, usando BIOS"
+msgstr "BIOS를 사용하여 브리지된 이미지 실행"
+
+#: chili-fr:1252
+msgid "Execute uma device, 16GB memória, usando BIOS"
+msgstr "BIOS를 사용하여 장치, 16GB 메모리 실행"
+
+#: chili-fr:1253
+msgid "Forma de uso mais comum:"
+msgstr "가장 일반적인 사용 형태:"
+
+#: chili-fr:1263
+msgid "acesso a vm/convidado via ssh:"
+msgstr "SSH를 통해 vm/guest에 액세스:"
+
+#: chili-fr:1264
+msgid "via"
+msgstr "~을 통해"
+
+#: chili-fr:1265 chili-fr:1267
+msgid "via redirecionamento"
+msgstr "리디렉션을 통해"
+
+#: chili-fr:1266
+msgid "via ponte (caso vm iniciada com -b)"
+msgstr "브리지를 통해(-b로 시작한 경우)"
+
+#: chili-fr:1278 chili-fr:1353 chili-fr:1392
+msgid "Criando diretórios de trabalho"
+msgstr "작업 디렉터리 만들기"
+
+#: chili-fr:1282 chili-fr:1355 chili-fr:1394
+msgid "Setando permissões no diretórios de trabalho"
+msgstr "작업 디렉터리에 대한 권한 설정"
+
+#: chili-fr:1287 chili-fr:1293
+msgid "Criando disco virtual"
+msgstr "가상 디스크 생성"
+
+#: chili-fr:1287 chili-fr:1293
+msgid "no diretórios de trabalho"
+msgstr "작업 디렉토리에"
+
+#: chili-fr:1301
+msgid "Instalando necessários pacotes"
+msgstr "필수 패키지 설치"
+
+#: chili-fr:1305 chili-fr:1323
+msgid "Rodando no"
+msgstr "실행 중"
+
+#: chili-fr:1319
+msgid "[ERRO] Falha ao instalar pacotes."
+msgstr "[오류] 패키지를 설치하지 못했습니다."
+
+#: chili-fr:1344 chili-fr:1427
+msgid "Outra distro:"
+msgstr "기타 배포판:"
+
+#: chili-fr:1361
+msgid "Entre com o nome do disco (sem extensão)"
+msgstr "디스크 이름을 입력하세요(확장자 제외)."
+
+#: chili-fr:1362
+msgid "Entre com o tamanho do disco virtual em GB"
+msgstr "가상 디스크의 크기를 GB 단위로 입력하세요."
+
+#: chili-fr:1365
+msgid "Disco virtual já existe, escolha outro nome. Tentar novamente?"
+msgstr "가상 디스크가 이미 존재합니다. 다른 이름을 선택하세요. 다시 시도하시겠습니까?"
+
+#: chili-fr:1376
+msgid "Falha na criação do disco virtual"
+msgstr "가상 디스크 생성 실패"
+
+#: chili-fr:1384
+msgid "DISCOS VIRTUAIS DISPONÍVEIS em"
+msgstr "다음에서 사용 가능한 가상 디스크"
+
+#: chili-fr:1399
+msgid "Entre com o nome do disco para remover"
+msgstr "제거할 디스크 이름을 입력하세요."
+
+#: chili-fr:1402
+msgid "PERGUNTA: Deseja realmente excluir o disco virtual ?"
+msgstr "질문: 가상 디스크를 정말로 삭제하시겠습니까?"
+
+#: chili-fr:1404
+msgid "Disco virtual"
+msgstr "가상 디스크"
+
+#: chili-fr:1404
+msgid "foi removido com sucesso"
+msgstr "성공적으로 제거되었습니다"
+
+#: chili-fr:1410
+msgid "Disco virtual digitado não existe!"
+msgstr "입력한 가상 디스크가 존재하지 않습니다!"
+
+#: chili-fr:1418
+msgid "Ativando serviço"
+msgstr "서비스 활성화"
+
+#: chili-fr:1418
+msgid "na distro:"
+msgstr "배포판:"
+
+#: chili-fr:1454
+msgid "Pontes disponíveis:"
+msgstr "사용 가능한 브리지:"
+
+#: chili-fr:1456
+msgid "nenhuma ponte disponível"
+msgstr "사용 가능한 브리지 없음"
+
+#: chili-fr:1478 chili-fr:1480 chili-fr:1785 chili-fr:1846 chili-fr:1857
+#: chili-fr:1861 chili-fr:1915 chili-fr:1917 chili-fr:1927
+msgid "Parametro"
+msgstr "매개변수"
+
+#: chili-fr:1478
+msgid "informado. Iniciando VM em modo"
+msgstr "잘 아는. 모드에서 VM 시작"
+
+#: chili-fr:1480
+msgid "não informado. Iniciando VM em modo"
+msgstr "알리지 않았습니다. 모드에서 VM 시작"
+
+#: chili-fr:1483
+msgid "acesso a VM via"
+msgstr "다음을 통한 VM 액세스"
+
+#: chili-fr:1484 chili-fr:1485
+msgid "via vsock (se habilitado do guest)"
+msgstr "vsock을 통해(게스트에서 활성화된 경우)"
+
+#: chili-fr:1487 chili-fr:1488 chili-fr:1489 chili-fr:1490
+msgid "via redirecionamento NAT"
+msgstr "NAT 리디렉션을 통해"
+
+#: chili-fr:1493
+msgid "IP atribuído na VM via DHCP"
+msgstr "DHCP를 통해 VM에 할당된 IP"
+
+#: chili-fr:1502
+msgid "Cliente"
+msgstr "고객"
+
+#: chili-fr:1561
+msgid "Erro:"
+msgstr "오류:"
+
+#: chili-fr:1561
+msgid "não localizada, tente os listados acima!"
+msgstr "찾을 수 없으면 위에 나열된 것을 시도해 보세요!"
+
+#: chili-fr:1579
+msgid "Forçando inicialização UEFI..."
+msgstr "UEFI 부팅을 강제하는 중..."
+
+#: chili-fr:1608
+msgid "Anexando iso"
+msgstr "ISO 첨부"
+
+#: chili-fr:1613 chili-fr:1665 chili-fr:1678
+msgid "Anexando vdisk"
+msgstr "vdisk 연결"
+
+#: chili-fr:1637
+msgid "Anexando device"
+msgstr "부착 장치"
+
+#: chili-fr:1785
+msgid "detectado: usando uefi"
+msgstr "감지됨: UEFI 사용 중"
+
+#: chili-fr:1791 chili-fr:1799 chili-fr:1811 chili-fr:1818 chili-fr:1821
+#: chili-fr:1835 chili-fr:1850 chili-fr:1869 chili-fr:1885 chili-fr:1904
+#: chili-fr:1921 chili-fr:1930
+msgid "Argumento inválido para"
+msgstr "에 대한 인수가 잘못되었습니다."
+
+#: chili-fr:1791
+msgid "falta parâmetro de imagem/disco/device"
+msgstr "이미지/디스크/장치 매개변수가 누락되었습니다."
+
+#: chili-fr:1818
+msgid "falta nome para ponte"
+msgstr "브리지 이름이 누락되었습니다."
+
+#: chili-fr:1846
+msgid "detectado: usando ponte"
+msgstr "감지됨: 브리지 사용 중"
+
+#: chili-fr:1857
+msgid "detectado: usando spice..."
+msgstr "감지됨: 향신료를 사용하고 있습니다..."
+
+#: chili-fr:1861
+msgid "detectado: ativando"
+msgstr "감지됨: 활성화 중"
+
+#: chili-fr:1869 chili-fr:1904
+msgid "Use"
+msgstr "사용"
+
+#: chili-fr:1885
+msgid "Válidos são:"
+msgstr "유효한 것은 다음과 같습니다:"
+
+#: chili-fr:1901
+msgid "Anexando placa de rede"
+msgstr "네트워크 카드 부착"
+
+#: chili-fr:1915
+msgid "detectado:"
+msgstr "감지됨:"
+
+#: chili-fr:1917
+msgid "não é um dispositivo de bloco"
+msgstr "블록 장치가 아닙니다"
+
+#: chili-fr:1921
+msgid "Use formato device, como /dev/sdX (por exemplo)."
+msgstr "예를 들어 /dev/sdX와 같은 장치 형식을 사용합니다."
+
+#: chili-fr:1927
+msgid "detectado: Usando"
+msgstr "감지됨: 사용 중"
+
+#: chili-fr:1930
+msgid "Use um formato como 16G (por exemplo)."
+msgstr "예를 들어 16G와 같은 형식을 사용합니다."
+
+#: chili-fr:1938
+msgid "requer um argumento"
+msgstr "논증이 필요하다"
+
+#: chili-fr:1941
+msgid "operação não suportada:"
+msgstr "지원되지 않는 작업:"
+
+#: chili-fr:1941
+msgid "(usar -h para ajuda"
+msgstr "(도움말을 보려면 -h를 사용하세요."
+
+#: chili-fr:1967
+msgid "Parametro --uefi não informado, usando BIOS legacy (padrão)..."
+msgstr "--uefi 매개변수가 통보되지 않음, 레거시 BIOS 사용(기본값)..."
+
+#: chili-fr:1971
+msgid "Nenhum ambiente gráfico detectado — forçando modo TTY."
+msgstr "감지된 그래픽 환경이 없습니다. TTY 모드를 강제 적용합니다."
+
+#: chili-fr:2019
+msgid "Anexando disco/drive externo:"
+msgstr "외부 디스크/드라이브 연결:"
+
+#: chili-fr:2024
+msgid "Falta parâmetro de imagem/disco/device."
+msgstr "이미지/디스크/장치 매개변수가 누락되었습니다."
+
+#: chili-fr:2024
+msgid "Tente os vdisks listados abaixo."
+msgstr "아래 나열된 vdisk를 사용해 보십시오."
+
+#: chili-fr:2024
+msgid "(usar -h para ajuda)"
+msgstr "(도움이 필요하면 -h를 사용하세요)"

@@ -1,0 +1,106 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 14:04-0400\n"
+"PO-Revision-Date: 2026-01-13 14:04-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: ja\n"
+
+#: chili-disk-test-bench:49
+msgid "Wraper para testes com dd, hdparm e fio"
+msgstr "dd、hdparm、fio を使用したテスト用のラッパー"
+
+#: chili-disk-test-bench:193
+msgid "Você não pode realizar esta operação a menos que seja root."
+msgstr "root でない場合は、この操作を実行できません。"
+
+#: chili-disk-test-bench:194
+msgid "Elevando privilégios..."
+msgstr "権限を昇格しています..."
+
+#: chili-disk-test-bench:204
+msgid ""
+"Erro: Não foi possível elevar os privilégios. Execute manualmente como root."
+msgstr ""
+
+#: chili-disk-test-bench:214
+msgid "Não foi possível encontrar o comando"
+msgstr "コマンドが見つかりません"
+
+#: chili-disk-test-bench:215
+msgid "instalar pacote"
+msgstr "パッケージをインストールする"
+
+#: chili-disk-test-bench:231
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "続行不可能"
+
+#: chili-disk-test-bench:232
+msgid "Este script precisa dos comandos listados acima"
+msgstr "このスクリプトには上記のコマンドが必要です"
+
+#: chili-disk-test-bench:233
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "それらをインストールするか、それらがコンピュータ上にあることを確認してください。"
+
+#: chili-disk-test-bench:241
+msgid "Instalar dependências base agora?"
+msgstr "基本の依存関係を今すぐインストールしますか?"
+
+#: chili-disk-test-bench:242
+msgid "Preparando ambiente para"
+msgstr "環境を準備する"
+
+#: chili-disk-test-bench:246
+msgid "Erro Crítico:"
+msgstr "重大なエラー:"
+
+#: chili-disk-test-bench:246
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "基本パッケージのインストールに失敗しました。"
+
+#: chili-disk-test-bench:250
+msgid "Sucesso:"
+msgstr "成功："
+
+#: chili-disk-test-bench:250
+msgid "Dependências instaladas."
+msgstr "インストールされた依存関係。"
+
+#: chili-disk-test-bench:322
+msgid "Uso:"
+msgstr "使用："
+
+#: chili-disk-test-bench:331
+msgid "Dispositivo inválido:"
+msgstr "無効なデバイス:"
+
+#: chili-disk-test-bench:331
+msgid "Pulando..."
+msgstr "ジャンプ中..."
+
+#: chili-disk-test-bench:335
+msgid "Testes de leitura para"
+msgstr "読書テスト"
+
+#: chili-disk-test-bench:344 chili-disk-test-bench:359
+#: chili-disk-test-bench:373
+msgid "concluído:"
+msgstr "完了:"
+
+#: chili-disk-test-bench:347 chili-disk-test-bench:348
+#: chili-disk-test-bench:362 chili-disk-test-bench:376
+msgid "falhou!"
+msgstr "失敗した！"
+
+#: chili-disk-test-bench:383
+msgid "Resumo de velocidades"
+msgstr "速度の概要"

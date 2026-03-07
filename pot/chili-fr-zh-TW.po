@@ -1,0 +1,900 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 12:07-0400\n"
+"PO-Revision-Date: 2026-01-13 12:07-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Language: zh-TW\n"
+
+#: chili-fr:47
+msgid "Wrapper lite para o qemu"
+msgstr "qemu 的包裝精簡版"
+
+#: chili-fr:421
+msgid "Não foi possível encontrar o comando"
+msgstr "找不到命令"
+
+#: chili-fr:421 chili-fr:475
+msgid "instalar pacote"
+msgstr "安裝包"
+
+#: chili-fr:432
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "無法繼續"
+
+#: chili-fr:433
+msgid "Este script precisa dos comandos listados acima"
+msgstr "該腳本需要上面列出的命令"
+
+#: chili-fr:434
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "安裝它們和/或確保它們在您的"
+
+#: chili-fr:436
+msgid "Deseja instalar os pacotes e criar os arquivos necessários?"
+msgstr "您想安裝軟件包並創建必要的文件嗎？"
+
+#: chili-fr:475
+msgid "Não foi possível encontrar o arquivo"
+msgstr "找不到文件"
+
+#: chili-fr:547 chili-fr:793 chili-fr:1064
+msgid "Adicionando"
+msgstr "添加"
+
+#: chili-fr:547
+msgid "em"
+msgstr "在"
+
+#: chili-fr:565
+msgid "Uso correto"
+msgstr "正確使用"
+
+#: chili-fr:569
+msgid "Verificando se a bridge"
+msgstr "檢查是否橋接"
+
+#: chili-fr:569 chili-fr:1821
+msgid "já existe"
+msgstr "已經存在"
+
+#: chili-fr:571 chili-fr:831 chili-fr:851
+msgid "Ponte"
+msgstr "橋"
+
+#: chili-fr:571
+msgid "já existe — nada a fazer."
+msgstr "已經存在——無事可做。"
+
+#: chili-fr:578
+msgid "Detectando interfaces físicas (ethernet)"
+msgstr "檢測物理接口（以太網）"
+
+#: chili-fr:585
+msgid "Nenhuma interface ethernet disponível. WLAN não suporta bridge real."
+msgstr "沒有可用的以太網接口。 WLAN 不支持真正的橋接。"
+
+#: chili-fr:591
+msgid "Múltiplas interfaces encontradas — exibindo menu de seleção"
+msgstr "找到多個界面 - 顯示選擇菜單"
+
+#: chili-fr:592
+msgid "Escolha a interface física para a bridge:"
+msgstr "選擇網橋的物理接口："
+
+#: chili-fr:594
+msgid "Encerrar"
+msgstr "關閉"
+
+#: chili-fr:595
+msgid "Operação cancelada pelo usuário."
+msgstr "操作被用戶取消。"
+
+#: chili-fr:598
+msgid "Interface selecionada:"
+msgstr "所選接口："
+
+#: chili-fr:604 chili-fr:1099
+msgid "A interface"
+msgstr "一個接口"
+
+#: chili-fr:604
+msgid "é Wi-Fi. Bridge real não funciona com WLAN."
+msgstr "這是Wi-Fi。真正的網橋不能與 WLAN 一起使用。"
+
+#: chili-fr:610
+msgid "Verificando se"
+msgstr "檢查是否"
+
+#: chili-fr:610
+msgid "já pertence a outra bridge"
+msgstr "已經屬於另一座橋"
+
+#: chili-fr:613
+msgid "Interface"
+msgstr "介面"
+
+#: chili-fr:613
+msgid "já pertence à bridge"
+msgstr "已經屬於橋"
+
+#: chili-fr:614
+msgid "Remova primeiro:"
+msgstr "先刪除："
+
+#: chili-fr:620
+msgid "Configuração de VLAN"
+msgstr "VLAN配置"
+
+#: chili-fr:622 chili-fr:630
+msgid "Sem VLAN (rede normal)"
+msgstr "無VLAN（正常網絡）"
+
+#: chili-fr:623 chili-fr:631 chili-fr:1226
+msgid "criar"
+msgstr "創造"
+
+#: chili-fr:623
+msgid "e usar como slave"
+msgstr "並用作奴隸"
+
+#: chili-fr:624 chili-fr:632
+msgid "habilitado"
+msgstr "已啟用"
+
+#: chili-fr:626
+msgid "Selecione o modo VLAN:"
+msgstr "選擇VLAN模式："
+
+#: chili-fr:631
+msgid "e usar como slave)"
+msgstr "並用作奴隸）"
+
+#: chili-fr:634
+msgid "Erro inesperado no menu VLAN"
+msgstr "VLAN 菜單中出現意外錯誤"
+
+#: chili-fr:638
+msgid "Modo VLAN selecionado:"
+msgstr "選擇的VLAN模式："
+
+#: chili-fr:643
+msgid "Digite o VLAN ID"
+msgstr "輸入 VLAN ID"
+
+#: chili-fr:646
+msgid "Subinterface VLAN definida:"
+msgstr "VLAN子接口定義："
+
+#: chili-fr:649
+msgid "VLAN inválida: informe um número entre 1 e 4094"
+msgstr "無效 VLAN：輸入 1 到 4094 之間的數字"
+
+#: chili-fr:654
+msgid "Bridge atuará como trunk"
+msgstr "橋樑將充當主幹線"
+
+#: chili-fr:658
+msgid "Informe VLANs permitidas separadas por vírgula"
+msgstr "輸入允許的 VLAN，以逗號分隔"
+
+#: chili-fr:665
+msgid "VLAN inválida:"
+msgstr "無效 VLAN："
+
+#: chili-fr:670
+msgid "VLAN duplicada:"
+msgstr "重複的 VLAN："
+
+#: chili-fr:683
+msgid "Detectando IP na subinterface VLAN"
+msgstr "檢測 VLAN 子接口上的 IP"
+
+#: chili-fr:687
+msgid "Usando IP da interface física"
+msgstr "使用物理接口IP"
+
+#: chili-fr:692
+msgid "Obtendo IP atual da interface"
+msgstr "獲取當前接口IP"
+
+#: chili-fr:697
+msgid "Nenhum IP detectado automaticamente."
+msgstr "自動檢測不到IP。"
+
+#: chili-fr:698
+msgid "Nenhum gateway detectado."
+msgstr "未檢測到網關。"
+
+#: chili-fr:704
+msgid "Configurando IP da bridge"
+msgstr "配置橋接IP"
+
+#: chili-fr:714
+msgid "Formato inválido."
+msgstr "格式無效。"
+
+#: chili-fr:720
+msgid "IP igual ao atual — pulando teste."
+msgstr "IP 與當前相同 — 跳過測試。"
+
+#: chili-fr:724
+msgid "Validando se IP está em uso..."
+msgstr "驗證 IP 是否正在使用..."
+
+#: chili-fr:727
+msgid "Conflito ARP detectado."
+msgstr "檢測到 ARP 衝突。"
+
+#: chili-fr:740
+msgid "Gateway inválido"
+msgstr "網關無效"
+
+#: chili-fr:744
+msgid "Gateway não respondeu."
+msgstr "網關沒有回應。"
+
+#: chili-fr:745
+msgid "Continuar?"
+msgstr "繼續？"
+
+#: chili-fr:753
+msgid "Criando ponte"
+msgstr "創建橋樑"
+
+#: chili-fr:756
+msgid "Falha ao criar ponte"
+msgstr "創建橋失敗"
+
+#: chili-fr:763
+msgid "Criando subinterface"
+msgstr "創建子接口"
+
+#: chili-fr:766
+msgid "Falha ao criar VLAN"
+msgstr "創建VLAN失敗"
+
+#: chili-fr:777
+msgid "Criando conexão slave para"
+msgstr "創建從屬連接"
+
+#: chili-fr:782
+msgid "Falha ao criar slave"
+msgstr "創建從站失敗"
+
+#: chili-fr:789
+msgid "Ativando"
+msgstr "啟用設定"
+
+#: chili-fr:793
+msgid "ao"
+msgstr "到"
+
+#: chili-fr:795
+msgid "Falha ao adicionar"
+msgstr "添加失敗"
+
+#: chili-fr:801
+msgid "Desativando conexão antiga da interface física"
+msgstr "禁用舊的物理接口連接"
+
+#: chili-fr:811
+msgid "Ativando DHCP na ponte"
+msgstr "在網橋上啟用 DHCP"
+
+#: chili-fr:814
+msgid "Aplicando IP manual"
+msgstr "申請手動IP"
+
+#: chili-fr:825
+msgid "Ativando ponte"
+msgstr "激活橋"
+
+#: chili-fr:830
+msgid "RESUMO"
+msgstr "概括"
+
+#: chili-fr:832
+msgid "Interface física"
+msgstr "物理接口"
+
+#: chili-fr:834
+msgid "Conexão"
+msgstr "聯繫"
+
+#: chili-fr:837
+msgid "nenhuma"
+msgstr "沒有任何"
+
+#: chili-fr:845
+msgid "aplicado"
+msgstr "應用"
+
+#: chili-fr:851
+msgid "criada e configurada com sucesso."
+msgstr "成功創建並配置。"
+
+#: chili-fr:869 chili-fr:1089 chili-fr:1095
+msgid "Removendo"
+msgstr "去除"
+
+#: chili-fr:869
+msgid "com segurança (sem derrubar SSH)"
+msgstr "安全地（不刪除 SSH）"
+
+#: chili-fr:883
+msgid "Não foi possível detectar interface física slave."
+msgstr "無法檢測從屬物理接口。"
+
+#: chili-fr:887
+msgid "Interface física slave detectada:"
+msgstr "檢測到從物理接口："
+
+#: chili-fr:898
+msgid "Nenhum perfil slave encontrado — talvez já removido."
+msgstr "未找到從屬配置文件 - 可能已被刪除。"
+
+#: chili-fr:900
+msgid "Perfil slave encontrado:"
+msgstr "發現從機配置文件："
+
+#: chili-fr:909
+msgid "IP atual na"
+msgstr "當前IP開啟"
+
+#: chili-fr:922
+msgid "Não foi possível localizar o perfil físico verdadeiro para"
+msgstr "無法找到真實的身體輪廓"
+
+#: chili-fr:925
+msgid "Perfil físico real:"
+msgstr "實際身體輪廓："
+
+#: chili-fr:929
+msgid "Restaurando autoconnect da interface física"
+msgstr "恢復物理接口自動連接"
+
+#: chili-fr:933
+msgid "Aplicando"
+msgstr "正在申請"
+
+#: chili-fr:933
+msgid "de volta na interface física"
+msgstr "返回物理接口"
+
+#: chili-fr:938
+msgid "Sem IP detectado — configurando interface física para DHCP"
+msgstr "未檢測到 IP — 為 DHCP 配置物理接口"
+
+#: chili-fr:944
+msgid "Subindo interface física ANTES de remover a bridge"
+msgstr "在移除網橋之前升級物理接口"
+
+#: chili-fr:946
+msgid "Falha ao subir interface física — pode ser esperado via SSH"
+msgstr "無法上傳物理接口 - 可以通過 SSH 進行預期"
+
+#: chili-fr:952
+msgid "Removendo conexão slave"
+msgstr "刪除從屬連接"
+
+#: chili-fr:960
+msgid "Desativando"
+msgstr "禁用"
+
+#: chili-fr:965
+msgid "Removendo perfil da"
+msgstr "正在刪除配置文件"
+
+#: chili-fr:970
+msgid "removida com sucesso e interface"
+msgstr "成功刪除並界面"
+
+#: chili-fr:970
+msgid "restaurada."
+msgstr "恢復了。"
+
+#: chili-fr:977
+msgid "está funcionando e conseguiu listar as redes."
+msgstr "它正在工作並設法列出網絡。"
+
+#: chili-fr:979
+msgid "não conseguiu se conectar ao libvirt."
+msgstr "無法連接到 libvirt。"
+
+#: chili-fr:980
+msgid "Verifique se o serviço libvirtd está ativo com os comandos abaixo:"
+msgstr "使用以下命令檢查 libvirtd 服務是否處於活動狀態："
+
+#: chili-fr:983
+msgid "DICA: Tente ativar com os comandos abaixo:"
+msgstr "提示：嘗試使用以下命令激活："
+
+#: chili-fr:986
+msgid "Erro fatal"
+msgstr "致命錯誤"
+
+#: chili-fr:997
+msgid "Criando a rede"
+msgstr "創建網絡"
+
+#: chili-fr:1037
+msgid "erro fatal!"
+msgstr "致命錯誤！"
+
+#: chili-fr:1041
+msgid "Tornando"
+msgstr "製作"
+
+#: chili-fr:1041
+msgid "persistente..."
+msgstr "執著的..."
+
+#: chili-fr:1042
+msgid "Iniciando a rede"
+msgstr "啟動網絡"
+
+#: chili-fr:1046
+msgid "Falha ao iniciar a rede"
+msgstr "啟動網絡失敗"
+
+#: chili-fr:1046
+msgid "Tentando novamente."
+msgstr "再試一次。"
+
+#: chili-fr:1056
+msgid "Criando a interface"
+msgstr "創建界面"
+
+#: chili-fr:1060
+msgid "Ativando a interface"
+msgstr "激活界面"
+
+#: chili-fr:1064
+msgid "à"
+msgstr "這"
+
+#: chili-fr:1068
+msgid "Verificando a associação de interfaces à"
+msgstr "檢查接口與"
+
+#: chili-fr:1072
+msgid "Verificando as interfaces de rede..."
+msgstr "檢查網絡接口..."
+
+#: chili-fr:1077
+msgid "Configuração concluída!"
+msgstr "設置完成！"
+
+#: chili-fr:1099
+msgid "não existe."
+msgstr "不存在。"
+
+#: chili-fr:1103
+msgid "Removendo a rede do"
+msgstr "從中刪除網絡"
+
+#: chili-fr:1113
+msgid "Removendo o arquivo de configuração da rede"
+msgstr "刪除網絡配置文件"
+
+#: chili-fr:1208
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "這是免費軟件：您可以自由更改和重新分發它。"
+
+#: chili-fr:1209
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-fr:1210
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "包括各種其他許可證下的開源軟件。"
+
+#: chili-fr:1211
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "您可以閱讀有關如何下載和自行創建的說明"
+
+#: chili-fr:1212
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "用於創建此副本的特定源代碼。"
+
+#: chili-fr:1213
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "該計劃絕對不提供任何保證。"
+
+#: chili-fr:1221
+msgid "uso:"
+msgstr "使用："
+
+#: chili-fr:1221
+msgid "Opções"
+msgstr "選項"
+
+#: chili-fr:1222
+msgid "Opções:"
+msgstr "選項："
+
+#: chili-fr:1223
+msgid "inicia rede em modo"
+msgstr "在模式下啟動網絡"
+
+#: chili-fr:1224
+msgid "criar real"
+msgstr "創造真實"
+
+#: chili-fr:1225
+msgid "remover real"
+msgstr "刪除真實的"
+
+#: chili-fr:1227
+msgid "remover"
+msgstr "消除"
+
+#: chili-fr:1228
+msgid "anexa disco externo"
+msgstr "連接外部磁盤"
+
+#: chili-fr:1229
+msgid "memória inicial de convidado"
+msgstr "賓客初始記憶"
+
+#: chili-fr:1230
+msgid "usa um disco virtual interno"
+msgstr "使用內部虛擬磁盤"
+
+#: chili-fr:1231
+msgid "cria um disco virtual para uso interno"
+msgstr "創建供內部使用的虛擬磁盤"
+
+#: chili-fr:1232
+msgid "remove um disco virtual"
+msgstr "刪除虛擬磁盤"
+
+#: chili-fr:1235
+msgid "remover cores da saída"
+msgstr "從輸出中刪除顏色"
+
+#: chili-fr:1236
+msgid "ativar o"
+msgstr "啟用設定"
+
+#: chili-fr:1236 chili-fr:1237
+msgid "desligado"
+msgstr "離開"
+
+#: chili-fr:1237
+msgid "ativar modo"
+msgstr "激活模式"
+
+#: chili-fr:1238
+msgid "listar discos virtuais"
+msgstr "列出虛擬磁盤"
+
+#: chili-fr:1239
+msgid "inicialização em"
+msgstr "啟動進入"
+
+#: chili-fr:1240
+msgid "exibe a versão do aplicativo"
+msgstr "顯示應用程序版本"
+
+#: chili-fr:1241
+msgid "exibe a saída gerada pelo comando e sai"
+msgstr "顯示命令生成的輸出並退出"
+
+#: chili-fr:1242
+msgid "imprime este ajuda"
+msgstr "打印此幫助"
+
+#: chili-fr:1243
+msgid "Exemplos:"
+msgstr "示例："
+
+#: chili-fr:1244
+msgid "Execute uma imagem, em ponte, usando"
+msgstr "運行一個鏡像，橋接，使用"
+
+#: chili-fr:1245
+msgid "Execute uma imagem, em ponte, usando spice, usando UEFI"
+msgstr "運行鏡像、橋接、使用 SPICE、使用 UEFI"
+
+#: chili-fr:1246
+msgid "Execute uma imagem, em NAT, usando UEFI"
+msgstr "使用 UEFI 在 NAT 下運行映像"
+
+#: chili-fr:1247
+msgid "Execute uma device, em ponte, usando UEFI"
+msgstr "使用 UEFI 運行橋接設備"
+
+#: chili-fr:1248
+msgid "Execute uma device, em ponte, 16Gb memória, usando UEFI"
+msgstr "使用 UEFI 運行橋接的 16Gb 內存設備"
+
+#: chili-fr:1249
+msgid "Execute uma device, em NAT, usando audio pipewire"
+msgstr "使用音頻管道線在 NAT 中運行設備"
+
+#: chili-fr:1250
+msgid "Execute uma imagem usando BIOS"
+msgstr "使用 BIOS 運行映像"
+
+#: chili-fr:1251
+msgid "Execute uma imagem, em ponte, usando BIOS"
+msgstr "使用 BIOS 運行橋接映像"
+
+#: chili-fr:1252
+msgid "Execute uma device, 16GB memória, usando BIOS"
+msgstr "運行設備，16GB內存，使用BIOS"
+
+#: chili-fr:1253
+msgid "Forma de uso mais comum:"
+msgstr "最常見的使用形式："
+
+#: chili-fr:1263
+msgid "acesso a vm/convidado via ssh:"
+msgstr "通過 ssh 訪問虛擬機/來賓："
+
+#: chili-fr:1264
+msgid "via"
+msgstr "通過"
+
+#: chili-fr:1265 chili-fr:1267
+msgid "via redirecionamento"
+msgstr "通過重定向"
+
+#: chili-fr:1266
+msgid "via ponte (caso vm iniciada com -b)"
+msgstr "通過橋接（如果以 -b 開頭）"
+
+#: chili-fr:1278 chili-fr:1353 chili-fr:1392
+msgid "Criando diretórios de trabalho"
+msgstr "創建工作目錄"
+
+#: chili-fr:1282 chili-fr:1355 chili-fr:1394
+msgid "Setando permissões no diretórios de trabalho"
+msgstr "設置工作目錄的權限"
+
+#: chili-fr:1287 chili-fr:1293
+msgid "Criando disco virtual"
+msgstr "創建虛擬磁盤"
+
+#: chili-fr:1287 chili-fr:1293
+msgid "no diretórios de trabalho"
+msgstr "在工作目錄中"
+
+#: chili-fr:1301
+msgid "Instalando necessários pacotes"
+msgstr "安裝所需的包"
+
+#: chili-fr:1305 chili-fr:1323
+msgid "Rodando no"
+msgstr "磨合中"
+
+#: chili-fr:1319
+msgid "[ERRO] Falha ao instalar pacotes."
+msgstr "[錯誤] 無法安裝軟件包。"
+
+#: chili-fr:1344 chili-fr:1427
+msgid "Outra distro:"
+msgstr "其他發行版："
+
+#: chili-fr:1361
+msgid "Entre com o nome do disco (sem extensão)"
+msgstr "輸入光盤名稱（不帶擴展名）"
+
+#: chili-fr:1362
+msgid "Entre com o tamanho do disco virtual em GB"
+msgstr "輸入虛擬磁盤的大小（以 GB 為單位）"
+
+#: chili-fr:1365
+msgid "Disco virtual já existe, escolha outro nome. Tentar novamente?"
+msgstr "虛擬磁盤已存在，請選擇其他名稱。再試一次？"
+
+#: chili-fr:1376
+msgid "Falha na criação do disco virtual"
+msgstr "虛擬磁盤創建失敗"
+
+#: chili-fr:1384
+msgid "DISCOS VIRTUAIS DISPONÍVEIS em"
+msgstr "虛擬磁盤可在以下位置獲得："
+
+#: chili-fr:1399
+msgid "Entre com o nome do disco para remover"
+msgstr "輸入要刪除的磁盤名稱"
+
+#: chili-fr:1402
+msgid "PERGUNTA: Deseja realmente excluir o disco virtual ?"
+msgstr "問題：您確實要刪除虛擬磁盤嗎？"
+
+#: chili-fr:1404
+msgid "Disco virtual"
+msgstr "虛擬磁盤"
+
+#: chili-fr:1404
+msgid "foi removido com sucesso"
+msgstr "已成功刪除"
+
+#: chili-fr:1410
+msgid "Disco virtual digitado não existe!"
+msgstr "鍵入的虛擬磁盤不存在！"
+
+#: chili-fr:1418
+msgid "Ativando serviço"
+msgstr "啟動服務"
+
+#: chili-fr:1418
+msgid "na distro:"
+msgstr "發行版："
+
+#: chili-fr:1454
+msgid "Pontes disponíveis:"
+msgstr "可用的橋樑："
+
+#: chili-fr:1456
+msgid "nenhuma ponte disponível"
+msgstr "沒有可用的橋"
+
+#: chili-fr:1478 chili-fr:1480 chili-fr:1785 chili-fr:1846 chili-fr:1857
+#: chili-fr:1861 chili-fr:1915 chili-fr:1917 chili-fr:1927
+msgid "Parametro"
+msgstr "範圍"
+
+#: chili-fr:1478
+msgid "informado. Iniciando VM em modo"
+msgstr "告知。在模式下啟動虛擬機"
+
+#: chili-fr:1480
+msgid "não informado. Iniciando VM em modo"
+msgstr "沒有通知。在模式下啟動虛擬機"
+
+#: chili-fr:1483
+msgid "acesso a VM via"
+msgstr "虛擬機訪問通過"
+
+#: chili-fr:1484 chili-fr:1485
+msgid "via vsock (se habilitado do guest)"
+msgstr "通過 vsock（如果從來賓啟用）"
+
+#: chili-fr:1487 chili-fr:1488 chili-fr:1489 chili-fr:1490
+msgid "via redirecionamento NAT"
+msgstr "通過 NAT 重定向"
+
+#: chili-fr:1493
+msgid "IP atribuído na VM via DHCP"
+msgstr "通過 DHCP 分配給 VM 的 IP"
+
+#: chili-fr:1502
+msgid "Cliente"
+msgstr "顧客"
+
+#: chili-fr:1561
+msgid "Erro:"
+msgstr "錯誤："
+
+#: chili-fr:1561
+msgid "não localizada, tente os listados acima!"
+msgstr "找不到，請嘗試上面列出的！"
+
+#: chili-fr:1579
+msgid "Forçando inicialização UEFI..."
+msgstr "強制 UEFI 啟動..."
+
+#: chili-fr:1608
+msgid "Anexando iso"
+msgstr "附加iso"
+
+#: chili-fr:1613 chili-fr:1665 chili-fr:1678
+msgid "Anexando vdisk"
+msgstr "附加虛擬磁盤"
+
+#: chili-fr:1637
+msgid "Anexando device"
+msgstr "附著裝置"
+
+#: chili-fr:1785
+msgid "detectado: usando uefi"
+msgstr "檢測到：使用uefi"
+
+#: chili-fr:1791 chili-fr:1799 chili-fr:1811 chili-fr:1818 chili-fr:1821
+#: chili-fr:1835 chili-fr:1850 chili-fr:1869 chili-fr:1885 chili-fr:1904
+#: chili-fr:1921 chili-fr:1930
+msgid "Argumento inválido para"
+msgstr "無效參數"
+
+#: chili-fr:1791
+msgid "falta parâmetro de imagem/disco/device"
+msgstr "缺少映像/磁盤/設備參數"
+
+#: chili-fr:1818
+msgid "falta nome para ponte"
+msgstr "缺少橋樑名稱"
+
+#: chili-fr:1846
+msgid "detectado: usando ponte"
+msgstr "檢測到：使用橋接"
+
+#: chili-fr:1857
+msgid "detectado: usando spice..."
+msgstr "檢測到：使用香料..."
+
+#: chili-fr:1861
+msgid "detectado: ativando"
+msgstr "檢測到：激活"
+
+#: chili-fr:1869 chili-fr:1904
+msgid "Use"
+msgstr "使用"
+
+#: chili-fr:1885
+msgid "Válidos são:"
+msgstr "有效的是："
+
+#: chili-fr:1901
+msgid "Anexando placa de rede"
+msgstr "連接網卡"
+
+#: chili-fr:1915
+msgid "detectado:"
+msgstr "檢測到："
+
+#: chili-fr:1917
+msgid "não é um dispositivo de bloco"
+msgstr "不是塊設備"
+
+#: chili-fr:1921
+msgid "Use formato device, como /dev/sdX (por exemplo)."
+msgstr "使用設備格式，例如 /dev/sdX。"
+
+#: chili-fr:1927
+msgid "detectado: Usando"
+msgstr "檢測到：使用"
+
+#: chili-fr:1930
+msgid "Use um formato como 16G (por exemplo)."
+msgstr "使用 16G 等格式（例如）。"
+
+#: chili-fr:1938
+msgid "requer um argumento"
+msgstr "需要一個論點"
+
+#: chili-fr:1941
+msgid "operação não suportada:"
+msgstr "不支持的操作："
+
+#: chili-fr:1941
+msgid "(usar -h para ajuda"
+msgstr "（使用 -h 尋求幫助"
+
+#: chili-fr:1967
+msgid "Parametro --uefi não informado, usando BIOS legacy (padrão)..."
+msgstr "--uefi 參數未通知，使用舊版 BIOS（默認）..."
+
+#: chili-fr:1971
+msgid "Nenhum ambiente gráfico detectado — forçando modo TTY."
+msgstr "未檢測到圖形環境 — 強制 TTY 模式。"
+
+#: chili-fr:2019
+msgid "Anexando disco/drive externo:"
+msgstr "連接外部磁盤/驅動器："
+
+#: chili-fr:2024
+msgid "Falta parâmetro de imagem/disco/device."
+msgstr "缺少映像/磁盤/設備參數。"
+
+#: chili-fr:2024
+msgid "Tente os vdisks listados abaixo."
+msgstr "嘗試下面列出的虛擬磁盤。"
+
+#: chili-fr:2024
+msgid "(usar -h para ajuda)"
+msgstr "（使用 -h 尋求幫助）"

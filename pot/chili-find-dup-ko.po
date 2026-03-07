@@ -1,0 +1,153 @@
+# Chili Tradutor Go - 2.1.17-20260116
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.17-20260116\n"
+"POT-Creation-Date: 2026-01-16 09:13-0400\n"
+"PO-Revision-Date: 2026-01-16 09:13-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ko\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-find-dup:284
+msgid "This script must be run as root. Elevating privileges..."
+msgstr "이 스크립트는 루트로 실행되어야 합니다. 권한 승격 중..."
+
+#: chili-find-dup:294
+msgid "Error: Unable to elevate privileges. Run manually as root."
+msgstr "오류: 권한을 높일 수 없습니다. 루트로 수동으로 실행하십시오."
+
+#: chili-find-dup:363
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "이것은 무료 소프트웨어이므로 자유롭게 변경하고 재배포할 수 있습니다."
+
+#: chili-find-dup:364
+#, sh-format
+msgid ""
+"O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e"
+msgstr ""
+
+#: chili-find-dup:365
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "다양한 기타 라이센스에 따른 오픈 소스 소프트웨어가 포함되어 있습니다."
+
+#: chili-find-dup:366
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "직접 다운로드하고 생성하는 방법에 대한 지침을 읽을 수 있습니다."
+
+#: chili-find-dup:367
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "이 복사본을 만드는 데 사용된 특정 소스 코드."
+
+#: chili-find-dup:368
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "이 프로그램은 전혀 보장하지 않습니다."
+
+#: chili-find-dup:409
+msgid "Não foi possível encontrar o comando"
+msgstr "명령을 찾을 수 없습니다"
+
+#: chili-find-dup:410
+msgid "instalar pacote"
+msgstr "패키지 설치"
+
+#: chili-find-dup:426
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "계속할 수 없습니다"
+
+#: chili-find-dup:427
+msgid "Este script precisa dos comandos listados acima"
+msgstr "이 스크립트에는 위에 나열된 명령이 필요합니다."
+
+#: chili-find-dup:428
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "이를 설치하거나 귀하의 컴퓨터에 있는지 확인하십시오."
+
+#: chili-find-dup:436
+msgid "Instalar dependências base agora?"
+msgstr "지금 기본 종속성을 설치하시겠습니까?"
+
+#: chili-find-dup:437
+msgid "Preparando ambiente para"
+msgstr "환경 준비"
+
+#: chili-find-dup:441
+msgid "Erro Crítico:"
+msgstr "심각한 오류:"
+
+#: chili-find-dup:441
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "기본 패키지 설치에 실패했습니다."
+
+#: chili-find-dup:445
+msgid "Sucesso:"
+msgstr "성공:"
+
+#: chili-find-dup:445
+msgid "Dependências instaladas."
+msgstr "설치된 종속성."
+
+#: chili-find-dup:477
+msgid "compara conteúdo via SHA256"
+msgstr "SHA256을 통해 콘텐츠를 비교합니다."
+
+#: chili-find-dup:478
+msgid "compara apenas nome/caminho"
+msgstr "이름/경로만 비교합니다."
+
+#: chili-find-dup:479
+msgid "remove arquivo correspondente do DIR1 (se igual)"
+msgstr "DIR1에서 해당 파일을 제거합니다(동일한 경우)."
+
+#: chili-find-dup:480
+msgid "remove arquivo correspondente do DIR2 (se igual)"
+msgstr "DIR2에서 해당 파일을 제거합니다(동일한 경우)."
+
+#: chili-find-dup:481
+msgid "mostra o que faria, sem executar"
+msgstr "실행하지 않고 무엇을 할지 보여줍니다."
+
+#: chili-find-dup:482
+msgid "narra a execução"
+msgstr "처형을 설명한다"
+
+#: chili-find-dup:483
+msgid "mostra esta ajuda"
+msgstr "이 도움말을 보여주세요"
+
+#: chili-find-dup:485
+msgid "exemplos:"
+msgstr "예:"
+
+#: chili-find-dup:523
+msgid "precisa escolher --by-hash ou --by-name"
+msgstr "--by-hash 또는 --by-name을 선택해야 합니다."
+
+#: chili-find-dup:537
+msgid "comparação"
+msgstr "비교"
+
+#: chili-find-dup:545
+msgid "faltando destino:"
+msgstr "누락된 목적지:"
+
+#: chili-find-dup:562
+msgid "IGUAL:"
+msgstr "동일한:"
+
+#: chili-find-dup:569
+msgid "removido origem:"
+msgstr "삭제된 소스:"
+
+#: chili-find-dup:578
+msgid "removido destino:"
+msgstr "삭제된 대상:"
+
+#: chili-find-dup:583
+msgid "diferente:"
+msgstr "다른:"

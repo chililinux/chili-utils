@@ -1,0 +1,106 @@
+# Chili Tradutor Go - 2.1.12-20260113
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
+"POT-Creation-Date: 2026-01-13 14:04-0400\n"
+"PO-Revision-Date: 2026-01-13 14:04-0400\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: it\n"
+
+#: chili-disk-test-bench:49
+msgid "Wraper para testes com dd, hdparm e fio"
+msgstr "Wraper per testare con dd, hdparm e fio"
+
+#: chili-disk-test-bench:193
+msgid "Você não pode realizar esta operação a menos que seja root."
+msgstr "Non puoi eseguire questa operazione se non sei root."
+
+#: chili-disk-test-bench:194
+msgid "Elevando privilégios..."
+msgstr "Elevare i privilegi..."
+
+#: chili-disk-test-bench:204
+msgid ""
+"Erro: Não foi possível elevar os privilégios. Execute manualmente como root."
+msgstr ""
+
+#: chili-disk-test-bench:214
+msgid "Não foi possível encontrar o comando"
+msgstr "Impossibile trovare il comando"
+
+#: chili-disk-test-bench:215
+msgid "instalar pacote"
+msgstr "installare il pacchetto"
+
+#: chili-disk-test-bench:231
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "IMPOSSIBILE CONTINUARE"
+
+#: chili-disk-test-bench:232
+msgid "Este script precisa dos comandos listados acima"
+msgstr "Questo script necessita dei comandi elencati sopra"
+
+#: chili-disk-test-bench:233
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "Installali e/o assicurati che siano sul tuo"
+
+#: chili-disk-test-bench:241
+msgid "Instalar dependências base agora?"
+msgstr "Installare le dipendenze di base adesso?"
+
+#: chili-disk-test-bench:242
+msgid "Preparando ambiente para"
+msgstr "Preparare l'ambiente per"
+
+#: chili-disk-test-bench:246
+msgid "Erro Crítico:"
+msgstr "Errore critico:"
+
+#: chili-disk-test-bench:246
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "L'installazione dei pacchetti base non è riuscita."
+
+#: chili-disk-test-bench:250
+msgid "Sucesso:"
+msgstr "Successo:"
+
+#: chili-disk-test-bench:250
+msgid "Dependências instaladas."
+msgstr "Dipendenze installate."
+
+#: chili-disk-test-bench:322
+msgid "Uso:"
+msgstr "utilizzo:"
+
+#: chili-disk-test-bench:331
+msgid "Dispositivo inválido:"
+msgstr "Dispositivo non valido:"
+
+#: chili-disk-test-bench:331
+msgid "Pulando..."
+msgstr "Saltando..."
+
+#: chili-disk-test-bench:335
+msgid "Testes de leitura para"
+msgstr "Prove di lettura per"
+
+#: chili-disk-test-bench:344 chili-disk-test-bench:359
+#: chili-disk-test-bench:373
+msgid "concluído:"
+msgstr "completato:"
+
+#: chili-disk-test-bench:347 chili-disk-test-bench:348
+#: chili-disk-test-bench:362 chili-disk-test-bench:376
+msgid "falhou!"
+msgstr "fallito!"
+
+#: chili-disk-test-bench:383
+msgid "Resumo de velocidades"
+msgstr "Riepilogo della velocità"

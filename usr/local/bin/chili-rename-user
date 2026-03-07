@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166
+#
+#  chili-rename-user
+#  Script para renomear um usuário do sistema Linux de forma segura, atualizar grupo, home, sudoers e caches do display manager, e verificar se ainda existem referências ao usuário antigo.
+#  Funcionalidades principais:
+#   Renomeia login e grupo principal do usuário.
+#   Move e ajusta permissões da home.
+#   Atualiza grupos secundários (/etc/group e /etc/gshadow).
+#   Atualiza todos os arquivos em /etc/sudoers.d/.
+#   Limpa cache do AccountsService e reinicia display managers (GDM, SDDM).
+#   Permite checagem completa das referências ao usuário antigo, incluindo /etc/passwd, /etc/group, /etc/gshadow, sudoers, AccountsService e arquivos de configuração de GDM, LXDM e SDDM.
+#     --check → roda apenas a checagem sem alterar nada.
+#   Saída colorida: arquivos em ciano, linhas encontradas em vermelho, e números de linha exibidos.
+#
+#   Uso:
+#     sudo chili-rename-user <usuario_antigo> <usuario_novo>   # renomeia e checa
+#     sudo chili-rename-user --check <usuario_antigo>          # só checa
+#
+#  Created: 2025/10/07 - 13:27
+#  Altered: 2025/10/07 - 13:27
+#  Updated: ter 07 out 2025 23:56:40 -04
+#
+#  Copyright (c) 2025-2025, Nome Completo <user@server.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+#export LANGUAGE=pt_BR
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-rename-user
+
+# Definir a variável de controle para restaurar a formatação original
+reset=$(tput sgr0)
+
+# Definir os estilos de texto como variáveis
+bold=$(tput bold)
+underline=$(tput smul)   # Início do sublinhado
+nounderline=$(tput rmul) # Fim do sublinhado
+reverse=$(tput rev)      # Inverte as cores de fundo e texto
+
+# Definir as cores ANSI como variáveis
+black=$(tput bold)$(tput setaf 0)
+red=$(tput bold)$(tput setaf 196)
+green=$(tput bold)$(tput setaf 2)
+yellow=$(tput bold)$(tput setaf 3)
+blue=$(tput setaf 4)
+pink=$(tput setaf 5)
+magenta=$(tput setaf 5)
+cyan=$(tput setaf 6)
+white=$(tput setaf 7)
+gray=$(tput setaf 8)
+orange=$(tput setaf 202)
+purple=$(tput setaf 125)
+violet=$(tput setaf 61)
+light_red=$(tput setaf 9)
+light_green=$(tput setaf 10)
+light_yellow=$(tput setaf 11)
+light_blue=$(tput setaf 12)
+light_magenta=$(tput setaf 13)
+light_cyan=$(tput setaf 14)
+bright_white=$(tput setaf 15)
+
+#debug
+export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
+#set -x
+#set -e
+set -euo pipefail
+shopt -s extglob
+
+#system
+declare APP="${0##*/}"
+declare _VERSION_="1.10.7-20251007"
+declare APPDESC="Script para renomear um usuário do sistema Linux de forma segura"
+declare distro="$(uname -n)"
+declare DEPENDENCIES=(tput)
+
+MostraErro() {
+  echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"
+}
+trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
+
+debug() {
+# dialog \
+  whiptail --fb  --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n"  0 40
+  local result="$?"
+  ((result)) && exit "$result"
+  return "$result"
+}
+
+####################################################################################################
+
+usage() {
+  cat <<EOF
+  ${cyan}${APPDESC}${reset}
+${yellow}Uso:${reset}
+  $APP ${yellow}<usuario_antigo>${reset} ${green}<usuario_novo>   ${cyan}# Renomeia usuário e faz checagem${reset}
+  $APP ${green}--check ${yellow}<usuario_antigo>          ${cyan}# Apenas checagem de ocorrências do usuário antigo${reset}
+EOF
+  exit 0
+}
+
+rename_user() {
+  local old="$1"
+  local new="$2"
+
+  echo "=== Encerrando processos de $old ==="
+  pkill -TERM -u "$old" 2>/dev/null || true
+  sleep 1
+  pkill -KILL -u "$old" 2>/dev/null || true
+
+  echo "=== Renomeando login: $old -> $new ==="
+  usermod -l "$new" "$old"
+
+  echo "=== Renomeando/movendo home ==="
+  usermod -d "/home/$new" -m "$new"
+
+  echo "=== Renomeando grupo principal, se existir ==="
+  if getent group "$old" >/dev/null; then
+    groupmod -n "$new" "$old"
+  fi
+
+  echo "=== Atualizando grupos secundários ==="
+  sed -i "s/\b$old\b/$new/g" /etc/group /etc/gshadow
+
+  echo "=== Corrigindo permissões da home ==="
+  chown -R "$new:$new" "/home/$new"
+  chmod 700 "/home/$new" || true
+
+  echo "=== Defina nova senha para $new ==="
+  passwd "$new"
+
+  echo "=== Atualizando sudoers.d ==="
+  for file in /etc/sudoers.d/*; do
+    [[ -r "$file" ]] || continue
+    sed -i "s/\b$old\b/$new/g" "$file"
+  done
+
+  echo "=== Limpando cache do AccountsService ==="
+  rm -f /var/lib/AccountsService/users/"$old" 2>/dev/null || true
+  rm -f /var/lib/AccountsService/users/"$new" 2>/dev/null || true
+  systemctl restart accounts-daemon 2>/dev/null || true
+
+  echo "=== Reiniciando display managers ==="
+  systemctl restart gdm 2>/dev/null || true
+  systemctl restart sddm 2>/dev/null || true
+
+  echo "✅ Renomeação concluída: $old -> $new"
+}
+
+check_old_user_OLD() {
+  local old="$1"
+
+  echo "${yellow}=== Checagem de ocorrência de $old ===${reset}"
+  echo "${cyan}/etc/passwd ${reset}"
+  grep -ni "$old" /etc/passwd || echo "nenhum"
+  echo "${cyan}/etc/group ${reset}"
+  grep -ni "$old" /etc/group || echo "nenhum"
+  echo "${cyan}/etc/gshadow ${reset}"
+  grep -ni "$old" /etc/gshadow || echo "nenhum"
+  echo "${cyan}/etc/sudoers.d ${reset}"
+  grep -nri "$old" /etc/sudoers.d/ || echo "nenhum"
+  echo "${cyan}/var/lib/AccountsService/Users/ ${reset}"
+  ls /var/lib/AccountsService/users/ | grep "$old" || echo "nenhum"
+
+  # Checagem dos display managers
+  for dmfile in /etc/gdm/custom.conf /etc/lxdm/lxdm.conf /etc/sddm.conf; do
+    if [[ -f "$dmfile" ]]; then
+      echo "${cyan}$dmfile ${reset}"
+      grep -ni "$old" "$dmfile" || echo "nenhum"
+    fi
+  done
+
+  echo
+  echo "✅ Checagem concluída para $old"
+}
+
+check_old_user() {
+  local old="$1"
+
+  echo
+  echo -e "${yellow}=== Checagem de ocorrência de ${cyan}$old${reset} ==="
+
+  color_grep() {
+    local file="$1"
+    if [[ -f "$file" ]]; then
+      grep -n --color=always -i "$old" "$file" || echo "nenhum"
+    fi
+  }
+
+  # PASSWD
+  echo -e "${cyan}/etc/passwd${reset}"
+  color_grep /etc/passwd
+
+  # GROUP
+  echo -e "${cyan}/etc/group${reset}"
+  color_grep /etc/group
+
+  # GSHADOW
+  echo -e "${cyan}/etc/gshadow${reset}"
+  color_grep /etc/gshadow
+
+  # SUDOERS.D
+  for file in /etc/sudoers.d/*; do
+    [[ -r "$file" ]] || continue
+    echo -e "${cyan}$file${reset}"
+    color_grep "$file"
+  done
+
+  # AccountsService
+  echo -e "${cyan}/var/lib/AccountsService/users/${reset}"
+  ls /var/lib/AccountsService/users/ | grep -n --color=always -i "$old" || echo "nenhum"
+
+  # Display managers
+  for dmfile in /etc/gdm/custom.conf /etc/lxdm/lxdm.conf /etc/sddm/sddm.conf; do
+    if [[ -f "$dmfile" ]]; then
+      echo -e "${cyan}$dmfile${reset}"
+      color_grep "$dmfile"
+    fi
+  done
+
+  echo
+  echo "✅ Checagem concluída para $old"
+}
+
+# --------------------------
+# Processa argumentos
+# --------------------------
+[[ "${1:-}" == "-h" || "${1:-}" == "--help" || -z "${1:-}" || -z "${2:-}" ]] && usage
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "${cyan}${APPDESC}${reset}"
+  echo "${red}erro: você não pode realizar esta operação a menos que seja root.${reset}"
+  exit 1
+fi
+
+if [[ "${1:-}" == "--check" ]]; then
+  [[ -n "${2:-}" ]] || usage
+  check_old_user "$2"
+  exit 0
+fi
+
+OLD_USER="$1"
+NEW_USER="$2"
+
+rename_user "$OLD_USER" "$NEW_USER"
+check_old_user "$OLD_USER"

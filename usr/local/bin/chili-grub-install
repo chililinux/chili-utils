@@ -1,0 +1,898 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166
+#
+#  chili-grub-install
+#  Created: 2025/10/02 - 01:55
+#  Altered: 2025/10/02 - 01:55
+#  Updated: qua 08 out 2025 20:08:24 -04
+#
+# Descrição:
+#   Reinstala o GRUB e coloca esta distro como "chefe do boot".
+#   Sempre instala em BIOS/MBR e, se UEFI for detectado, também instala no EFI.
+#   Cria fallback genérico BOOTX64.EFI (x86_64) ou BOOTIA32.EFI (i386).
+#
+# Uso:
+#   chili-grub-install --disk <DISCO> [--nick <NICK>] [--dry-run] [--interactive|--interativo|--chroot] [--update-grub] [--efi_part] [--root_part [-V|--version]]
+#
+# Opções:
+#   --disk <DISCO>   Disco alvo (ex: /dev/sda)
+#   --nick <NICK>    Nome/apelido do bootloader (padrão: UEFI)
+#   --dry-run        Simula execução sem aplicar mudanças
+#   --interactive    Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --interactive    Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --chroot         Entra em chroot interativo antes de instalar (somente discos alternativos)
+#   --update-grub    Atualiza o grub.cfg (padrão: NÂO atualiza)
+#   --root_part      Partição root do disco (ex: /dev/sda3 - padrão: autodetect)
+#   --efi_part       Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)
+#   -V, --version    Exibe versão do aplicativo
+#   -h, --help       Mostra esta ajuda
+#
+#  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY Vilmar Catafesta ''AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+#export LANGUAGE=pt_BR
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-grub-install
+
+#debug
+: "${red=$(tput bold)$(tput setaf 196)}"
+: "${green=$(tput bold)$(tput setaf 2)}"
+: "${pink=$(tput setaf 5)}"
+export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
+#set -x
+#set -e
+#set -euo pipefail
+shopt -s extglob
+
+#system
+declare APP="${0##*/}"
+declare _VERSION_="1.10.08-20251008"
+declare APPDESC="$APP - Wraper for grub-install"
+declare distro="$(uname -n)"
+declare DEPENDENCIES=(tput)
+
+MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
+trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
+#cleanup() { umount_parts 2>/dev/null; }
+#trap cleanup EXIT
+
+set_varcolors() {
+	# does the terminal support true-color?
+	if [[ -n "$(command -v "tput")" ]]; then
+		#tput setaf 127 | cat -v  #capturar saida
+		: "${RED=$(tput bold)$(tput setaf 196)}"
+		: "${GREEN=$(tput bold)$(tput setaf 2)}"
+		: "${YELLOW=$(tput bold)$(tput setaf 3)}"
+		: "${BLUE=$(tput setaf 4)}"
+		: "${PURPLE=$(tput setaf 125)}"
+		: "${CYAN=$(tput setaf 6)}"
+		: "${NC=$(tput sgr0)}"
+		: "${RESET=$(tput sgr0)}"
+		: "${BOLD=$(tput bold)}"
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${reverse=$(tput rev)}"
+		: "${branca=${black}$(tput setab 7)}"
+
+		: "${reset=$(tput sgr0)}"
+		: "${rst=$(tput sgr0)}"
+		: "${bold=$(tput bold)}"
+		: "${underline=$(tput smul)}"
+		: "${nounderline=$(tput rmul)}"
+		: "${reverse=$(tput rev)}"
+
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${red=$(tput bold)$(tput setaf 196)}"
+		: "${green=$(tput bold)$(tput setaf 2)}"
+		: "${yellow=$(tput bold)$(tput setaf 3)}"
+		: "${blue=$(tput setaf 27)}"
+		: "${pink=$(tput setaf 5)}"
+		: "${magenta=$(tput setaf 5)}"
+		: "${cyan=$(tput setaf 6)}"
+		: "${white=$(tput setaf 7)}"
+		: "${gray=$(tput setaf 8)}"
+		: "${light_red=$(tput setaf 9)}"
+		: "${light_green=$(tput setaf 10)}"
+		: "${light_yellow=$(tput setaf 11)}"
+		: "${light_blue=$(tput setaf 12)}"
+		: "${light_magenta=$(tput setaf 13)}"
+		: "${light_cyan=$(tput setaf 14)}"
+		: "${light_white=$(tput setaf 15)}"
+		: "${orange=$(tput setaf 202)}"
+		: "${purple=$(tput setaf 125)}"
+		: "${violet=$(tput setaf 61)}"
+
+		# Definir cores de fundo
+		: "${preto=$(tput setab 0)}"
+		: "${vermelho=$(tput setab 196)}"
+		: "${verde=$(tput setab 2)}"
+		: "${amarelo=$(tput setab 3)}"
+		: "${azul=$(tput setab 20)}"
+		: "${roxo=$(tput setab 5)}"
+		: "${ciano=$(tput setab 6)}"
+		: "${branca="${black}$(tput setab 7)"}"
+		: "${cinza=$(tput setab 8)}"
+		: "${laranja=$(tput setab 202)}"
+		: "${roxa=$(tput setab 125)}"
+		: "${violeta=$(tput setab 61)}"
+
+		: "${COL_NC='\e[0m'}" # No Color
+		: "${COL_LIGHT_GREEN='\e[1;32m'}"
+		: "${COL_LIGHT_RED='\e[1;31m'}"
+		: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
+		: "${OVER="\\r\\033[K"}"
+		: "${DOTPREFIX="  ${black}::${reset} "}"
+		: "${clrkey=${light_white}}"
+		: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
+		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
+		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
+		: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
+
+		# dialog colors
+		REVERSE="\Zr"
+		UNDERLINE="\Zu"
+		BOLD="\Zb"
+		RESET="\Zn"
+		BLACK="\Z0"
+		YELLOW="\Z3"
+		AMARELO="\Zb\Z3"
+		WHITE="\Z7"
+		BLUE="\Z4"
+		AZUL="\Zb\Z4"
+		CYAN="\Z6"
+		RED="\Z1"
+		GREEN="\Z2"
+		MAGENTA="\Z5"
+	else
+		unset_varcolors
+	fi
+}
+
+unset_varcolors() {
+	unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
+	unset reset rst bold underline nounderline reverse
+	unset black red green yellow blue magenta cyan white gray orange purple violet
+	unset light_red light_green light_yellow light_blue light_magenta light_cyan light_white
+	unset preto vermelho verde amarelo azul roxo ciano branca cinza laranja roxa violeta
+	TICK="${white}[${verde}✓${rst}${white}]${rst}"
+	CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
+	INFO="${white}[${cinza}i${rst}${white}]${rst}"
+}
+
+sh_checkroot() {
+	if [[ "$(id -u)" != "0" ]]; then
+		#alerta "$cdistro Linux installer" "${RED}${REVERSE}You should run this script as root!"
+		#scrend 0
+		elevate_to_root "$@"
+	fi
+}
+
+elevate_to_root() {
+	msg "This script must be run as root. Elevating privileges..."
+	# Tenta usar sudo primeiro (caso esteja configurado)
+	if command -v sudo >/dev/null 2>&1; then
+		exec sudo bash "$0" "$@"
+	elif command -v su >/dev/null 2>&1; then
+		exec su -c "$0 $*"
+	fi
+	die "Error: Unable to elevate privileges. Run manually as root."
+}
+
+replicate() {
+	local char=${1:-'#'}
+	local nsize=${2:-$(tput cols)}
+	local line
+	printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
+}
+export -f replicate
+
+readconf() {
+  local msg="$1"
+  local color="${2:-${yellow}}"
+
+  echo -n -e "$color"
+  if [[ $LC_DEFAULT -eq 0 ]]; then
+    read -r -p "$msg [N/s] :"
+  else
+    read -r -p "$msg [N/y] :"
+  fi
+  echo -n -e "$reset"
+  case "${REPLY^}" in
+  [SY]) return 0 ;;
+  "") return 1 ;;
+  *) return 1 ;;
+  esac
+}
+
+msg() { echo -e "${INFO} ${*}${reset}"; }
+msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
+log_ok() { echo -e "${TICK} ${*}${reset}"; }
+log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
+log_err() { echo -e "${CROSS} ${*}${reset}"; }
+log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
+log_mid() { echo -e "${MID} ${*}${reset}"; }
+log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
+log_warn() { echo -e "${WARN} ${*}${reset}"; }
+log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
+die() {
+	echo -e "${CROSS} ${red}${*}${reset}"
+	exit 1
+}
+
+##########################################################################################################
+
+# ===================================================================
+# Globais
+# ===================================================================
+DISK=""
+DRYRUN=0
+NICK="UEFI"
+ROOT_PART=""
+IS_ROOT_PART_USER=false
+EFI_PART=""
+IS_EFI_PART_USER=false
+MNT_TMP="/mnt/$APP-$(date +'%H%M%S')"
+LBIND=false
+IS_ROOT_DISK=false
+INTERACTIVE=false
+UPDATE_GRUB=false
+shell='/bin/bash'
+
+# ===================================================================
+# Funções auxiliares
+# ===================================================================
+run_cmd() {
+  local cmd="$*"
+	if [[ $DRYRUN -eq 1 ]]; then
+		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
+	else
+		echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
+#		eval "$@" &>/dev/null
+#		eval "$@"
+    # Executa o comando, falha se houver erro
+    # Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
+    if [[ "$cmd" =~ ^mkdir\ -p ]] || [[ "$cmd" =~ ^umount\ -R ]]; then
+      eval "$cmd" &>/dev/null || true
+    else
+      eval "$cmd" || log_err "Falha ao executar: $cmd"
+    fi
+	fi
+}
+
+# Detecta se o disco passado contém a raiz montada
+is_root_disk() {
+  local disk="$1"
+  local root_part root_disk
+
+  # Pega a partição raiz
+  root_part="$(get_root_part "$disk")"
+
+  # Extrai o disco base (remove o sufixo da partição)
+  if [[ "$root_part" =~ ^(/dev/(sd[a-z]|hd[a-z]|vd[a-z]|xvd[a-z]|nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+))p?[0-9]+$ ]]; then
+    root_disk="${BASH_REMATCH[1]}"
+  else
+    root_disk="$root_part"  # já é disco
+  fi
+  [[ "$disk" == "$root_disk" ]]
+}
+
+get_root_part() {
+  local disk="$1"
+  local root_part
+
+  # Pega a partição raiz e remove subvolume
+  root_part=$(findmnt -n -o SOURCE /)
+  root_part="${root_part%%\[*}"  # remove tudo a partir do '['
+  IS_ROOT_PART_USER=false
+  echo "$root_part"
+}
+
+# ===================================================================
+# Verifica se é um disco válido (não partição)
+# ===================================================================
+is_disk() {
+	local dev="$1"
+
+	# Precisa existir como bloco
+	[[ -b "$dev" ]] || return 1
+
+	# Tipo do dispositivo
+	local type
+	type=$(lsblk -dn -o TYPE "$dev" 2>/dev/null)
+
+	# Aceita "disk", "loop" ou "lvm"
+	if [[ "$type" == "disk" || "$type" == "loop" || "$type" == "lvm" ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+detect_fs_type() {
+  local part="$1"
+  lsblk -no FSTYPE "$part"
+}
+
+is_valid_fs() {
+  local part="$1"
+  local fs
+
+  # Lista de FS aceitos (pode ampliar)
+  local valid_fs=("ext2" "ext3" "ext4" "xfs" "btrfs" "vfat" "fat32" "ntfs" "f2fs" "reiserfs" "jfs" "exfat")
+
+  # Captura o tipo de FS
+  local fstype=$(detect_fs_type "$part" 2>/dev/null | tr -d '[:space:]')
+
+  # Se não achou FS, não é válido
+  [[ -z "$fstype" ]] && return 1
+
+  # Verifica se o FS está na lista
+  for fs in "${valid_fs[@]}"; do
+    if [[ "$fstype" == "$fs" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+is_valid_efi_fs() {
+  local part="$1"
+  local fstype
+  fstype=$(detect_fs_type "$part")
+
+  [[ "$fstype" =~ ^(vfat|fat32)$ ]]
+}
+
+get_disk_info() {
+  local disk="$1"
+  lsblk -dno MODEL,SIZE,PTTYPE "$disk"
+}
+
+detect_parts() {
+	local disk="$1"
+
+  if [[ -n "$ROOT_PART" ]] && ! is_valid_fs "$ROOT_PART"; then
+    die "$ROOT_PART não é uma partição válida"
+  fi
+
+  if [[ -n "$EFI_PART" ]] && ! is_valid_efi_fs "$EFI_PART"; then
+    die "$EFI_PART não é uma ESP válida (precisa ser FAT32)"
+  fi
+
+  if [[ -z "$ROOT_PART" || -z "$EFI_PART" ]]; then
+    for p in $(lsblk -ln -o NAME,TYPE,FSTYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
+      local fstype
+      fstype=$(detect_fs_type "/dev/$p")
+      if [[ "$fstype" =~ ^(ext4|btrfs|xfs)$ ]]; then
+        [[ -z "$ROOT_PART" ]] && ROOT_PART="/dev/$p"
+      elif [[ "$fstype" =~ ^(vfat|fat32)$ ]]; then
+        [[ -z "$EFI_PART" ]] && EFI_PART="/dev/$p"
+      fi
+    done
+  fi
+  [[ -z "$ROOT_PART" ]] && die "Não foi possível detectar partição ROOT em $disk"
+	[[ -z "$EFI_PART" ]] && log_warn "Não foi detectada partição EFI em $disk"
+}
+
+mount_parts_auto() {
+  local root="$1"
+  local efi="$2"
+  local fstype
+  fstype=$(lsblk -no FSTYPE "$root")
+
+  if [[ "$fstype" == "btrfs" ]]; then
+    msg "Sistema de arquivos btrfs detectado em $root → montando subvolumes..."
+    mount_btrfs_parts "$root" "$efi"
+  else
+    mount_parts "$root" "$efi"
+  fi
+}
+
+
+# Função de montagem BTRFS
+mount_btrfs_parts() {
+  local root_part="$1"
+  local efi_part="$2"
+  local base="$MNT_TMP"
+  local tmp_mount="/mnt/.btrfs_tmp_mount"
+
+  msg_tab "Criando diretórios base"
+  run_cmd "mkdir -p $base"
+  run_cmd "mkdir -p $tmp_mount"
+
+  msg_tab "Montando temporariamente $root_part em $tmp_mount"
+  run_cmd "mount -o ro,subvol=/ $root_part $tmp_mount"
+
+  msg_tab "Listando subvolumes de top level 5"
+  local subvols=()
+  while read -r line; do
+    local level=$(echo "$line" | awk '{print $7}')   # CORRETO
+    if [[ "$level" == "5" ]]; then
+      local sv=$(echo "$line" | awk '{print $9}')    # CORRETO
+      # Se for um subvolume do Timeshift, pula
+      if [[ "$sv" == "@timeshift" || "$sv" == *"timeshift"* ]]; then
+        log_warn_tab "Ignorando subvolume Timeshift: $sv"
+        continue
+      fi
+      subvols+=("$sv")
+      log_ok_tab "Detectado subvolume: $sv"
+    fi
+  done < <(btrfs subvolume list "$tmp_mount" 2>/dev/null)
+
+  msg_tab "Desmontando temporário $tmp_mount"
+  run_cmd "umount $tmp_mount"
+
+  msg_tab "Montando subvolumes"
+  for sv in "${subvols[@]}"; do
+    local target="$base"
+
+    case "$sv" in
+      @)          target="$base" ;;                  # raiz
+      @home)      target="$base/home" ;;             # padrão
+      @cache)     target="$base/var/cache" ;;        # exceção
+      @log)       target="$base/var/log" ;;          # exceção
+      *)          target="$base/${sv#@}" ;;          # demais subvols
+    esac
+
+    msg_tab "Montando subvolume ${azul}$sv${reset} em ${yellow}$target"
+    run_cmd "mkdir -p $target"
+    run_cmd "mount -o \"subvol=$sv\" \"$root_part\" \"$target\""
+  done
+
+  if [[ -n "$efi_part" ]]; then
+    msg_tab "Montando EFI $efi_part em $base/boot/efi"
+    run_cmd "mkdir -p $base/boot/efi"
+    run_cmd "mount $efi_part $base/boot/efi"
+  fi
+
+  msg_tab "${green}Montagem BTRFS concluída${reset}"
+}
+
+mount_parts() {
+	local root="$1"
+	local efi="$2"
+
+	run_cmd "mkdir -p $MNT_TMP"
+	run_cmd "mount $root $MNT_TMP"
+	if [[ -n "$efi" ]]; then
+		run_cmd "mkdir -p $MNT_TMP/boot/efi"
+		run_cmd "mount $efi $MNT_TMP/boot/efi"
+	fi
+}
+
+umount_parts() {
+  sh_stop_bind
+  msg "Desmontando partições"
+  run_cmd "umount -R $MNT_TMP &>/dev/null" || true
+  run_cmd "umount -R $EFI_PART &>/dev/null" || true
+  run_cmd "umount -R $ROOT_PART" || true
+  run_cmd "rm -r $MNT_TMP &>/dev/null" || true
+}
+
+sh_stop_bind() {
+  local dir_install="$MNT_TMP"
+  local nchoice
+
+  if $LBIND; then
+    msg="Desmontando Ambiente chroot"
+    {
+      umount -r "${dir_install}/proc"
+      umount -r "$dir_install/sys/firmware/efi/efivars"
+      umount -r "${dir_install}/sys"
+      umount -r "${dir_install}/dev/shm"
+      umount -r "${dir_install}/dev/pts"
+      umount -r "${dir_install}/dev"
+      umount -r "${dir_install}/run"
+      umount -r "${dir_install}/tmp"
+    } 2>&1
+    nchoice="${PIPESTATUS[0]}"
+    [[ $nchoice -eq true ]] && LBIND=false
+    [[ $LBIND -eq false ]] && return 0 || return 1
+  fi
+}
+
+sh_ignore_error() {
+  "$@" 2>/dev/null
+  return 0
+}
+
+sh_chroot_maybe_add_mount() {
+  local cond=$1
+  shift
+  if eval "$cond"; then
+    sh_mount_bind "$@"
+  fi
+}
+
+sh_mount_bind() {
+  mount "$@" 2>&1
+}
+
+sh_init_bind() {
+  local i
+  local nchoice
+  local dir_install="$MNT_TMP"
+
+  if ! $LBIND; then
+    msg "Montando Ambiente chroot em $DISK"
+    for i in /proc /sys /dev /dev/pts /dev/shm /run /tmp; do
+      run_cmd "mkdir -p ${dir_install}$i"
+    done
+
+    sh_mount_bind proc "${dir_install}/proc" -t proc -o nosuid,noexec,nodev &&
+      sh_mount_bind sys "${dir_install}/sys" -t sysfs -o nosuid,noexec,nodev,ro &&
+      sh_ignore_error sh_chroot_maybe_add_mount "[[ -d '$dir_install/sys/firmware/efi/efivars' ]]" \
+        efivarfs "$dir_install/sys/firmware/efi/efivars" -t efivarfs -o nosuid,noexec,nodev &&
+      sh_mount_bind udev "${dir_install}/dev" -t devtmpfs -o mode=0755,nosuid &&
+      sh_mount_bind devpts "${dir_install}/dev/pts" -t devpts -o mode=0620,gid=5,nosuid,noexec &&
+      sh_mount_bind shm "${dir_install}/dev/shm" -t tmpfs -o mode=1777,nosuid,nodev &&
+      sh_mount_bind /run "${dir_install}/run" -t tmpfs -o nosuid,nodev,mode=0755 &&
+      sh_mount_bind tmp "${dir_install}/tmp" -t tmpfs -o mode=1777,strictatime,nodev,nosuid
+    nchoice=$?
+    [[ $nchoice -eq 0 ]] && LBIND=true
+  fi
+  [[ $LBIND -eq true ]] && return 0 || return 1
+}
+
+enter_chroot() {
+  local dir_install="$MNT_TMP"
+
+  [[ -z "$DISK" ]] && die "Disco (--disk) é obrigatório"
+
+  sh_init_bind || die "Falha ao montar o ambiente chroot"
+
+  # Banner de boas-vindas
+  replicate '='
+  echo -e "${cyan}💡 Chroot interativo em $dir_install${reset}"
+  echo -e "${yellow}Agora você está dentro do ambiente do disco alternativo.${reset}"
+  echo -e "${yellow}Dicas rápidas:${reset}"
+
+  # BIOS
+  echo -e "  - Para instalar GRUB BIOS/MBR: ${green}grub-install --target=i386-pc --recheck $DISK${reset}"
+
+  # UEFI, se existir
+  if [[ -n "$EFI_PART" ]]; then
+    local arch fallback grubefi
+    arch=$(uname -m)
+    if [[ "$arch" == "x86_64" ]]; then
+      fallback="BOOTX64.EFI"
+      grubefi="grubx64.efi"
+    else
+      fallback="BOOTIA32.EFI"
+      grubefi="grubia32.efi"
+    fi
+
+    echo -e "  - Para instalar GRUB UEFI: ${green}grub-install --recheck --target=${arch}-efi --efi-directory=/boot/efi --bootloader-id=$NICK${reset}"
+    echo -e "  - Criar fallback: ${green}cp /boot/efi/EFI/$NICK/$grubefi /boot/efi/EFI/BOOT/$fallback${reset}"
+  fi
+  # Atualizar config
+  echo -e "  - Para atualizar configuração do GRUB: ${green}grub-mkconfig -o /boot/grub/grub.cfg${reset}"
+  echo -e "  - Para sair do chroot: ${green}exit${reset}"
+  replicate '-'
+
+  # Chroot interativo
+  run_cmd "chroot $dir_install /bin/bash"
+
+  sh_stop_bind || die "Falha ao desmontar o ambiente chroot"
+
+  replicate '='
+  msg "Saindo do chroot. Pseudo-filesystems desmontados."
+}
+
+update_grub() {
+  local dir_install="$MNT_TMP"
+
+  [[ -z "$DISK" ]] && die "Disco (--disk) é obrigatório"
+
+  msg "Atualizando grub.cfg no alvo ($DISK)..."
+
+  if $IS_ROOT_DISK; then
+    # Caso seja o disco raiz, executa diretamente
+    if command -v grub-mkconfig &>/dev/null; then
+      run_cmd "grub-mkconfig -o /boot/grub/grub.cfg" || die "Falha ao atualizar grub.cfg no ROOT_DISK"
+    else
+      die "grub-mkconfig não encontrado no sistema atual"
+    fi
+  else
+    # Caso seja outro disco, precisa de chroot
+    sh_init_bind || die "Falha ao montar o ambiente chroot"
+
+    # Detectar caminho absoluto via chroot
+    local grub_bin
+    if [[ -x "$MNT_TMP/bin/grub-mkconfig" ]]; then
+      grub_bin="/bin/grub-mkconfig"
+    elif [[ -x "$MNT_TMP/sbin/grub-mkconfig" ]]; then
+      grub_bin="/sbin/grub-mkconfig"
+    elif [[ -x "$MNT_TMP/usr/bin/grub-mkconfig" ]]; then
+      grub_bin="/usr/bin/grub-mkconfig"
+    elif [[ -x "$MNT_TMP/usr/sbin/grub-mkconfig" ]]; then
+      grub_bin="/usr/sbin/grub-mkconfig"
+    else
+      log_err "grub-mkconfig não encontrado no sistema alvo"
+      return 1
+    fi
+
+    msg "Executando $grub_bin via chroot..."
+    run_cmd "chroot $MNT_TMP $grub_bin -o /boot/grub/grub.cfg" || die "Falha ao atualizar grub.cfg no chroot"
+    sh_stop_bind
+  fi
+}
+
+install_bios() {
+  replicate '-'
+  if $IS_ROOT_DISK; then
+    msg "[BIOS/MBR] Instalando GRUB em $DISK (raiz)..."
+    run_cmd "grub-install --target=i386-pc --recheck $DISK"
+  else
+    msg "[BIOS/MBR] Instalando GRUB em $DISK (alternativo, via chroot)..."
+    sh_init_bind       # monta /proc, /sys, /dev, /run, etc no $MNT_TMP
+    msg "Entrando no ambiente em $DISK (alternativo, via chroot)..."
+    run_cmd "chroot $MNT_TMP grub-install --target=i386-pc --recheck $DISK"
+  fi
+  log_ok "BIOS/MBR instalado!"
+  replicate '-'
+}
+
+is_loop_device() {
+	local dev="$1"
+	[[ "$(lsblk -no TYPE "$dev" 2>/dev/null)" == "loop" ]]
+}
+
+install_uefi() {
+  [[ -z "$EFI_PART" ]] && return 0
+
+  local arch
+  local target
+  local fallback
+  local grubefi
+  local efi_dir
+
+  # Detecta arquitetura
+  arch=$(uname -m)
+  if [[ "$arch" == "x86_64" ]]; then
+    target="x86_64-efi"
+    fallback="BOOTX64.EFI"
+    grubefi="grubx64.efi"
+  else
+    target="i386-efi"
+    fallback="BOOTIA32.EFI"
+    grubefi="grubia32.efi"
+  fi
+
+  # Define diretório EFI conforme o ambiente
+  efi_dir="/boot/efi"
+  [[ ! -d "$MNT_TMP/$efi_dir" ]] && {
+    umount_parts
+    die "Erro: EFI mount ausente em (${yellow}$efi_dir${reset}). Verifique se a partição EFI está montada."
+  }
+
+  if $IS_ROOT_DISK; then
+    msg "[UEFI] Instalando GRUB em $EFI_PART ($target)..."
+    run_cmd "grub-install --recheck --target=$target --efi-directory=$efi_dir --bootloader-id=$NICK" \
+      || die "Falha ao instalar GRUB em $EFI_PART"
+    log_ok "UEFI ($target) instalado!"
+
+    msg "Criando fallback $fallback..."
+    run_cmd "mkdir -p $efi_dir/EFI/BOOT"
+    run_cmd "cp -f $efi_dir/EFI/$NICK/$grubefi $efi_dir/EFI/BOOT/$fallback"
+  else
+    sh_init_bind || die "Falha ao montar ambiente chroot"
+
+    msg "[UEFI] Instalando GRUB em $EFI_PART ($target) via chroot..."
+    run_cmd "chroot $MNT_TMP grub-install --recheck --target=$target --efi-directory=$efi_dir --bootloader-id=$NICK" \
+      || die "Falha ao instalar GRUB no chroot"
+
+    log_ok "UEFI ($target) instalado!"
+
+    msg "Criando fallback $fallback via chroot..."
+    run_cmd "chroot $MNT_TMP mkdir -p $efi_dir/EFI/BOOT"
+    run_cmd "chroot $MNT_TMP cp -f $efi_dir/EFI/$NICK/$grubefi $efi_dir/EFI/BOOT/$fallback"
+
+    sh_stop_bind
+  fi
+  replicate '-'
+
+#  # TODO - VER MELHOR ESSA PARTE
+#  # Ajusta prioridade de boot apenas se não for loop device
+#  if ! is_loop_device "$DISK" && command -v efibootmgr &>/dev/null; then
+#    local bootnum
+#    bootnum=$(efibootmgr -v | grep "$NICK" | head -n1 | sed -E 's/^Boot([0-9A-Fa-f]+)\*.*/\1/')
+#    if [[ -n "$bootnum" ]]; then
+#      msg "Ajustando prioridade de boot (Boot$bootnum)"
+#      run_cmd "efibootmgr -o $bootnum >/dev/null"
+#      run_cmd "efibootmgr -n $bootnum >/dev/null"
+#      log_ok "Prioridade UEFI ajustada!"
+#    else
+#      log_err "Nenhuma entrada $NICK encontrada no efibootmgr"
+#    fi
+#  fi
+
+}
+
+sh_copyright() {
+  cat <<-EOF
+${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+${bold}${orange}Copyright (c) 2019-2025, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>${reset}
+${bold}${orange}Copyright (c) 2019-2025, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
+EOF
+}
+
+sh_version() {
+  cat <<-EOF
+$(sh_copyright)
+
+        Este é um software livre: você é livre para alterá-lo e redistribuí-lo.
+        O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e
+        inclui software de código aberto sob uma variedade de outras licenças.
+        Você pode ler instruções sobre como baixar e criar para você mesmo
+        o código fonte específico usado para criar esta cópia.
+        ${red}Este programa vem com absolutamente NENHUMA garantia.${reset}
+EOF
+}
+
+# ===================================================================
+# Uso e parsing
+# ===================================================================
+usage() {
+  sh_copyright
+# echo "${yellow}${APP}${reset}"
+  echo ""
+  echo "${cyan}Descrição:${rst}"
+  echo "  Reinstala o GRUB e coloca esta distro como 'chefe do boot'."
+  echo "  Sempre instala em BIOS/MBR. Se UEFI for detectado, instala também no EFI."
+  echo "  Cria fallback genérico BOOTX64.EFI (x86_64) ou BOOTIA32.EFI (i386)."
+  echo ""
+  echo "${cyan}Uso:${rst}"
+  echo "  ${APP} --disk <DISCO> [--nick NICK] [--dry-run] [--interactive|--interativo|--chroot] [--root_part <ROOT_PART>] [--efi_part <EFI_PART>]"
+  echo ""
+  echo "${cyan}Opções:${rst}"
+  echo "  ${orange}--disk ${yellow}<DISCO>          ${cyan}Disco alvo (ex: /dev/sda) [OBRIGATÓRIO]${rst}"
+  echo "  ${orange}--nick ${yellow}NICK             ${cyan}Nome/apelido do bootloader (padrão: UEFI)${rst}"
+  echo "  ${orange}--dry-run               ${yellow}${cyan}Simula execução sem aplicar mudanças${rst}"
+  echo "  ${orange}--update-grub           ${yellow}${cyan}Atualiza o grub.cfg (padrão: NÂO atualiza)${rst}"
+  echo "  ${orange}--chroot                ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
+  echo "  ${orange}--interactive           ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
+  echo "  ${orange}--interativo            ${yellow}${cyan}Entra em chroot interativo (somente discos alternativos)${rst}"
+  echo "  ${orange}--root_part ${yellow}<ROOT_PART> ${yellow}${cyan}Partição root do disco (ex: /dev/sda3 - padrão: autodetect)${rst}"
+  echo "  ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
+  echo "  ${orange}-V, --version           ${yellow}${cyan}Exibe versão do aplicativo${rst}"
+  echo "  ${orange}-h, --help              ${yellow}${cyan}Mostra esta ajuda${rst}"
+  echo ""
+  exit 1
+}
+
+confirm_parts() {
+  local msgread
+  local origem_efi=$([[ $IS_EFI_PART_USER == true ]] && echo "definida pelo usuário" || echo "detectada automaticamente (substitua com --efi_part)")
+  local origem_root=$([[ $IS_ROOT_PART_USER == true ]] && echo "definida pelo usuário" || echo "detectada automaticamente (substitua com --root_part)")
+
+	replicate
+	msg "Partições detectadas/informadas:"
+	msg "${cyan}--disk      ==> ${yellow}${DISK:-<não detectado>}  ${azul}[$(get_disk_info $DISK)]"
+  msg "${cyan}--efi_part  ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(${origem_efi})"
+  msg "${cyan}--root_part ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(${origem_root})"
+  msg "${cyan}--nick      ==> ${yellow}${NICK:-<não informado>}"
+	replicate
+
+  if $INTERACTIVE; then
+  	msgread="${red}Deseja entrar no chroot desse disco? ${reset}"
+  else
+	  msgread="${red}Deseja continuar com a instalação do GRUB nessas partições?${reset}"
+  fi
+
+  if readconf "$msgread"; then
+		msg "Continuando instalação..."
+  else
+		die "Instalação abortada pelo usuário."
+	fi
+}
+
+parse_args() {
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--disk)
+			DISK="$2"
+			shift 2
+			;;
+		--nick)
+			NICK="$2"
+			shift 2
+			;;
+		--dry-run)
+			DRYRUN=1
+			shift
+			;;
+    --update-grub)
+      UPDATE_GRUB=true
+      shift
+      ;;
+    --interactive|--interativo|--chroot)
+      INTERACTIVE=true
+      shift
+      ;;
+    --root_part)
+      ROOT_PART="$2"
+      IS_ROOT_PART_USER=true
+      shift 2
+      ;;
+    --efi_part)
+      EFI_PART="$2"
+      IS_EFI_PART_USER=true
+      shift 2
+      ;;
+		-h | --help) usage ;;
+		-V | --version) sh_version; exit 0 ;;
+		*)
+			log_err "Parâmetro desconhecido: $1"
+			usage
+			;;
+		esac
+	done
+	[[ -z "$DISK" ]] && die "Disco (-d) é obrigatório"
+	[[ ! -b "$DISK" ]] && die "$DISK não é um disco válido"
+}
+
+# ===================================================================
+# Main
+# ===================================================================
+main() {
+	parse_args "$@"
+
+	[[ ! -b "$DISK" ]] && die "$DISK não existe como bloco"
+	if ! is_disk "$DISK"; then
+		die "$DISK é uma partição. Passe o disco inteiro, ex: /dev/sdX ou /dev/loop0"
+	fi
+
+	if is_root_disk "$DISK"; then
+		msg "Disco raiz detectado: ${yellow}${DISK}${reset}"
+    ROOT_PART=$(get_root_part "$DISK")
+    EFI_PART=$(findmnt -n -o SOURCE /boot/efi 2>/dev/null || true)
+		IS_ROOT_DISK=true
+	else
+    msg "Disco alternativo detectado: ${yellow}${DISK}${reset}"
+		detect_parts "$DISK"
+		IS_ROOT_DISK=false
+	fi
+
+	confirm_parts # <- CONFIRMAÇÃO ANTES DE INSTALAR
+  $IS_ROOT_DISK || mount_parts_auto "$ROOT_PART" "$EFI_PART"
+
+	if $INTERACTIVE && ! $IS_ROOT_DISK; then
+    enter_chroot
+    umount_parts
+  else
+    install_bios
+	  install_uefi
+    $UPDATE_GRUB && update_grub
+    $IS_ROOT_DISK || umount_parts
+	fi
+	msg "Pronto!"
+}
+
+# ===================================================================
+# Inicialização
+# ===================================================================
+set_varcolors
+sh_checkroot "$@"
+main "$@"
