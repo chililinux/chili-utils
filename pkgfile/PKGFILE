@@ -11,16 +11,11 @@ source=("git+${url}.git")
 md5sums=('SKIP')
 depends=()
 optdepends=()
-post_install_pkgs=(chili-clonedisk
+post_install_pkgs=(
+  chili-clonedisk
 	chili-datetime
-	chili-iso2usb)
-
-# Automatically detect and use the correct install file
-if [ -e "${pkgname}.install" ]; then
-	install=${pkgname}.install
-elif [ -e "pkgbuild.install" ]; then
-	install=pkgbuild.install
-fi
+	chili-iso2usb
+	)
 
 package() {
 	cd "${srcdir}/${pkgname}"
