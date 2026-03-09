@@ -114,4 +114,5 @@ um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
     “Não existe mágica. Só shell bem escrito.” 🧙‍♂️
     — vcatafesta
 
+
 ---
