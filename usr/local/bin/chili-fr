@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: qua 18 fev 2026 00:36:04 -04
+#  Updated: dom 08 mar 2026 22:27:02 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -43,7 +43,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.02.18-20260218'
+readonly VERSION='3.04.08-20260308'
 readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1490,10 +1490,24 @@ print_summary_access_vm() {
       msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
       msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh live@127.0.0.1 -p $HOST_FWD"   "# $(gettext 'via redirecionamento NAT')")"
       msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh anon@127.0.0.1 -p $HOST_FWD"   "# $(gettext 'via redirecionamento NAT')")"
+      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $HOST_FWD"                     "# $(gettext 'via ssh config')")"
    else
       bloco_br=$(ip -4 route show dev "$iface_bridge" | awk '$1 ~ "/" {print $1; exit}')
       msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh <IP-da-VM>         "     "# $(gettext 'IP atribuído na VM via DHCP') ($bloco_br")"
    fi
+
+  CFG="$HOME/.ssh/config"
+  mkdir -p "$HOME/.ssh"
+  touch "$CFG"
+  grep -qE '^Host[[:space:]]+$HOST_FWD' "$CFG" 2>/dev/null || cat >> "$CFG" <<EOF
+
+Host $HOST_FWD
+  HostName 127.0.0.1
+  Port $HOST_FWD
+  User $USER
+  IdentityFile ~/.ssh/id_rsa
+EOF
+
 }
 
 function sh_start_with_spice() {
