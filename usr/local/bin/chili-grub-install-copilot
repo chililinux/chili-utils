@@ -1,0 +1,127 @@
+#!/bin/bash
+# Instala GRUB em modo BIOS e UEFI num disco removível
+# Uso: sudo ./chili-grub-install-auto.sh /dev/sdX [--dry-run] [--recheck] [--verbose]
+
+set -e
+
+# Cores
+RED="\033[1;31m"
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+BLUE="\033[1;34m"
+RESET="\033[0m"
+
+# Help se não passar parâmetro
+if [ $# -lt 1 ]; then
+    echo -e "${YELLOW}Uso:${RESET} $0 /dev/sdX [--dry-run] [--recheck] [--verbose]"
+    echo -e "  /dev/sdX   -> Disco alvo (ex: /dev/sdb, /dev/sdk)"
+    echo -e "  --dry-run  -> Apenas mostra os comandos, não executa"
+    echo -e "  --recheck  -> Força re-detecção completa do disco"
+    echo -e "  --verbose  -> Mostra saída detalhada do grub-install"
+    exit 0
+fi
+
+# Checagem de root
+if [[ $EUID -ne 0 ]]; then
+   echo -e "${RED}Este script precisa ser executado como root (use sudo).${RESET}"
+   exit 1
+fi
+
+DISK="$1"
+MNT="/mnt/tmp"
+DRYRUN=false
+RECHECK=""
+VERBOSE=""
+
+# Flags opcionais
+for arg in "$@"; do
+    case $arg in
+        --dry-run) DRYRUN=true ;;
+        --recheck) RECHECK="--recheck" ;;
+        --verbose) VERBOSE="--verbose" ;;
+    esac
+done
+
+# Limpeza automática: desmonta partições ao sair (sucesso ou erro)
+trap 'echo -e "${YELLOW}>> Limpando...${RESET}"; \
+      sudo umount $MNT/boot/efi 2>/dev/null || true; \
+      sudo umount $MNT 2>/dev/null || true' EXIT
+
+# Detecta partições automaticamente
+PART_BIOS=$(lsblk -ln -o NAME,TYPE "$DISK" | awk '$2=="part"{print "/dev/"$1}' | head -n1)
+PART_EFI=$(blkid | grep "$DISK" | grep -i "FAT" | awk -F: '{print $1}' | head -n1)
+PART_ROOT=$(blkid | grep "$DISK" | grep -i "ext" | awk -F: '{print $1}' | head -n1)
+
+if [ -z "$PART_EFI" ] || [ -z "$PART_ROOT" ]; then
+    echo -e "${RED}ERRO:${RESET} Não foi possível detectar partições EFI (FAT32) e Root (ext)."
+    exit 1
+fi
+
+# Coleta informações
+INFO_BIOS=$(blkid "$PART_BIOS" 2>/dev/null || echo "sem FS (BIOS Boot)")
+INFO_EFI=$(blkid "$PART_EFI" 2>/dev/null)
+INFO_ROOT=$(blkid "$PART_ROOT" 2>/dev/null)
+
+echo -e "${BLUE}>> Layout detectado em $DISK:${RESET}"
+echo -e "  ${YELLOW}- BIOS Boot:${RESET} $PART_BIOS -> $INFO_BIOS"
+echo -e "  ${YELLOW}- EFI:${RESET}       $PART_EFI -> $INFO_EFI"
+echo -e "  ${YELLOW}- Root:${RESET}      $PART_ROOT -> $INFO_ROOT"
+echo
+read -p "Confirma instalar GRUB em $DISK (BIOS + UEFI)? [s/N] " CONFIRM
+CONFIRM=$(echo "$CONFIRM" | tr '[:upper:]' '[:lower:]')
+
+if [[ "$CONFIRM" != "s" ]]; then
+    echo -e "${RED}Cancelado pelo usuário.${RESET}"
+    exit 0
+fi
+
+# Lista comandos que seriam executados
+echo -e "${BLUE}>> Comandos planejados:${RESET}"
+echo "sudo mount $PART_ROOT $MNT"
+echo "sudo mount $PART_EFI $MNT/boot/efi"
+echo "sudo grub-install --target=i386-pc --boot-directory=$MNT/boot $DISK --force --compress=none $RECHECK $VERBOSE"
+echo "sudo grub-install --target=x86_64-efi --efi-directory=$MNT/boot/efi --boot-directory=$MNT/boot --removable $RECHECK $VERBOSE"
+echo "sudo grub-mkconfig -o $MNT/boot/grub/grub.cfg"
+
+if $DRYRUN; then
+    echo -e "${YELLOW}>> Dry-run ativado: nada foi executado.${RESET}"
+    exit 0
+fi
+
+# Executa de verdade
+echo -e "${BLUE}>> Montando partições...${RESET}"
+sudo mkdir -p "$MNT"
+
+if ! sudo mount "$PART_ROOT" "$MNT"; then
+    echo -e "${RED}ERRO:${RESET} Falha ao montar partição root ($PART_ROOT)."
+    exit 1
+fi
+
+sudo mkdir -p "$MNT/boot/efi"
+if ! sudo mount "$PART_EFI" "$MNT/boot/efi"; then
+    echo -e "${RED}ERRO:${RESET} Falha ao montar partição EFI ($PART_EFI)."
+    exit 1
+fi
+
+echo -e "${BLUE}>> Instalando GRUB para BIOS (i386-pc)...${RESET}"
+if ! sudo grub-install --target=i386-pc --boot-directory="$MNT/boot" "$DISK" \
+    --force --compress=none $RECHECK $VERBOSE >/dev/null 2>&1; then
+    echo -e "${RED}ERRO:${RESET} Falha ao instalar GRUB para BIOS."
+    exit 1
+fi
+
+echo -e "${BLUE}>> Instalando GRUB para UEFI (x86_64-efi)...${RESET}"
+if ! sudo grub-install --target=x86_64-efi --efi-directory="$MNT/boot/efi" \
+    --boot-directory="$MNT/boot" --removable $RECHECK $VERBOSE >/dev/null 2>&1; then
+    echo -e "${RED}ERRO:${RESET} Falha ao instalar GRUB para UEFI."
+    exit 1
+fi
+
+echo -e "${BLUE}>> Gerando grub.cfg...${RESET}"
+if ! sudo grub-mkconfig -o "$MNT/boot/grub/grub.cfg" >/dev/null 2>&1; then
+    echo -e "${RED}ERRO:${RESET} Falha ao gerar grub.cfg."
+    exit 1
+fi
+
+echo -e "${GREEN}>> Sucesso! GRUB instalado em $DISK para BIOS e UEFI.${RESET}"
+
