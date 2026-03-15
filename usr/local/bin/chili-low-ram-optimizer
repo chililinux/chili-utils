@@ -488,12 +488,18 @@ cleanup_old_chili_systemd() {
     return
   fi
 
-  msg "Removendo configuração antiga Chili (systemd)..."
+  msg "Verificando configuração antiga Chili (systemd)..."
+
   for svc in chili-thp chili-bfq chili-zram; do
-    if systemctl list-unit-files | grep -q "^${svc}\.service"; then
-      systemctl disable "$svc" 2>/dev/null
-      rm -f "/etc/systemd/system/${svc}.service"
-      changed=true
+    file="/etc/systemd/system/${svc}.service"
+
+    if [ -f "$file" ]; then
+      if grep -q "/usr/local/sbin/${svc}" "$file"; then
+        msg_warn "Removendo serviço antigo $svc"
+        systemctl disable "$svc" 2>/dev/null
+        rm -f "$file"
+        changed=true
+      fi
     fi
   done
 
@@ -502,11 +508,15 @@ cleanup_old_chili_systemd() {
     /usr/local/sbin/chili-bfq \
     /usr/local/sbin/chili-zram; do
     if [ -f "$f" ]; then
+      msg_warn "Removendo script antigo $(basename "$f")"
       rm -f "$f"
       changed=true
     fi
   done
-  systemctl daemon-reload
+
+  if $changed; then
+    systemctl daemon-reload
+  fi
 }
 
 detect_ram() {
