@@ -756,7 +756,6 @@ main() {
 	configure_sysctl
 	configure_zswap
 	configure_thp
-	echo $changed
 	detect_disk
 	configure_scheduler
 	enable_swap
