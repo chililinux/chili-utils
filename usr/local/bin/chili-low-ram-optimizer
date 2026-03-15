@@ -280,7 +280,7 @@ sh_checkroot() {
 }
 
 elevate_to_root() {
-  log_err "This script must be run as root. Elevating privileges..."
+  msg "This script must be run as root. Elevating privileges..."
   ccabec+='root [elevated]'
   # Tenta usar sudo primeiro (caso esteja configurado)
   if command -v sudo >/dev/null 2>&1; then
@@ -451,9 +451,6 @@ set_varcolors
 sh_checkroot "$@"
 
 ##########################################################################################################
-
-#!/bin/bash
-
 # ---------------------------------------------------
 # CORES
 # ---------------------------------------------------
@@ -478,11 +475,12 @@ echo " Chili Low RAM Optimizer"
 echo "--------------------------------------------"
 echo -e "${reset}"
 
-msg "Iniciando otimização do sistema..."
+msg "Iniciando otimização..."
 
 # ---------------------------------------------------
-# 1. Criar swapfile
+# SWAPFILE
 # ---------------------------------------------------
+
 if [ ! -f /swapfile ]; then
 	msg "Criando swapfile (8G)..."
 	fallocate -l 8G /swapfile
@@ -495,20 +493,15 @@ fi
 if ! grep -q "/swapfile" /etc/fstab; then
 	msg "Adicionando swapfile ao fstab..."
 	echo "/swapfile none swap defaults,pri=20 0 0" >> /etc/fstab
-else
-	msg_warn "swapfile já está no fstab."
 fi
 
 # ---------------------------------------------------
-# 2. Ajustes sysctl
+# SYSCTL
 # ---------------------------------------------------
-msg "Configurando parâmetros de memória do kernel..."
 
-SYSCTL_FILE="/etc/sysctl.d/99-chili-memory-tuning.conf"
+msg "Configurando parâmetros de memória..."
 
-mkdir -p /etc/sysctl.d
-
-cat <<EOF > "$SYSCTL_FILE"
+cat <<EOF > /etc/sysctl.d/99-chili-memory-tuning.conf
 vm.swappiness=15
 vm.vfs_cache_pressure=200
 vm.dirty_background_ratio=5
@@ -518,22 +511,39 @@ EOF
 sysctl --system >/dev/null
 
 # ---------------------------------------------------
-# 3. Serviço ZRAM
+# SCRIPT ZRAM
 # ---------------------------------------------------
-msg "Criando serviço ZRAM..."
 
-cat <<'EOF' > /etc/systemd/system/chili-zram.service
+msg "Criando script ZRAM..."
+
+cat <<'EOF' > /usr/local/sbin/chili-zram
+#!/bin/sh
+
+modprobe zram
+
+echo lz4 > /sys/block/zram0/comp_algorithm
+echo 1G > /sys/block/zram0/disksize
+
+mkswap /dev/zram0
+swapon -p 100 /dev/zram0
+EOF
+
+chmod +x /usr/local/sbin/chili-zram
+
+# ---------------------------------------------------
+# SERVICE ZRAM
+# ---------------------------------------------------
+
+msg "Criando serviço systemd ZRAM..."
+
+cat <<EOF > /etc/systemd/system/chili-zram.service
 [Unit]
 Description=Chili ZRAM
 After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'modprobe zram'
-ExecStart=/bin/sh -c 'echo lz4 > /sys/block/zram0/comp_algorithm'
-ExecStart=/bin/sh -c 'echo 1G > /sys/block/zram0/disksize'
-ExecStart=/bin/sh -c 'mkswap /dev/zram0'
-ExecStart=/bin/sh -c 'swapon -p 100 /dev/zram0'
+ExecStart=/usr/local/sbin/chili-zram
 RemainAfterExit=yes
 
 [Install]
@@ -541,17 +551,25 @@ WantedBy=multi-user.target
 EOF
 
 # ---------------------------------------------------
-# 4. Serviço THP
+# THP
 # ---------------------------------------------------
-msg "Criando serviço para desativar Transparent Huge Pages..."
 
-cat <<'EOF' > /etc/systemd/system/chili-thp.service
+msg "Desativando THP..."
+
+cat <<'EOF' > /usr/local/sbin/chili-thp
+#!/bin/sh
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+EOF
+
+chmod +x /usr/local/sbin/chili-thp
+
+cat <<EOF > /etc/systemd/system/chili-thp.service
 [Unit]
 Description=Disable Transparent Huge Pages (Chili)
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+ExecStart=/usr/local/sbin/chili-thp
 RemainAfterExit=yes
 
 [Install]
@@ -559,19 +577,28 @@ WantedBy=multi-user.target
 EOF
 
 # ---------------------------------------------------
-# 5. Scheduler BFQ
+# BFQ
 # ---------------------------------------------------
-msg "Criando serviço scheduler BFQ..."
 
-cat <<'EOF' > /etc/systemd/system/chili-bfq.service
+msg "Configurando BFQ..."
+
+cat <<'EOF' > /usr/local/sbin/chili-bfq
+#!/bin/sh
+
+echo bfq > /sys/block/sda/queue/scheduler
+echo 1 > /sys/block/sda/queue/iosched/low_latency
+echo 0 > /sys/block/sda/queue/iosched/slice_idle
+EOF
+
+chmod +x /usr/local/sbin/chili-bfq
+
+cat <<EOF > /etc/systemd/system/chili-bfq.service
 [Unit]
 Description=Set BFQ IO Scheduler (Chili)
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'echo bfq > /sys/block/sda/queue/scheduler'
-ExecStart=/bin/sh -c 'echo 1 > /sys/block/sda/queue/iosched/low_latency'
-ExecStart=/bin/sh -c 'echo 0 > /sys/block/sda/queue/iosched/slice_idle'
+ExecStart=/usr/local/sbin/chili-bfq
 RemainAfterExit=yes
 
 [Install]
@@ -579,29 +606,24 @@ WantedBy=multi-user.target
 EOF
 
 # ---------------------------------------------------
-# 6. Recarregar systemd
+# ATIVAR SERVIÇOS
 # ---------------------------------------------------
+
 msg "Recarregando systemd..."
 
 systemctl daemon-reexec
 systemctl daemon-reload
 
-# ---------------------------------------------------
-# 7. Ativar serviços
-# ---------------------------------------------------
 msg "Ativando serviços..."
 
 systemctl enable chili-zram
 systemctl enable chili-thp
 systemctl enable chili-bfq
 
-# ---------------------------------------------------
-# 8. Ativar swaps
-# ---------------------------------------------------
 msg "Ativando swaps..."
 
-swapon -a || msg_warn "Algum swap já estava ativo."
+swapon -a
 
 echo
 echo -e "${green}✔ Otimização concluída.${reset}"
-echo -e "${yellow}Recomendado reiniciar o sistema.${reset}"
+echo -e "${yellow}Reinicie o sistema para aplicar tudo.${reset}"
