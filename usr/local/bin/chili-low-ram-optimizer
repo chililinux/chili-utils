@@ -49,173 +49,173 @@ declare _VERSION_="0.03.15-20260315"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare -A PACKAGEDEP=(
-  [gettext]=gettext
-  [dd]=coreutils
-  [hdparm]=hdparm
-  [fio]=fio
-  [tput]=ncurses
+	[gettext]=gettext
+	[dd]=coreutils
+	[hdparm]=hdparm
+	[fio]=fio
+	[tput]=ncurses
 )
 # Mapa: [distro]="lista de pacotes"
 declare -A DISTRO_PKGS=(
-  ["void"]="gettext rsync parted curl xz lvm2"
-  ["void-live"]="gettext rsync parted curl xz lvm2"
-  ["voidlinux"]="gettext rsync parted curl xz lvm2"
-  ["chili"]="gettext rsync parted curl xz"
-  ["chililinux"]="gettext rsync parted curl xz"
-  ["arch"]="gettext rsync parted curl xz"
-  ["manjaro"]="gettext rsync parted curl xz"
-  ["debian"]="gettext-base rsync parted curl xz-utils"
+	["void"]="gettext rsync parted curl xz lvm2"
+	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidlinux"]="gettext rsync parted curl xz lvm2"
+	["chili"]="gettext rsync parted curl xz"
+	["chililinux"]="gettext rsync parted curl xz"
+	["arch"]="gettext rsync parted curl xz"
+	["manjaro"]="gettext rsync parted curl xz"
+	["debian"]="gettext-base rsync parted curl xz-utils"
 )
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
-  ["void"]="xbps-install -Syf"
-  ["void-live"]="xbps-install -Syf"
-  ["voidlinux"]="xbps-install -Syf"
-  ["chili"]="pacman -Sy --needed --noconfirm"
-  ["chililinux"]="pacman -Sy --needed --noconfirm"
-  ["arch"]="pacman -Sy --needed --noconfirm"
-  ["manjaro"]="pacman -Sy --needed --noconfirm"
-  ["debian"]="apt-get install -y"
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
 )
 # Mapa: [distro]="lista de pacotes"
 declare -A DISTRO_PKGS=(
-  ["void"]="gettext rsync parted curl xz lvm2"
-  ["void-live"]="gettext rsync parted curl xz lvm2"
-  ["voidlinux"]="gettext rsync parted curl xz lvm2"
-  ["chili"]="gettext rsync parted curl xz"
-  ["chililinux"]="gettext rsync parted curl xz"
-  ["arch"]="gettext rsync parted curl xz"
-  ["biglinux"]="gettext rsync parted curl xz"
-  ["manjaro"]="gettext rsync parted curl xz"
-  ["debian"]="gettext-base rsync parted curl xz-utils"
+	["void"]="gettext rsync parted curl xz lvm2"
+	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidlinux"]="gettext rsync parted curl xz lvm2"
+	["chili"]="gettext rsync parted curl xz"
+	["chililinux"]="gettext rsync parted curl xz"
+	["arch"]="gettext rsync parted curl xz"
+	["biglinux"]="gettext rsync parted curl xz"
+	["manjaro"]="gettext rsync parted curl xz"
+	["debian"]="gettext-base rsync parted curl xz-utils"
 )
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
-  ["void"]="xbps-install -Syf"
-  ["void-live"]="xbps-install -Syf"
-  ["voidlinux"]="xbps-install -Syf"
-  ["chili"]="pacman -Sy --needed --noconfirm"
-  ["chililinux"]="pacman -Sy --needed --noconfirm"
-  ["arch"]="pacman -Sy --needed --noconfirm"
-  ["viglinux"]="pacman -Sy --needed --noconfirm"
-  ["manjaro"]="pacman -Sy --needed --noconfirm"
-  ["debian"]="apt-get install -y"
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["viglinux"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
 )
 declare dialogRcFile="$HOME/.dialogrc"
 
 cleanup() { rm -f "$dialogRcFile"; }
 #trap cleanup EXIT
-MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}";}
+MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
 trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
 
 sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
 
 set_varcolors() {
-  sh_check_terminal
-  # does the terminal support true-color?
-  if [[ -n "$(command -v "tput")" ]]; then
-    #tput setaf 127 | cat -v  #capturar saida
-    : "${RED=$(tput bold)$(tput setaf 196)}"
-    : "${GREEN=$(tput bold)$(tput setaf 2)}"
-    : "${YELLOW=$(tput bold)$(tput setaf 3)}"
-    : "${BLUE=$(tput setaf 4)}"
-    : "${PURPLE=$(tput setaf 125)}"
-    : "${CYAN=$(tput setaf 6)}"
-    : "${NC=$(tput sgr0)}"
-    : "${RESET=$(tput sgr0)}"
-    : "${BOLD=$(tput bold)}"
-    : "${black=$(tput bold)$(tput setaf 0)}"
-    : "${reverse=$(tput rev)}"
-    : "${branca=${black}$(tput setab 7)}"
+	sh_check_terminal
+	# does the terminal support true-color?
+	if [[ -n "$(command -v "tput")" ]]; then
+		#tput setaf 127 | cat -v  #capturar saida
+		: "${RED=$(tput bold)$(tput setaf 196)}"
+		: "${GREEN=$(tput bold)$(tput setaf 2)}"
+		: "${YELLOW=$(tput bold)$(tput setaf 3)}"
+		: "${BLUE=$(tput setaf 4)}"
+		: "${PURPLE=$(tput setaf 125)}"
+		: "${CYAN=$(tput setaf 6)}"
+		: "${NC=$(tput sgr0)}"
+		: "${RESET=$(tput sgr0)}"
+		: "${BOLD=$(tput bold)}"
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${reverse=$(tput rev)}"
+		: "${branca=${black}$(tput setab 7)}"
 
-    : "${reset=$(tput sgr0)}"
-    : "${rst=$(tput sgr0)}"
-    : "${bold=$(tput bold)}"
-    : "${underline=$(tput smul)}"
-    : "${nounderline=$(tput rmul)}"
-    : "${reverse=$(tput rev)}"
+		: "${reset=$(tput sgr0)}"
+		: "${rst=$(tput sgr0)}"
+		: "${bold=$(tput bold)}"
+		: "${underline=$(tput smul)}"
+		: "${nounderline=$(tput rmul)}"
+		: "${reverse=$(tput rev)}"
 
-    : "${black=$(tput bold)$(tput setaf 0)}"
-    : "${red=$(tput bold)$(tput setaf 196)}"
-    : "${green=$(tput bold)$(tput setaf 2)}"
-    : "${yellow=$(tput bold)$(tput setaf 3)}"
-    : "${blue=$(tput setaf 27)}"
-    : "${pink=$(tput setaf 5)}"
-    : "${magenta=$(tput setaf 5)}"
-    : "${cyan=$(tput setaf 6)}"
-    : "${white=$(tput setaf 7)}"
-    : "${gray=$(tput setaf 8)}"
-    : "${light_red=$(tput setaf 9)}"
-    : "${light_green=$(tput setaf 10)}"
-    : "${light_yellow=$(tput setaf 11)}"
-    : "${light_blue=$(tput setaf 12)}"
-    : "${light_magenta=$(tput setaf 13)}"
-    : "${light_cyan=$(tput setaf 14)}"
-    : "${light_white=$(tput setaf 15)}"
-    : "${orange=$(tput setaf 202)}"
-    : "${purple=$(tput setaf 125)}"
-    : "${violet=$(tput setaf 61)}"
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${red=$(tput bold)$(tput setaf 196)}"
+		: "${green=$(tput bold)$(tput setaf 2)}"
+		: "${yellow=$(tput bold)$(tput setaf 3)}"
+		: "${blue=$(tput setaf 27)}"
+		: "${pink=$(tput setaf 5)}"
+		: "${magenta=$(tput setaf 5)}"
+		: "${cyan=$(tput setaf 6)}"
+		: "${white=$(tput setaf 7)}"
+		: "${gray=$(tput setaf 8)}"
+		: "${light_red=$(tput setaf 9)}"
+		: "${light_green=$(tput setaf 10)}"
+		: "${light_yellow=$(tput setaf 11)}"
+		: "${light_blue=$(tput setaf 12)}"
+		: "${light_magenta=$(tput setaf 13)}"
+		: "${light_cyan=$(tput setaf 14)}"
+		: "${light_white=$(tput setaf 15)}"
+		: "${orange=$(tput setaf 202)}"
+		: "${purple=$(tput setaf 125)}"
+		: "${violet=$(tput setaf 61)}"
 
-    # Definir cores de fundo
-    : "${preto=$(tput setab 0)}"
-    : "${vermelho=$(tput setab 196)}"
-    : "${verde=$(tput setab 2)}"
-    : "${amarelo=$(tput setab 3)}"
-    : "${azul=$(tput setab 20)}"
-    : "${roxo=$(tput setab 5)}"
-    : "${ciano=$(tput setab 6)}"
-    : "${branca="${black}$(tput setab 7)"}"
-    : "${cinza=$(tput setab 8)}"
-    : "${laranja=$(tput setab 202)}"
-    : "${roxa=$(tput setab 125)}"
-    : "${violeta=$(tput setab 61)}"
+		# Definir cores de fundo
+		: "${preto=$(tput setab 0)}"
+		: "${vermelho=$(tput setab 196)}"
+		: "${verde=$(tput setab 2)}"
+		: "${amarelo=$(tput setab 3)}"
+		: "${azul=$(tput setab 20)}"
+		: "${roxo=$(tput setab 5)}"
+		: "${ciano=$(tput setab 6)}"
+		: "${branca="${black}$(tput setab 7)"}"
+		: "${cinza=$(tput setab 8)}"
+		: "${laranja=$(tput setab 202)}"
+		: "${roxa=$(tput setab 125)}"
+		: "${violeta=$(tput setab 61)}"
 
-    : "${COL_NC='\e[0m'}" # No Color
-    : "${COL_LIGHT_GREEN='\e[1;32m'}"
-    : "${COL_LIGHT_RED='\e[1;31m'}"
-    : "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
-    : "${OVER="\\r\\033[K"}"
-    : "${DOTPREFIX="  ${black}::${reset} "}"
-    : "${clrkey=${light_white}}"
-    : "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
-    : "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
-    : "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
-    : "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
-    : "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
+		: "${COL_NC='\e[0m'}" # No Color
+		: "${COL_LIGHT_GREEN='\e[1;32m'}"
+		: "${COL_LIGHT_RED='\e[1;31m'}"
+		: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
+		: "${OVER="\\r\\033[K"}"
+		: "${DOTPREFIX="  ${black}::${reset} "}"
+		: "${clrkey=${light_white}}"
+		: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
+		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
+		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
+		: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
 
-    # dialog colors
-    REVERSE="\Zr"
-    UNDERLINE="\Zu"
-    BOLD="\Zb"
-    RESET="\Zn"
-    BLACK="\Z0"
-    YELLOW="\Z3"
-    AMARELO="\Zb\Z3"
-    WHITE="\Z7"
-    BLUE="\Z4"
-    AZUL="\Zb\Z4"
-    CYAN="\Z6"
-    RED="\Z1"
-    GREEN="\Z2"
-    MAGENTA="\Z5"
-  else
-    unset_varcolors
-  fi
+		# dialog colors
+		REVERSE="\Zr"
+		UNDERLINE="\Zu"
+		BOLD="\Zb"
+		RESET="\Zn"
+		BLACK="\Z0"
+		YELLOW="\Z3"
+		AMARELO="\Zb\Z3"
+		WHITE="\Z7"
+		BLUE="\Z4"
+		AZUL="\Zb\Z4"
+		CYAN="\Z6"
+		RED="\Z1"
+		GREEN="\Z2"
+		MAGENTA="\Z5"
+	else
+		unset_varcolors
+	fi
 }
 
 unset_varcolors() {
-  unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
-  unset reset rst bold underline nounderline reverse
-  unset black red green yellow blue magenta cyan white gray orange purple violet
-  unset light_red light_green light_yellow light_blue light_magenta light_cyan light_white
-  unset preto vermelho verde amarelo azul roxo ciano branca cinza laranja roxa violeta
-  TICK="${white}[${verde}✓${rst}${white}]${rst}"
-  CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
-  INFO="${white}[${cinza}i${rst}${white}]${rst}"
+	unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
+	unset reset rst bold underline nounderline reverse
+	unset black red green yellow blue magenta cyan white gray orange purple violet
+	unset light_red light_green light_yellow light_blue light_magenta light_cyan light_white
+	unset preto vermelho verde amarelo azul roxo ciano branca cinza laranja roxa violeta
+	TICK="${white}[${verde}✓${rst}${white}]${rst}"
+	CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
+	INFO="${white}[${cinza}i${rst}${white}]${rst}"
 }
 
 sh_create_dialogrc() {
-  cat > "$dialogRcFile" <<EOF_DIALOGRC
+	cat >"$dialogRcFile" <<EOF_DIALOGRC
 screen_color = (white,black,off)
 dialog_color = (white,black,off)
 title_color = (green,black,on)
@@ -259,191 +259,191 @@ visit_items = off
 use_shadow = off
 use_colors = on
 EOF_DIALOGRC
-  export DIALOGRC="$dialogRcFile"
+	export DIALOGRC="$dialogRcFile"
 }
 
 # Teste se o terminal suporta caracteres gráficos estendidos
 sh_ascii_lines() {
-  #Isso força o dialog a usar caracteres ASCII básicos para as bordas.
-  #if [[ "$LANG" =~ 'UTF-8' ]]; then
-  [[ "$(printf '\u250C')" == "┌" ]]
-  export NCURSES_NO_UTF8_ACS=$((!$?))
+	#Isso força o dialog a usar caracteres ASCII básicos para as bordas.
+	#if [[ "$LANG" =~ 'UTF-8' ]]; then
+	[[ "$(printf '\u250C')" == "┌" ]]
+	export NCURSES_NO_UTF8_ACS=$((!$?))
 }
 
 sh_setEnvironment() {
-  [[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
-  sh_ascii_lines
+	[[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
+	sh_ascii_lines
 }
 
 sh_checkroot() {
-  (( EUID != 0 )) && elevate_to_root "$@" || return 0
+	((EUID != 0)) && elevate_to_root "$@" || return 0
 }
 
 elevate_to_root() {
-  msg "This script must be run as root. Elevating privileges..."
-  ccabec+='root [elevated]'
-  # Tenta usar sudo primeiro (caso esteja configurado)
-  if command -v sudo >/dev/null 2>&1; then
-    exec sudo bash "$0" "$@"
-  fi
-  # Se sudo falhar, tenta su
-  if command -v su >/dev/null 2>&1; then
-    exec su -c "$0 $*"
-  fi
-  die "Error: Unable to elevate privileges. Run manually as root."
+	msg "This script must be run as root. Elevating privileges..."
+	ccabec+='root [elevated]'
+	# Tenta usar sudo primeiro (caso esteja configurado)
+	if command -v sudo >/dev/null 2>&1; then
+		exec sudo bash "$0" "$@"
+	fi
+	# Se sudo falhar, tenta su
+	if command -v su >/dev/null 2>&1; then
+		exec su -c "$0 $*"
+	fi
+	die "Error: Unable to elevate privileges. Run manually as root."
 }
 
 replicate() {
-  local char="${1:-#}"
-  local nsize="${2:-$(tput cols)}"
-  # Gera linha com substituição direta sem forks extras
-  printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
+	local char="${1:-#}"
+	local nsize="${2:-$(tput cols)}"
+	# Gera linha com substituição direta sem forks extras
+	printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
 }
 
 readconf() {
-  local msg="$1"
-  local color="${2:-${yellow}}"
+	local msg="$1"
+	local color="${2:-${yellow}}"
 
-  echo -n -e "$color"
-  if [[ $LC_DEFAULT -eq 0 ]]; then
-    read -r -p "$msg [N/s] :"
-  else
-    read -r -p "$msg [N/y] :"
-  fi
-  echo -n -e "$reset"
-  case "${REPLY^}" in
-  [SY]) return 0 ;;
-  "") return 1 ;;
-  *) return 1 ;;
-  esac
+	echo -n -e "$color"
+	if [[ $LC_DEFAULT -eq 0 ]]; then
+		read -r -p "$msg [N/s] :"
+	else
+		read -r -p "$msg [N/y] :"
+	fi
+	echo -n -e "$reset"
+	case "${REPLY^}" in
+	[SY]) return 0 ;;
+	"") return 1 ;;
+	*) return 1 ;;
+	esac
 }
 
 debug() {
-# dialog
-  whiptail --fb  --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n"  0 40
-  local result="$?"
-  ((result)) && exit "$result"
-  return "$result"
+	# dialog
+	whiptail --fb --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n" 0 40
+	local result="$?"
+	((result)) && exit "$result"
+	return "$result"
 }
 
 # ===================================================================
 # Funções auxiliares
 # ===================================================================
 run_cmd() {
-  local cmd="$*"
+	local cmd="$*"
 
-  if [[ $DRYRUN -eq 1 ]]; then
-    msg "${cyan}[DRY-RUN]${rst} ${cmd}"
-  else
-    echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
-    # Executa o comando, falha se houver erro
-    # Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
-    if [[ "$cmd" =~ ^mkdir\ -p ]] || [[ "$cmd" =~ ^umount\ -R ]]; then
-      eval "$cmd" &>/dev/null || true
-    else
-      eval "$cmd" || log_warn_tab "Falha ao executar: $cmd"
-    fi
-  fi
+	if [[ $DRYRUN -eq 1 ]]; then
+		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
+	else
+		echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
+		# Executa o comando, falha se houver erro
+		# Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
+		if [[ "$cmd" =~ ^mkdir\ -p ]] || [[ "$cmd" =~ ^umount\ -R ]]; then
+			eval "$cmd" &>/dev/null || true
+		else
+			eval "$cmd" || log_warn_tab "Falha ao executar: $cmd"
+		fi
+	fi
 }
 
 sh_copyright() {
-  cat <<-EOF-COPY
-${bold}${cyan}${0##*/} v${_VERSION_}${rst}
-${bold}${cyan}${APPDESC}${rst}
-${bold}${orange}Copyright (c) 2019-2026, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
-${bold}${orange}Copyright (c) 2019-2026, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
-EOF-COPY
+	cat <<-EOF-COPY
+		${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+		${bold}${cyan}${APPDESC}${rst}
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
+	EOF-COPY
 }
 
 sh_version() {
-  cat <<-EOF-VERSION
-  $(sh_copyright)
+	cat <<-EOF-VERSION
+		  $(sh_copyright)
 
-        $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
-        $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
-        $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
-        $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
-        $(gettext 'o código fonte específico usado para criar esta cópia.')
-        ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')${reset}
-EOF-VERSION
+		        $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
+		        $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
+		        $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
+		        $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
+		        $(gettext 'o código fonte específico usado para criar esta cópia.')
+		        ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')${reset}
+	EOF-VERSION
 }
 
-msg()          { echo -e "${INFO} ${*}${reset}"; }
-log_ok()       { echo -e "${TICK} ${*}${reset}"; }
-log_err()      { echo -e "${CROSS} ${*}${reset}"; }
-log_mid()      { echo -e "${MID} ${*}${reset}"; }
-log_warn()     { echo -e "${WARN} ${*}${reset}"; }
-msg_tab()      { echo -e "  ${INFO} ${*}${reset}"; }
-log_ok_tab()   { echo -e "  ${TICK} ${*}${reset}"; }
-log_err_tab()  { echo -e "  ${CROSS} ${*}${reset}"; }
-log_mid_tab()  { echo -e "  ${MID} ${*}${reset}"; }
+msg() { echo -e "${INFO} ${*}${reset}"; }
+log_ok() { echo -e "${TICK} ${*}${reset}"; }
+log_err() { echo -e "${CROSS} ${*}${reset}"; }
+log_mid() { echo -e "${MID} ${*}${reset}"; }
+log_warn() { echo -e "${WARN} ${*}${reset}"; }
+msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
+log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
+log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
+log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
 log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
 die() {
-  echo -e "${CROSS} ${red}${*}${reset}"
-  exit 1
+	echo -e "${CROSS} ${red}${*}${reset}"
+	exit 1
 }
 
 detect_distro() {
-  local id=""
+	local id=""
 
-  if [[ -r /etc/os-release ]]; then
-    # Lê ID=void|arch|debian|... exatamente como a distro declara
-    id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
-  elif [[ -r /usr/lib/os-release ]]; then
-    id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
-  else
-    echo "unknown"
-    return
-  fi
-  echo "$id"
+	if [[ -r /etc/os-release ]]; then
+		# Lê ID=void|arch|debian|... exatamente como a distro declara
+		id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+	elif [[ -r /usr/lib/os-release ]]; then
+		id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
+	else
+		echo "unknown"
+		return
+	fi
+	echo "$id"
 }
 
 sh_checkDependencies() {
-  local DISTRO="$(detect_distro)"
-  local aBlock_files=()
-  local d
-  local pkg
-  local errorFound=false
-  declare -a missing
-  local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
-  local cmsgPkg="$(gettext "instalar pacote")"
+	local DISTRO="$(detect_distro)"
+	local aBlock_files=()
+	local d
+	local pkg
+	local errorFound=false
+	declare -a missing
+	local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+	local cmsgPkg="$(gettext "instalar pacote")"
 
-  for d in "${!PACKAGEDEP[@]}"; do
-    if ! command -v "$d" &>/dev/null; then
-      pkg="${PACKAGEDEP[$d]}"
-        log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
-        missing+=("${pkg}")
-        errorFound=true
-    else
-      #log_msg "Check: ${cyan}$d"
-      :
-    fi
-  done
+	for d in "${!PACKAGEDEP[@]}"; do
+		if ! command -v "$d" &>/dev/null; then
+			pkg="${PACKAGEDEP[$d]}"
+			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+			missing+=("${pkg}")
+			errorFound=true
+		else
+			#log_msg "Check: ${cyan}$d"
+			:
+		fi
+	done
 
-  if $errorFound; then
-    replicate '='
-    echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
-    echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
-    echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
-    replicate '='
+	if $errorFound; then
+		replicate '='
+		echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
+		echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
+		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
+		replicate '='
 
-    local cmd="${DISTRO_MGR[$DISTRO]}"
-    #local pkgs="${DISTRO_PKGS[$DISTRO]}"
-    local pkgs="${missing[@]}"
+		local cmd="${DISTRO_MGR[$DISTRO]}"
+		#local pkgs="${DISTRO_PKGS[$DISTRO]}"
+		local pkgs="${missing[@]}"
 
-    msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
-    if readconf "$(gettext "Instalar dependências base agora?")"; then
-      echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
-      # Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
-      if ! $cmd $pkgs; then
-        echo
-        echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
-        exit 1
-      fi
-        echo
-        echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
-      fi
-    fi
+		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		if readconf "$(gettext "Instalar dependências base agora?")"; then
+			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
+			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+			if ! $cmd $pkgs; then
+				echo
+				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+				exit 1
+			fi
+			echo
+			echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+		fi
+	fi
 }
 
 # configure ambiente
@@ -451,91 +451,142 @@ set_varcolors
 sh_checkroot "$@"
 
 ##########################################################################################################
-#!/usr/bin/env bash
 
-# ---------------------------------------------------
-# CORES
-# ---------------------------------------------------
-red='\033[1;31m'
-green='\033[1;32m'
-yellow='\033[1;33m'
-blue='\033[1;34m'
-reset='\033[0m'
 
-msg() { printf "${green}==>${reset} %s\n" "$1"; }
-msg_warn() { printf "${yellow}==> AVISO:${reset} %s\n" "$1"; }
-msg_err() { printf "${red}==> ERRO:${reset} %s\n" "$1"; }
+warn() { printf "${yellow}==> AVISO:${reset} %s\n" "$1"; }
+err() { printf "${red}==> ERRO:${reset} %s\n" "$1"; }
+changed=false
 
-if [[ $EUID -ne 0 ]]; then
-	msg_err "Execute como root."
-	exit 1
-fi
+detect_init() {
+	init_system=$(ps -p 1 -o comm=)
+	case "$init_system" in
+		systemd) init="systemd" ;;
+		runit) init="runit" ;;
+		*) init="unknown" ;;
+	esac
+	msg "Init detectado: $init"
+}
 
-echo -e "${blue}"
-echo "--------------------------------------------"
-echo " Chili Low RAM Optimizer"
-echo "--------------------------------------------"
-echo -e "${reset}"
-
-msg "Iniciando otimização..."
-
-# ---------------------------------------------------
-# DESATIVAR ZRAM ATUAL
-# ---------------------------------------------------
-
-msg "Verificando zram..."
-
-if command -v zramctl >/dev/null; then
-	if zramctl | grep -q "/dev/zram"; then
-		msg_warn "zram detectado — desativando"
-
-		for dev in $(zramctl -n -o NAME); do
-			swapoff "$dev" 2>/dev/null
-		done
-
-		modprobe -r zram 2>/dev/null
+check_root() {
+	if [[ $EUID -ne 0 ]]; then
+		err "Execute como root."
+		exit 1
 	fi
-fi
+}
 
-# ---------------------------------------------------
-# REMOVER SERVIÇOS ANTIGOS DE ZRAM
-# ---------------------------------------------------
+cleanup_old_voidbr_runit() {
+	if [[ "$init" != "runit" ]]; then
+		return
+	fi
+	msg "Removendo configuração antiga VoidBR..."
+	rm -f /etc/runit/core-services/10-zram.sh
+	rm -f /etc/runit/core-services/10-voidbr-zram.sh
+}
 
-msg "Removendo configurações antigas de zram..."
+cleanup_old_chili_systemd() {
+  if [[ "$init" != "systemd" ]]; then
+    return
+  fi
 
-systemctl disable chili-zram 2>/dev/null
-rm -f /etc/systemd/system/chili-zram.service
-rm -f /usr/local/sbin/chili-zram
+  msg "Removendo configuração antiga Chili (systemd)..."
+  for svc in chili-thp chili-bfq chili-zram; do
+    if systemctl list-unit-files | grep -q "^${svc}\.service"; then
+      systemctl disable "$svc" 2>/dev/null
+      rm -f "/etc/systemd/system/${svc}.service"
+      changed=true
+    fi
+  done
 
-# bloquear módulo
-mkdir -p /etc/modprobe.d
-echo "blacklist zram" > /etc/modprobe.d/disable-zram.conf
+  for f in \
+    /usr/local/sbin/chili-thp \
+    /usr/local/sbin/chili-bfq \
+    /usr/local/sbin/chili-zram; do
+    if [ -f "$f" ]; then
+      rm -f "$f"
+      changed=true
+    fi
+  done
+  systemctl daemon-reload
+}
 
-# ---------------------------------------------------
-# SWAPFILE
-# ---------------------------------------------------
+detect_ram() {
+	ram_gb=$(awk '/MemTotal/ {printf "%.0f", $2/1024/1024}' /proc/meminfo)
+	msg "RAM detectada: ${ram_gb} GB"
+}
 
-if [ ! -f /swapfile ]; then
-	msg "Criando swapfile (8G)..."
-	fallocate -l 8G /swapfile
+calculate_swap() {
+	if ((ram_gb <= 2)); then
+		swap_gb=6
+	elif ((ram_gb <= 4)); then
+		swap_gb=8
+	elif ((ram_gb <= 8)); then
+		swap_gb=12
+	else
+		swap_gb=$ram_gb
+	fi
+	msg "Swap recomendada: ${swap_gb} GB"
+}
+
+remove_zram() {
+	if grep -q "^zram" /proc/modules; then
+		msg "Removendo zram..."
+		if command -v zramctl >/dev/null; then
+			for dev in $(zramctl -n -o NAME 2>/dev/null); do
+				swapoff "$dev" 2>/dev/null
+			done
+		fi
+		modprobe -r zram 2>/dev/null
+		changed=true
+	fi
+	mkdir -p /etc/modprobe.d
+	if ! grep -q "^blacklist zram" /etc/modprobe.d/disable-zram.conf 2>/dev/null; then
+		echo "blacklist zram" >/etc/modprobe.d/disable-zram.conf
+		changed=true
+	fi
+}
+
+create_swapfile() {
+	swapoff /swapfile 2>/dev/null
+	rm -f /swapfile
+	msg "Criando swapfile ${swap_gb}G..."
+	if ! fallocate -l ${swap_gb}G /swapfile 2>/dev/null; then
+		dd if=/dev/zero of=/swapfile bs=1M count=$((swap_gb * 1024))
+	fi
 	chmod 600 /swapfile
 	mkswap /swapfile
-else
-	msg_warn "swapfile já existe."
-fi
+	changed=true
+}
 
-if ! grep -q "/swapfile" /etc/fstab; then
-	msg "Adicionando swapfile ao fstab..."
-	echo "/swapfile none swap defaults,pri=20 0 0" >> /etc/fstab
-fi
+configure_swapfile() {
+	desired_size=$((swap_gb * 1024 * 1024 * 1024))
+	if [ -f /swapfile ]; then
+		current_size=$(stat -c%s /swapfile)
+		if [ "$current_size" -ne "$desired_size" ]; then
+			current_gb=$((current_size / 1024 / 1024 / 1024))
+			warn "Swap atual: ${current_gb}G"
+			warn "Swap recomendado: ${swap_gb}G"
+			create_swapfile
+		else
+			msg "Swapfile já está no tamanho correto."
+		fi
+	else
+		create_swapfile
+	fi
+	if ! grep -qE '^[[:space:]]*/swapfile[[:space:]]' /etc/fstab; then
+		echo "/swapfile none swap defaults,pri=20 0 0" >> /etc/fstab
+		changed=true
+	fi
+}
 
-# ---------------------------------------------------
-# SYSCTL
-# ---------------------------------------------------
-
-msg "Configurando parâmetros de memória..."
-
-cat <<EOF > /etc/sysctl.d/99-chili-memory-tuning.conf
+configure_sysctl() {
+	if [[ "$init" == "systemd" ]]; then
+		file=/etc/sysctl.d/99-chili-memory-tuning.conf
+	else
+		file=/etc/sysctl.d/99-voidbr-memory-tuning.conf
+	fi
+	msg "Configurando parâmetros de memória..."
+	if [ ! -f "$file" ]; then
+		cat <<EOF > "$file"
 vm.swappiness=180
 vm.vfs_cache_pressure=200
 vm.page-cluster=0
@@ -544,106 +595,162 @@ vm.dirty_ratio=10
 vm.dirty_expire_centisecs=3000
 vm.dirty_writeback_centisecs=500
 EOF
-
-sysctl --system >/dev/null
-
-# ---------------------------------------------------
-# ATIVAR ZSWAP
-# ---------------------------------------------------
-
-msg "Configurando zswap..."
-
-if [ -f /etc/default/grub ]; then
-
-	if ! grep -q "zswap.enabled" /etc/default/grub; then
-		sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="zswap.enabled=1 zswap.max_pool_percent=25 /' /etc/default/grub
+		sysctl --system >/dev/null
+		changed=true
+	else
+		msg_tab "Sysctl já configurado."
 	fi
+}
 
-	if command -v update-grub >/dev/null; then
-		update-grub
-	elif command -v grub-mkconfig >/dev/null; then
-		grub-mkconfig -o /boot/grub/grub.cfg
+configure_zswap() {
+	msg "Configurando zswap..."
+	if [ -f /etc/default/grub ]; then
+		if ! grep -q "zswap.enabled" /etc/default/grub; then
+			sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="zswap.enabled=1 zswap.max_pool_percent=25 /' /etc/default/grub
+			if command -v update-grub >/dev/null; then
+				update-grub
+			elif command -v grub-mkconfig >/dev/null; then
+				grub-mkconfig -o /boot/grub/grub.cfg
+			fi
+			changed=true
+		else
+			msg_tab "zswap já configurado."
+		fi
+	else
+		warn "GRUB não encontrado. Ative zswap manualmente."
 	fi
+}
 
-else
-	msg_warn "GRUB não encontrado. Ative zswap manualmente."
-fi
-
-# ---------------------------------------------------
-# THP
-# ---------------------------------------------------
-
-msg "Configurando THP..."
-
-cat <<'EOF' > /usr/local/sbin/chili-thp
+configure_thp() {
+  msg "Configurando THP"
+	if [[ "$init" == "runit" ]]; then
+		file=/etc/runit/core-services/05-voidbr-thp.sh
+		if [ ! -f "$file" ]; then
+			cat <<'EOF' >"$file"
 #!/bin/sh
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 EOF
-
-chmod +x /usr/local/sbin/chili-thp
-
-cat <<EOF > /etc/systemd/system/chili-thp.service
+			chmod +x "$file"
+			changed=true
+		else
+			msg_tab "THP já configurado."
+		fi
+	elif [[ "$init" == "systemd" ]]; then
+		file=/etc/systemd/system/chili-thp.service
+		if [ ! -f "$file" ]; then
+			cat <<'EOF' >"$file"
 [Unit]
 Description=Disable Transparent Huge Pages (Chili)
-
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/chili-thp
+ExecStart=/bin/sh -c 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
 RemainAfterExit=yes
-
 [Install]
 WantedBy=multi-user.target
 EOF
+			systemctl daemon-reload
+			systemctl enable chili-thp
+			changed=true
+		else
+			msg_tab "THP já configurado."
+		fi
+	fi
+}
 
-# ---------------------------------------------------
-# BFQ
-# ---------------------------------------------------
+detect_disk() {
+	root_partition=$(findmnt -n -o SOURCE /)
+	disk=$(lsblk -no PKNAME "$root_partition" | tail -n1)
+	disk=$(echo "$disk" | sed 's/p[0-9]\+$//; s/[0-9]\+$//')
+	if [[ -z "$disk" ]]; then
+		disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print $1;exit}')
+	fi
+	is_rotational=$(cat /sys/block/"$disk"/queue/rotational 2>/dev/null)
+	if [[ "$is_rotational" == "0" ]]; then
+		type="SSD"
+		scheduler="mq-deadline"
+	else
+		type="HDD"
+		scheduler="bfq"
+	fi
+	msg "$type detectado ($disk)"
+}
 
-msg "Configurando BFQ..."
-
-cat <<'EOF' > /usr/local/sbin/chili-bfq
+configure_scheduler() {
+	if [[ "$init" == "runit" ]]; then
+		file=/etc/runit/core-services/03-voidbr-scheduler.sh
+		if [ ! -f "$file" ]; then
+			cat <<EOF >"$file"
 #!/bin/sh
-
-for disk in /sys/block/sd*; do
-	echo bfq > "$disk/queue/scheduler" 2>/dev/null
-	echo 1 > "$disk/queue/iosched/low_latency" 2>/dev/null
-	echo 0 > "$disk/queue/iosched/slice_idle" 2>/dev/null
+for d in /sys/block/*; do
+	[ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null
 done
 EOF
-
-chmod +x /usr/local/sbin/chili-bfq
-
-cat <<EOF > /etc/systemd/system/chili-bfq.service
+			chmod +x "$file"
+			changed=true
+		else
+			msg "Scheduler já configurado."
+		fi
+	elif [[ "$init" == "systemd" ]]; then
+		file=/etc/systemd/system/chili-bfq.service
+		if [ ! -f "$file" ]; then
+			cat <<EOF >"$file"
 [Unit]
 Description=Set BFQ IO Scheduler (Chili)
-
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/chili-bfq
+ExecStart=/bin/sh -c 'for d in /sys/block/sd*; do echo bfq > "\$d/queue/scheduler" 2>/dev/null; done'
 RemainAfterExit=yes
-
 [Install]
 WantedBy=multi-user.target
 EOF
+			systemctl daemon-reload
+			systemctl enable chili-bfq
+			changed=true
+		else
+			msg "Scheduler já configurado."
+		fi
+	fi
+}
 
-# ---------------------------------------------------
-# ATIVAR SERVIÇOS
-# ---------------------------------------------------
+enable_swap() {
+	if ! swapon --show=NAME | grep -q "^/swapfile$"; then
+		swapon /swapfile
+	fi
+}
 
-msg "Recarregando systemd..."
+summary() {
+	replicate '-'
+	echo "${blue}Resumo do sistema${rst}"
+	replicate '-'
+	msg_tab "RAM             : ${ram_gb} GB"
+	msg_tab "Swap configurada: ${swap_gb} GB"
+	msg_tab "$(swapon --show)"
+	msg_tab "$(sysctl vm.swappiness)"
+	echo
+	if $changed; then
+		echo -e "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
+	else
+		msg "${green}Nenhuma alteração foi necessária.${rst}"
+	fi
+}
 
-systemctl daemon-reexec
-systemctl daemon-reload
+main() {
+	check_root
+	detect_init
+	cleanup_old_voidbr_runit
+	cleanup_old_chili_systemd
+	detect_ram
+	calculate_swap
+	remove_zram
+	configure_swapfile
+	configure_sysctl
+	configure_zswap
+	configure_thp
+	echo $changed
+	detect_disk
+	configure_scheduler
+	enable_swap
+	summary
+}
 
-msg "Ativando serviços..."
-
-systemctl enable chili-thp
-systemctl enable chili-bfq
-
-msg "Ativando swaps..."
-
-swapon -a
-
-echo
-echo -e "${green}✔ Otimização concluída.${reset}"
-echo -e "${yellow}Reinicie o sistema para aplicar tudo.${reset}"
+main
