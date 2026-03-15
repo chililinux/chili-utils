@@ -451,6 +451,8 @@ set_varcolors
 sh_checkroot "$@"
 
 ##########################################################################################################
+#!/usr/bin/env bash
+
 # ---------------------------------------------------
 # CORES
 # ---------------------------------------------------
@@ -478,6 +480,38 @@ echo -e "${reset}"
 msg "Iniciando otimização..."
 
 # ---------------------------------------------------
+# DESATIVAR ZRAM ATUAL
+# ---------------------------------------------------
+
+msg "Verificando zram..."
+
+if command -v zramctl >/dev/null; then
+	if zramctl | grep -q "/dev/zram"; then
+		msg_warn "zram detectado — desativando"
+
+		for dev in $(zramctl -n -o NAME); do
+			swapoff "$dev" 2>/dev/null
+		done
+
+		modprobe -r zram 2>/dev/null
+	fi
+fi
+
+# ---------------------------------------------------
+# REMOVER SERVIÇOS ANTIGOS DE ZRAM
+# ---------------------------------------------------
+
+msg "Removendo configurações antigas de zram..."
+
+systemctl disable chili-zram 2>/dev/null
+rm -f /etc/systemd/system/chili-zram.service
+rm -f /usr/local/sbin/chili-zram
+
+# bloquear módulo
+mkdir -p /etc/modprobe.d
+echo "blacklist zram" > /etc/modprobe.d/disable-zram.conf
+
+# ---------------------------------------------------
 # SWAPFILE
 # ---------------------------------------------------
 
@@ -502,59 +536,44 @@ fi
 msg "Configurando parâmetros de memória..."
 
 cat <<EOF > /etc/sysctl.d/99-chili-memory-tuning.conf
-vm.swappiness=15
+vm.swappiness=180
 vm.vfs_cache_pressure=200
-vm.dirty_background_ratio=5
+vm.page-cluster=0
+vm.dirty_background_ratio=3
 vm.dirty_ratio=10
+vm.dirty_expire_centisecs=3000
+vm.dirty_writeback_centisecs=500
 EOF
 
 sysctl --system >/dev/null
 
 # ---------------------------------------------------
-# SCRIPT ZRAM
+# ATIVAR ZSWAP
 # ---------------------------------------------------
 
-msg "Criando script ZRAM..."
+msg "Configurando zswap..."
 
-cat <<'EOF' > /usr/local/sbin/chili-zram
-#!/bin/sh
+if [ -f /etc/default/grub ]; then
 
-modprobe zram
+	if ! grep -q "zswap.enabled" /etc/default/grub; then
+		sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="zswap.enabled=1 zswap.max_pool_percent=25 /' /etc/default/grub
+	fi
 
-echo lz4 > /sys/block/zram0/comp_algorithm
-echo 1G > /sys/block/zram0/disksize
+	if command -v update-grub >/dev/null; then
+		update-grub
+	elif command -v grub-mkconfig >/dev/null; then
+		grub-mkconfig -o /boot/grub/grub.cfg
+	fi
 
-mkswap /dev/zram0
-swapon -p 100 /dev/zram0
-EOF
-
-chmod +x /usr/local/sbin/chili-zram
-
-# ---------------------------------------------------
-# SERVICE ZRAM
-# ---------------------------------------------------
-
-msg "Criando serviço systemd ZRAM..."
-
-cat <<EOF > /etc/systemd/system/chili-zram.service
-[Unit]
-Description=Chili ZRAM
-After=multi-user.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/chili-zram
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
+else
+	msg_warn "GRUB não encontrado. Ative zswap manualmente."
+fi
 
 # ---------------------------------------------------
 # THP
 # ---------------------------------------------------
 
-msg "Desativando THP..."
+msg "Configurando THP..."
 
 cat <<'EOF' > /usr/local/sbin/chili-thp
 #!/bin/sh
@@ -585,9 +604,11 @@ msg "Configurando BFQ..."
 cat <<'EOF' > /usr/local/sbin/chili-bfq
 #!/bin/sh
 
-echo bfq > /sys/block/sda/queue/scheduler
-echo 1 > /sys/block/sda/queue/iosched/low_latency
-echo 0 > /sys/block/sda/queue/iosched/slice_idle
+for disk in /sys/block/sd*; do
+	echo bfq > "$disk/queue/scheduler" 2>/dev/null
+	echo 1 > "$disk/queue/iosched/low_latency" 2>/dev/null
+	echo 0 > "$disk/queue/iosched/slice_idle" 2>/dev/null
+done
 EOF
 
 chmod +x /usr/local/sbin/chili-bfq
@@ -616,7 +637,6 @@ systemctl daemon-reload
 
 msg "Ativando serviços..."
 
-systemctl enable chili-zram
 systemctl enable chili-thp
 systemctl enable chili-bfq
 
