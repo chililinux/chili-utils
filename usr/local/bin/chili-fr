@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 08 mar 2026 22:27:02 -04
+#  Updated: qua 25 mar 2026 01:27:56 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -43,7 +43,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.04.08-20260308'
+readonly VERSION='3.04.08-20260325'
 readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1796,6 +1796,13 @@ fi
 
 sh_checkDependencies
 sh_checkVdiskFiles
+
+if [ -z "$DISPLAY" ]; then
+  log_err "DISPLAY='${DISPLAY:-<vazio>}'"
+  log_err "Erro: variável de ambiente DISPLAY não está definida."
+  log_err "Nenhum servidor X11 disponível para interface gráfica."
+  exit 1
+fi
 
 OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
 LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
