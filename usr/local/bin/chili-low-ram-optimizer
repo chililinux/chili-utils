@@ -3,9 +3,10 @@
 # shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
 #
 #  chili-low-ram-optimizer
-#  Created: dom 15 mar 2026 07:03:30 -04
-#  Altered: dom 15 mar 2026 07:03:30 -04
-#  Updated: dom 15 mar 2026 07:03:30 -04
+#  Otimização automática para máquinas com pouca RAM
+#  Created: qua 11 mar 2026 11:53:16 -04
+#  Altered: qua 11 mar 2026 11:53:16 -04
+#  Updated: sex 27 mar 2026 22:34:41 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -45,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.03.15-20260315"
+declare _VERSION_="0.03.27-20260327"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare -A PACKAGEDEP=(
@@ -181,7 +182,7 @@ set_varcolors() {
 		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
 		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
-		: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
+		: "${INFO="${clrkey}[${black}➡  ${clrkey}]${rst}"}"
 
 		# dialog colors
 		REVERSE="\Zr"
@@ -351,6 +352,7 @@ sh_copyright() {
 		${bold}${cyan}${0##*/} v${_VERSION_}${rst}
 		${bold}${cyan}${APPDESC}${rst}
 		${bold}${orange}Copyright (c) 2019-2026, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}VoidBR Development Team <https://voidbr.org> <https://github.com/voidlinuxbr>
 		${bold}${orange}Copyright (c) 2019-2026, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
 	EOF-COPY
 }
@@ -359,12 +361,12 @@ sh_version() {
 	cat <<-EOF-VERSION
 		  $(sh_copyright)
 
-		        $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
-		        $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
-		        $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
-		        $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
-		        $(gettext 'o código fonte específico usado para criar esta cópia.')
-		        ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')${reset}
+		        $(gettext "Este é um software livre: você é livre para alterá-lo e redistribuí-lo.")
+		        $(gettext "O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e")
+		        $(gettext "inclui software de código aberto sob uma variedade de outras licenças.")
+		        $(gettext "Você pode ler instruções sobre como baixar e criar para você mesmo")
+		        $(gettext "o código fonte específico usado para criar esta cópia.")
+		        ${red}$(gettext "Este programa vem com absolutamente NENHUMA garantia.")${reset}
 	EOF-VERSION
 }
 
@@ -373,6 +375,7 @@ log_ok() { echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
 log_warn() { echo -e "${WARN} ${*}${reset}"; }
+warn() { echo -e "${WARN} ${*}${reset}"; }
 msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
 log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
 log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
@@ -399,14 +402,17 @@ detect_distro() {
 }
 
 sh_checkDependencies() {
-	local DISTRO="$(detect_distro)"
 	local aBlock_files=()
 	local d
 	local pkg
 	local errorFound=false
 	declare -a missing
-	local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
-	local cmsgPkg="$(gettext "instalar pacote")"
+	local DISTRO
+	local cmsgNot
+	local cmsgPkg
+	DISTRO="$(detect_distro)"
+	cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+	cmsgPkg="$(gettext "instalar pacote")"
 
 	for d in "${!PACKAGEDEP[@]}"; do
 		if ! command -v "$d" &>/dev/null; then
@@ -435,7 +441,7 @@ sh_checkDependencies() {
 		if readconf "$(gettext "Instalar dependências base agora?")"; then
 			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
 			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
-			if ! $cmd $pkgs; then
+			if ! $cmd "$pkgs"; then
 				echo
 				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
 				exit 1
@@ -452,8 +458,7 @@ sh_checkroot "$@"
 
 ##########################################################################################################
 
-
-warn() { printf "${yellow}==> AVISO:${reset} %s\n" "$1"; }
+#warn() { printf "${yellow}==> AVISO:${reset} %s\n" "$1"; }
 err() { printf "${red}==> ERRO:${reset} %s\n" "$1"; }
 changed=false
 
@@ -464,7 +469,7 @@ detect_init() {
 		runit) init="runit" ;;
 		*) init="unknown" ;;
 	esac
-	msg "Init detectado: $init"
+	msg "Init detectado: ${cyan}${init}${rst}"
 }
 
 check_root() {
@@ -478,7 +483,7 @@ cleanup_old_voidbr_runit() {
 	if [[ "$init" != "runit" ]]; then
 		return
 	fi
-	msg "Removendo configuração antiga VoidBR..."
+	msg "Removendo configuração antiga ${cyan}(runit)..."
 	rm -f /etc/runit/core-services/10-zram.sh
 	rm -f /etc/runit/core-services/10-voidbr-zram.sh
 }
@@ -488,8 +493,7 @@ cleanup_old_chili_systemd() {
     return
   fi
 
-  msg "Verificando configuração antiga Chili (systemd)..."
-
+  msg "Verificando configuração antiga ${cyan}(systemd)..."
   for svc in chili-thp chili-bfq chili-zram; do
     file="/etc/systemd/system/${svc}.service"
 
@@ -521,20 +525,43 @@ cleanup_old_chili_systemd() {
 
 detect_ram() {
 	ram_gb=$(awk '/MemTotal/ {printf "%.0f", $2/1024/1024}' /proc/meminfo)
-	msg "RAM detectada: ${ram_gb} GB"
+	msg "RAM detectada: ${cyan}${ram_gb} GB${rst}"
+}
+
+detect_fs() {
+	root_fs=$(stat -f -c %T /)
+	msg "Filesystem raiz: ${cyan}${root_fs}${rst}"
+}
+
+supports_hibernation() {
+    grep -q "resume=" /proc/cmdline
 }
 
 calculate_swap() {
-	if ((ram_gb <= 2)); then
-		swap_gb=6
-	elif ((ram_gb <= 4)); then
-		swap_gb=8
-	elif ((ram_gb <= 8)); then
-		swap_gb=12
-	else
-		swap_gb=$ram_gb
-	fi
-	msg "Swap recomendada: ${swap_gb} GB"
+    msg "Calculando swapfile..."
+    if supports_hibernation; then
+        msg_tab "Modo: ${cyan}hibernação${reset}"
+
+        if ((ram_gb <= 2)); then
+            swap_gb=$((ram_gb * 2))
+        elif ((ram_gb <= 8)); then
+            swap_gb=$((ram_gb + ram_gb / 2))
+        else
+            swap_gb=$((ram_gb + 4))
+        fi
+    else
+        msg_tab "Modo: ${cyan}low RAM${reset}"
+
+        if ((ram_gb <= 2)); then
+            swap_gb=$((ram_gb * 2))
+        elif ((ram_gb <= 8)); then
+            swap_gb=$ram_gb
+        else
+            swap_gb=8
+        fi
+    fi
+
+    msg_tab "Swap recomendada: ${cyan}${swap_gb} GB${rst}"
 }
 
 remove_zram() {
@@ -555,16 +582,61 @@ remove_zram() {
 	fi
 }
 
+check_disk_space() {
+  local required_mb=$((swap_gb * 1024))
+
+  # espaço disponível em MB
+  local avail_mb
+  avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
+
+  if (( avail_mb < required_mb )); then
+    msg "Erro: espaço insuficiente em disco!"
+    msg "Necessário: ${swap_gb}G | Disponível: $((avail_mb / 1024))G"
+    return 1
+  fi
+}
+
 create_swapfile() {
-	swapoff /swapfile 2>/dev/null
-	rm -f /swapfile
-	msg "Criando swapfile ${swap_gb}G..."
-	if ! fallocate -l ${swap_gb}G /swapfile 2>/dev/null; then
-		dd if=/dev/zero of=/swapfile bs=1M count=$((swap_gb * 1024))
-	fi
-	chmod 600 /swapfile
-	mkswap /swapfile
-	changed=true
+    if ! check_disk_space; then
+        exit 1
+    fi
+
+  swapoff /swapfile 2>/dev/null
+  rm -f /swapfile
+
+  msg "Criando swapfile ${swap_gb}G..."
+
+  case "$root_fs" in
+    btrfs)
+      if command -v btrfs >/dev/null && btrfs filesystem mkswapfile --help >/dev/null 2>&1; then
+        msg "BTRFS: usando mkswapfile"
+        btrfs filesystem mkswapfile --size ${swap_gb}g /swapfile
+      else
+        msg "BTRFS: modo manual (NoCOW)"
+        truncate -s 0 /swapfile
+        chattr +C /swapfile
+        btrfs property set /swapfile compression none 2>/dev/null
+
+        fallocate -l ${swap_gb}G /swapfile 2>/dev/null || \
+          dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
+
+        chmod 600 /swapfile
+        mkswap /swapfile
+      fi
+      ;;
+
+    *)
+      if ! fallocate -l ${swap_gb}G /swapfile 2>/dev/null; then
+        warn "fallocate ${red}falhou${rst} no $root_fs → usando ${cyan}dd"
+        dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
+      fi
+
+      chmod 600 /swapfile
+      mkswap /swapfile
+      ;;
+  esac
+
+  changed=true
 }
 
 configure_swapfile() {
@@ -573,11 +645,11 @@ configure_swapfile() {
 		current_size=$(stat -c%s /swapfile)
 		if [ "$current_size" -ne "$desired_size" ]; then
 			current_gb=$((current_size / 1024 / 1024 / 1024))
-			warn "Swap atual: ${current_gb}G"
-			warn "Swap recomendado: ${swap_gb}G"
+			warn "Swap atual: ${red}${current_gb}G"
+			warn "Swap recomendado: ${cyan}${swap_gb}G"
 			create_swapfile
 		else
-			msg "Swapfile já está no tamanho correto."
+			msg_tab "${green}Swapfile já está no tamanho correto.${rst}"
 		fi
 	else
 		create_swapfile
@@ -594,7 +666,10 @@ configure_sysctl() {
 	else
 		file=/etc/sysctl.d/99-voidbr-memory-tuning.conf
 	fi
+
 	msg "Configurando parâmetros de memória..."
+  mkdir -p /etc/sysctl.d/
+
 	if [ ! -f "$file" ]; then
 		cat <<EOF > "$file"
 vm.swappiness=180
@@ -608,27 +683,48 @@ EOF
 		sysctl --system >/dev/null
 		changed=true
 	else
-		msg_tab "Sysctl já configurado."
+		msg_tab "${green}Sysctl já configurado.${rst}"
 	fi
 }
 
 configure_zswap() {
-	msg "Configurando zswap..."
-	if [ -f /etc/default/grub ]; then
-		if ! grep -q "zswap.enabled" /etc/default/grub; then
-			sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="zswap.enabled=1 zswap.max_pool_percent=25 /' /etc/default/grub
-			if command -v update-grub >/dev/null; then
-				update-grub
-			elif command -v grub-mkconfig >/dev/null; then
-				grub-mkconfig -o /boot/grub/grub.cfg
-			fi
-			changed=true
-		else
-			msg_tab "zswap já configurado."
-		fi
-	else
-		warn "GRUB não encontrado. Ative zswap manualmente."
-	fi
+  file="/etc/default/grub"
+  msg "Configurando zswap..."
+
+  [ -f "$file" ] || { warn "GRUB não encontrado."; return; }
+
+  # garante linha
+  grep -q '^GRUB_CMDLINE_LINUX=' "$file" || \
+    echo 'GRUB_CMDLINE_LINUX=""' >> "$file"
+
+  # pega conteúdo atual
+  current=$(sed -n 's/^GRUB_CMDLINE_LINUX="\([^"]*\)"/\1/p' "$file")
+
+  # remove params antigos
+  current="${current//zswap.enabled=*/}"
+  current="${current//zswap.max_pool_percent=*/}"
+
+  # normaliza espaços
+  current="$(echo "$current" | xargs)"
+
+  # adiciona correto
+  new="$current zswap.enabled=1 zswap.max_pool_percent=25"
+  new="$(echo "$new" | xargs)"
+
+  # só altera se mudou
+  if ! grep -q "GRUB_CMDLINE_LINUX=\"$new\"" "$file"; then
+    sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"$new\"|" "$file"
+
+    if command -v update-grub >/dev/null; then
+      update-grub
+    else
+      grub-mkconfig -o /boot/grub/grub.cfg
+    fi
+
+    changed=true
+  else
+    msg_tab "${green}zswap já configurado.${rst}"
+  fi
 }
 
 configure_thp() {
@@ -643,7 +739,7 @@ EOF
 			chmod +x "$file"
 			changed=true
 		else
-			msg_tab "THP já configurado."
+			msg_tab "${green}THP já configurado.${rst}"
 		fi
 	elif [[ "$init" == "systemd" ]]; then
 		file=/etc/systemd/system/chili-thp.service
@@ -662,7 +758,7 @@ EOF
 			systemctl enable chili-thp
 			changed=true
 		else
-			msg_tab "THP já configurado."
+			msg_tab "${green}THP já configurado.${rst}"
 		fi
 	fi
 }
@@ -698,7 +794,7 @@ EOF
 			chmod +x "$file"
 			changed=true
 		else
-			msg "Scheduler já configurado."
+			msg_tab "${green}Scheduler já configurado.${rst}"
 		fi
 	elif [[ "$init" == "systemd" ]]; then
 		file=/etc/systemd/system/chili-bfq.service
@@ -717,7 +813,7 @@ EOF
 			systemctl enable chili-bfq
 			changed=true
 		else
-			msg "Scheduler já configurado."
+			msg_tab "${green}Scheduler já configurado.${rst}"
 		fi
 	fi
 }
@@ -728,25 +824,52 @@ enable_swap() {
 	fi
 }
 
+ensure_debugfs() {
+  if ! mountpoint -q /sys/kernel/debug; then
+    msg "Montando debugfs..."
+    mount -t debugfs none /sys/kernel/debug
+  fi
+}
+
 summary() {
-	replicate '-'
-	echo "${blue}Resumo do sistema${rst}"
-	replicate '-'
-	msg_tab "RAM             : ${ram_gb} GB"
-	msg_tab "Swap configurada: ${swap_gb} GB"
-	msg_tab "$(swapon --show)"
-	msg_tab "$(sysctl vm.swappiness)"
-	echo
-	if $changed; then
-		echo -e "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
-	else
-		msg "${green}Nenhuma alteração foi necessária.${rst}"
-	fi
+  replicate '-'
+  echo "${blue}Resumo do sistema${rst}"
+  replicate '-'
+
+  msg "RAM             : ${cyan}${ram_gb} GB"
+  msg "Swap configurada: ${cyan}${swap_gb} GB"
+  msg_tab "${cyan}$(swapon --show)"
+  msg "$(sysctl vm.swappiness)"
+
+  # zswap básico
+  if [ -d /sys/module/zswap ]; then
+    msg "zswap enabled  : ${cyan}$(cat /sys/module/zswap/parameters/enabled)"
+    for f in /sys/module/zswap/parameters/*; do
+      msg_tab "$(printf "%-30s : ${cyan}%s\n" "$(basename "$f")" "$(cat "$f")")"
+    done
+  else
+    msg_tab "zswap          : não disponível"
+  fi
+
+  # debugfs (stats)
+  if mountpoint -q /sys/kernel/debug 2>/dev/null && [ -d /sys/kernel/debug/zswap ]; then
+    msg $(cat /sys/kernel/debug/zswap/*)
+  else
+    msg "zswap stats    : debugfs não montado"
+  fi
+
+  echo
+  if $changed; then
+    warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
+  else
+    msg "${green}Nenhuma alteração foi necessária.${rst}"
+  fi
 }
 
 main() {
 	check_root
 	detect_init
+	detect_fs
 	cleanup_old_voidbr_runit
 	cleanup_old_chili_systemd
 	detect_ram
@@ -759,7 +882,105 @@ main() {
 	detect_disk
 	configure_scheduler
 	enable_swap
-	summary
+  ensure_debugfs
+  summary
 }
 
-main
+uninstall() {
+  msg "Removendo configurações..."
+
+  detect_init
+
+  # swapfile
+  if swapon --show=NAME | grep -q '^/swapfile$'; then
+    swapoff /swapfile
+  fi
+  rm -f /swapfile
+  sed -i '\|/swapfile|d' /etc/fstab
+
+  # sysctl
+  rm -f /etc/sysctl.d/99-voidbr-memory-tuning.conf
+  rm -f /etc/sysctl.d/99-chili-memory-tuning.conf
+
+  # zram blacklist
+  rm -f /etc/modprobe.d/disable-zram.conf
+
+  # zswap (GRUB)
+  if [ -f /etc/default/grub ]; then
+    sed -i '/^GRUB_CMDLINE_LINUX="/{
+      s/\<zswap.enabled=[^ "]*\>//g
+      s/\<zswap.max_pool_percent=[^ "]*\>//g
+      s/  */ /g
+      s/=" */="/
+      s/ *"$/"/
+    }' /etc/default/grub
+
+    if command -v update-grub >/dev/null; then
+      update-grub
+    else
+      grub-mkconfig -o /boot/grub/grub.cfg
+    fi
+  fi
+
+  # limpeza por init
+  case "$init" in
+    runit)
+      msg "Removendo configurações (runit)..."
+      rm -f /etc/runit/core-services/03-voidbr-scheduler.sh
+      rm -f /etc/runit/core-services/05-voidbr-thp.sh
+      rm -f /etc/runit/core-services/10-zram.sh
+      rm -f /etc/runit/core-services/10-voidbr-zram.sh
+      ;;
+
+    systemd)
+      msg "Removendo configurações (systemd)..."
+      systemctl disable chili-thp 2>/dev/null
+      rm -f /etc/systemd/system/chili-thp.service
+
+      systemctl disable chili-bfq 2>/dev/null
+      rm -f /etc/systemd/system/chili-bfq.service
+
+      systemctl daemon-reload
+      ;;
+  esac
+
+  msg "${green}Remoção concluída.${rst}"
+}
+
+usage() {
+  echo -e "${cyan}Uso:${reset} $0 [opção]"
+  echo
+  echo -e "${cyan}Opções:${reset}"
+  echo -e "  ${yellow}Sem opção     ${reset} mostra resumo do sistema"
+  echo -e "  ${green}--install${reset}      Aplica configurações"
+  echo -e "  ${red}--uninstall${reset}    Remove configurações"
+  echo -e "  ${cyan}-h, --help${reset}     Mostra esta ajuda"
+}
+
+case "$1" in
+  "")
+    detect_init
+    detect_fs
+    detect_ram
+    calculate_swap
+    detect_disk
+    ensure_debugfs
+    summary
+    usage
+    ;;
+  --install)
+    main
+    ;;
+  --uninstall)
+    check_root
+    uninstall
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    err "Opção inválida: $1"
+    usage
+    exit 1
+    ;;
+esac
