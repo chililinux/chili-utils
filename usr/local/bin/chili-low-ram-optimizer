@@ -6,7 +6,7 @@
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
 #  Altered: qua 11 mar 2026 11:53:16 -04
-#  Updated: sex 27 mar 2026 22:34:41 -04
+#  Updated: ter 21 abr 2026 07:17:02 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -46,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.03.27-20260327"
+declare _VERSION_="0.04.21-20260421"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare -A PACKAGEDEP=(
@@ -327,9 +327,6 @@ debug() {
 	return "$result"
 }
 
-# ===================================================================
-# Funções auxiliares
-# ===================================================================
 run_cmd() {
 	local cmd="$*"
 
@@ -465,11 +462,10 @@ changed=false
 detect_init() {
 	init_system=$(ps -p 1 -o comm=)
 	case "$init_system" in
-		systemd) init="systemd" ;;
-		runit) init="runit" ;;
-		*) init="unknown" ;;
+	systemd) init="systemd" ;;
+	runit) init="runit" ;;
+	*) init="unknown" ;;
 	esac
-	msg "Init detectado: ${cyan}${init}${rst}"
 }
 
 check_root() {
@@ -489,79 +485,50 @@ cleanup_old_voidbr_runit() {
 }
 
 cleanup_old_chili_systemd() {
-  if [[ "$init" != "systemd" ]]; then
-    return
-  fi
+	if [[ "$init" != "systemd" ]]; then
+		return
+	fi
 
-  msg "Verificando configuração antiga ${cyan}(systemd)..."
-  for svc in chili-thp chili-bfq chili-zram; do
-    file="/etc/systemd/system/${svc}.service"
+	msg "Verificando configuração antiga ${cyan}(systemd)..."
+	for svc in chili-thp chili-bfq chili-zram; do
+		file="/etc/systemd/system/${svc}.service"
 
-    if [ -f "$file" ]; then
-      if grep -q "/usr/local/sbin/${svc}" "$file"; then
-        msg_warn "Removendo serviço antigo $svc"
-        systemctl disable "$svc" 2>/dev/null
-        rm -f "$file"
-        changed=true
-      fi
-    fi
-  done
+		if [ -f "$file" ]; then
+			if grep -q "/usr/local/sbin/${svc}" "$file"; then
+				msg_warn "Removendo serviço antigo $svc"
+				systemctl disable "$svc" 2>/dev/null
+				rm -f "$file"
+				changed=true
+			fi
+		fi
+	done
 
-  for f in \
-    /usr/local/sbin/chili-thp \
-    /usr/local/sbin/chili-bfq \
-    /usr/local/sbin/chili-zram; do
-    if [ -f "$f" ]; then
-      msg_warn "Removendo script antigo $(basename "$f")"
-      rm -f "$f"
-      changed=true
-    fi
-  done
+	for f in \
+		/usr/local/sbin/chili-thp \
+		/usr/local/sbin/chili-bfq \
+		/usr/local/sbin/chili-zram; do
+		if [ -f "$f" ]; then
+			msg_warn "Removendo script antigo $(basename "$f")"
+			rm -f "$f"
+			changed=true
+		fi
+	done
 
-  if $changed; then
-    systemctl daemon-reload
-  fi
+	if $changed; then
+		systemctl daemon-reload
+	fi
 }
 
 detect_ram() {
 	ram_gb=$(awk '/MemTotal/ {printf "%.0f", $2/1024/1024}' /proc/meminfo)
-	msg "RAM detectada: ${cyan}${ram_gb} GB${rst}"
 }
 
 detect_fs() {
 	root_fs=$(stat -f -c %T /)
-	msg "Filesystem raiz: ${cyan}${root_fs}${rst}"
 }
 
 supports_hibernation() {
-    grep -q "resume=" /proc/cmdline
-}
-
-calculate_swap() {
-    msg "Calculando swapfile..."
-    if supports_hibernation; then
-        msg_tab "Modo: ${cyan}hibernação${reset}"
-
-        if ((ram_gb <= 2)); then
-            swap_gb=$((ram_gb * 2))
-        elif ((ram_gb <= 8)); then
-            swap_gb=$((ram_gb + ram_gb / 2))
-        else
-            swap_gb=$((ram_gb + 4))
-        fi
-    else
-        msg_tab "Modo: ${cyan}low RAM${reset}"
-
-        if ((ram_gb <= 2)); then
-            swap_gb=$((ram_gb * 2))
-        elif ((ram_gb <= 8)); then
-            swap_gb=$ram_gb
-        else
-            swap_gb=8
-        fi
-    fi
-
-    msg_tab "Swap recomendada: ${cyan}${swap_gb} GB${rst}"
+	grep -q "resume=" /proc/cmdline
 }
 
 remove_zram() {
@@ -583,60 +550,60 @@ remove_zram() {
 }
 
 check_disk_space() {
-  local required_mb=$((swap_gb * 1024))
+	local required_mb=$((swap_gb * 1024))
 
-  # espaço disponível em MB
-  local avail_mb
-  avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
+	# espaço disponível em MB
+	local avail_mb
+	avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
 
-  if (( avail_mb < required_mb )); then
-    msg "Erro: espaço insuficiente em disco!"
-    msg "Necessário: ${swap_gb}G | Disponível: $((avail_mb / 1024))G"
-    return 1
-  fi
+	if ((avail_mb < required_mb)); then
+		msg "Erro: espaço insuficiente em disco!"
+		msg "Necessário: ${swap_gb}G | Disponível: $((avail_mb / 1024))G"
+		return 1
+	fi
 }
 
 create_swapfile() {
-    if ! check_disk_space; then
-        exit 1
-    fi
+	if ! check_disk_space; then
+		exit 1
+	fi
 
-  swapoff /swapfile 2>/dev/null
-  rm -f /swapfile
+	swapoff /swapfile 2>/dev/null
+	rm -f /swapfile
 
-  msg "Criando swapfile ${swap_gb}G..."
+	msg "Criando swapfile ${swap_gb}G..."
 
-  case "$root_fs" in
-    btrfs)
-      if command -v btrfs >/dev/null && btrfs filesystem mkswapfile --help >/dev/null 2>&1; then
-        msg "BTRFS: usando mkswapfile"
-        btrfs filesystem mkswapfile --size ${swap_gb}g /swapfile
-      else
-        msg "BTRFS: modo manual (NoCOW)"
-        truncate -s 0 /swapfile
-        chattr +C /swapfile
-        btrfs property set /swapfile compression none 2>/dev/null
+	case "$root_fs" in
+	btrfs)
+		if command -v btrfs >/dev/null && btrfs filesystem mkswapfile --help >/dev/null 2>&1; then
+			msg "BTRFS: usando mkswapfile"
+			btrfs filesystem mkswapfile --size ${swap_gb}g /swapfile
+		else
+			msg "BTRFS: modo manual (NoCOW)"
+			truncate -s 0 /swapfile
+			chattr +C /swapfile
+			btrfs property set /swapfile compression none 2>/dev/null
 
-        fallocate -l ${swap_gb}G /swapfile 2>/dev/null || \
-          dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
+			fallocate -l ${swap_gb}G /swapfile 2>/dev/null ||
+				dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
 
-        chmod 600 /swapfile
-        mkswap /swapfile
-      fi
-      ;;
+			chmod 600 /swapfile
+			mkswap /swapfile
+		fi
+		;;
 
-    *)
-      if ! fallocate -l ${swap_gb}G /swapfile 2>/dev/null; then
-        warn "fallocate ${red}falhou${rst} no $root_fs → usando ${cyan}dd"
-        dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
-      fi
+	*)
+		if ! fallocate -l ${swap_gb}G /swapfile 2>/dev/null; then
+			warn "fallocate ${red}falhou${rst} no $root_fs → usando ${cyan}dd"
+			dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
+		fi
 
-      chmod 600 /swapfile
-      mkswap /swapfile
-      ;;
-  esac
+		chmod 600 /swapfile
+		mkswap /swapfile
+		;;
+	esac
 
-  changed=true
+	changed=true
 }
 
 configure_swapfile() {
@@ -645,7 +612,7 @@ configure_swapfile() {
 		current_size=$(stat -c%s /swapfile)
 		if [ "$current_size" -ne "$desired_size" ]; then
 			current_gb=$((current_size / 1024 / 1024 / 1024))
-			warn "Swap atual: ${red}${current_gb}G"
+			warn "Swap atual      : ${red}${current_gb}G"
 			warn "Swap recomendado: ${cyan}${swap_gb}G"
 			create_swapfile
 		else
@@ -655,7 +622,7 @@ configure_swapfile() {
 		create_swapfile
 	fi
 	if ! grep -qE '^[[:space:]]*/swapfile[[:space:]]' /etc/fstab; then
-		echo "/swapfile none swap defaults,pri=20 0 0" >> /etc/fstab
+		echo "/swapfile none swap defaults,pri=20 0 0" >>/etc/fstab
 		changed=true
 	fi
 }
@@ -668,10 +635,10 @@ configure_sysctl() {
 	fi
 
 	msg "Configurando parâmetros de memória..."
-  mkdir -p /etc/sysctl.d/
+	mkdir -p /etc/sysctl.d/
 
 	if [ ! -f "$file" ]; then
-		cat <<EOF > "$file"
+		cat <<EOF >"$file"
 vm.swappiness=180
 vm.vfs_cache_pressure=200
 vm.page-cluster=0
@@ -688,47 +655,50 @@ EOF
 }
 
 configure_zswap() {
-  file="/etc/default/grub"
-  msg "Configurando zswap..."
+	file="/etc/default/grub"
+	msg "Configurando zswap..."
 
-  [ -f "$file" ] || { warn "GRUB não encontrado."; return; }
+	[ -f "$file" ] || {
+		warn "GRUB não encontrado."
+		return
+	}
 
-  # garante linha
-  grep -q '^GRUB_CMDLINE_LINUX=' "$file" || \
-    echo 'GRUB_CMDLINE_LINUX=""' >> "$file"
+	# garante linha
+	grep -q '^GRUB_CMDLINE_LINUX=' "$file" ||
+		echo 'GRUB_CMDLINE_LINUX=""' >>"$file"
 
-  # pega conteúdo atual
-  current=$(sed -n 's/^GRUB_CMDLINE_LINUX="\([^"]*\)"/\1/p' "$file")
+	# pega conteúdo atual
+	current=$(sed -n 's/^GRUB_CMDLINE_LINUX="\([^"]*\)"/\1/p' "$file")
 
-  # remove params antigos
-  current="${current//zswap.enabled=*/}"
-  current="${current//zswap.max_pool_percent=*/}"
+	# remove params antigos
+	current="${current//zswap.enabled=*/}"
+	current="${current//zswap.max_pool_percent=*/}"
 
-  # normaliza espaços
-  current="$(echo "$current" | xargs)"
+	# normaliza espaços
+	current="$(echo "$current" | xargs)"
 
-  # adiciona correto
-  new="$current zswap.enabled=1 zswap.max_pool_percent=25"
-  new="$(echo "$new" | xargs)"
+	# adiciona correto
+	new="$current zswap.enabled=1 zswap.max_pool_percent=25"
+	new="$(echo "$new" | xargs)"
 
-  # só altera se mudou
-  if ! grep -q "GRUB_CMDLINE_LINUX=\"$new\"" "$file"; then
-    sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"$new\"|" "$file"
+	# só altera se mudou
+	if ! grep -q "GRUB_CMDLINE_LINUX=\"$new\"" "$file"; then
+		sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"$new\"|" "$file"
 
-    if command -v update-grub >/dev/null; then
-      update-grub
-    else
-      grub-mkconfig -o /boot/grub/grub.cfg
-    fi
+		if command -v update-grub >/dev/null; then
+			update-grub
+		else
+			grub-mkconfig -o /boot/grub/grub.cfg
+		fi
 
-    changed=true
-  else
-    msg_tab "${green}zswap já configurado.${rst}"
-  fi
+		changed=true
+	else
+		msg_tab "${green}zswap já configurado.${rst}"
+	fi
 }
 
 configure_thp() {
-  msg "Configurando THP"
+	msg "Configurando THP"
 	if [[ "$init" == "runit" ]]; then
 		file=/etc/runit/core-services/05-voidbr-thp.sh
 		if [ ! -f "$file" ]; then
@@ -766,6 +736,7 @@ EOF
 detect_disk() {
 	root_partition=$(findmnt -n -o SOURCE /)
 	disk=$(lsblk -no PKNAME "$root_partition" | tail -n1)
+	disk=$(findmnt -n -o SOURCE /)
 	disk=$(echo "$disk" | sed 's/p[0-9]\+$//; s/[0-9]\+$//')
 	if [[ -z "$disk" ]]; then
 		disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print $1;exit}')
@@ -778,7 +749,6 @@ detect_disk() {
 		type="HDD"
 		scheduler="bfq"
 	fi
-	msg "$type detectado ($disk)"
 }
 
 configure_scheduler() {
@@ -824,46 +794,116 @@ enable_swap() {
 	fi
 }
 
+enable_preload() {
+	msg "Ativando preload..."
+	if command -v sv >/dev/null 2>&1; then
+		sudo xbps-install preload
+		sudo ln -sf /etc/sv/preload /var/service/
+	elif command -v systemctl >/dev/null 2>&1; then
+		sudo pacman -S preload
+		sudo systemctl enable --now preload
+	fi
+}
+
+disable_preload() {
+	msg "Desativando preload..."
+	if command -v sv >/dev/null 2>&1; then
+		sudo rm -f /var/service/preload
+	elif command -v systemctl >/dev/null 2>&1; then
+		sudo systemctl disable --now preload
+	fi
+}
+
 ensure_debugfs() {
-  if ! mountpoint -q /sys/kernel/debug; then
-    msg "Montando debugfs..."
-    mount -t debugfs none /sys/kernel/debug
+	if ! mountpoint -q /sys/kernel/debug; then
+		msg "Montando debugfs..."
+		mount -t debugfs none /sys/kernel/debug
+	fi
+}
+
+detect_zswap() {
+	zswap_enabled='N'
+	# zswap básico
+	if [ -d /sys/module/zswap ]; then
+		zswap_enabled="$(cat /sys/module/zswap/parameters/enabled)"
+	fi
+}
+
+calculate_swap() {
+	msg "Calculando swapfile..."
+	if supports_hibernation; then
+		msg_tab "Modo            : ${cyan}hibernação${reset}"
+
+		if ((ram_gb <= 2)); then
+			swap_gb=$((ram_gb * 2))
+		elif ((ram_gb <= 8)); then
+			swap_gb=$((ram_gb + ram_gb / 2))
+		else
+			swap_gb=$((ram_gb + 4))
+		fi
+	else
+		msg_tab "Modo            : ${cyan}low RAM${reset}"
+
+		if ((ram_gb <= 2)); then
+			swap_gb=$((ram_gb * 2))
+		elif ((ram_gb <= 8)); then
+			swap_gb=$ram_gb
+		else
+			swap_gb=8
+		fi
+	fi
+
+	msg_tab "Swap recomendada: ${cyan}${swap_gb} GB${rst}"
+  current_gb=0
+  if [ -f /swapfile ]; then
+    current_size=$(stat -c%s /swapfile)
+    current_gb=$((current_size / 1024 / 1024 / 1024))
   fi
+  color=$cyan
+  if (( swap_gb != current_gb )); then
+    color=$yellow
+  fi
+  msg_tab "Swap atual      : ${color}${current_gb} GB"
+  msg_tab "${cyan}$(swapon --show)"
 }
 
 summary() {
-  replicate '-'
-  echo "${blue}Resumo do sistema${rst}"
-  replicate '-'
+	replicate '-'
+	echo "${blue}Resumo do sistema${rst}"
+	replicate '-'
+	msg "Init detectado  : ${cyan}${init}${rst}"
+	msg "Filesystem raiz : ${cyan}${root_fs}${rst}"
+	msg "Disco detectado : ${cyan}$type ($disk)${rst}"
+	msg "RAM detectada   : ${cyan}${ram_gb} GB${rst}"
 
-  msg "RAM             : ${cyan}${ram_gb} GB"
-  msg "Swap configurada: ${cyan}${swap_gb} GB"
-  msg_tab "${cyan}$(swapon --show)"
-  msg "$(sysctl vm.swappiness)"
+  calculate_swap
 
-  # zswap básico
-  if [ -d /sys/module/zswap ]; then
-    msg "zswap enabled  : ${cyan}$(cat /sys/module/zswap/parameters/enabled)"
-    for f in /sys/module/zswap/parameters/*; do
-      msg_tab "$(printf "%-30s : ${cyan}%s\n" "$(basename "$f")" "$(cat "$f")")"
-    done
-  else
-    msg_tab "zswap          : não disponível"
-  fi
+	# zswap básico
+	detect_zswap
+	msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
+	if [ $zswap_enabled = 'Y' ]; then
+		msg_tab "$(sysctl vm.swappiness)"
+		for f in /sys/module/zswap/parameters/*; do
+			msg_tab "$(printf "%-30s : ${cyan}%s\n" "$(basename "$f")" "$(cat "$f")")"
+		done
 
-  # debugfs (stats)
-  if mountpoint -q /sys/kernel/debug 2>/dev/null && [ -d /sys/kernel/debug/zswap ]; then
-    msg $(cat /sys/kernel/debug/zswap/*)
-  else
-    msg "zswap stats    : debugfs não montado"
-  fi
+  	# debugfs (stats)
+  	if mountpoint -q /sys/kernel/debug 2>/dev/null && [ -d /sys/kernel/debug/zswap ]; then
+	  	msg_tab "Dump das métricas do zswap     :" ${cyan}$(cat /sys/kernel/debug/zswap/*)${rst}
+  	else
+  		msg_tab "zswap stats     : ${cyan}debugfs não montado${rst}"
+  	fi
+	fi
+	#replicate '#'
 
-  echo
-  if $changed; then
-    warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
-  else
-    msg "${green}Nenhuma alteração foi necessária.${rst}"
-  fi
+	if $changed; then
+  	echo
+		warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
+	else
+    #echo
+	  #msg "${green}Nenhuma alteração foi necessária.${rst}"
+		:
+	fi
 }
 
 main() {
@@ -882,32 +922,33 @@ main() {
 	detect_disk
 	configure_scheduler
 	enable_swap
-  ensure_debugfs
-  summary
+	enable_preload
+	ensure_debugfs
+	summary
 }
 
 uninstall() {
-  msg "Removendo configurações..."
+	msg "Removendo configurações..."
 
-  detect_init
+	detect_init
 
-  # swapfile
-  if swapon --show=NAME | grep -q '^/swapfile$'; then
-    swapoff /swapfile
-  fi
-  rm -f /swapfile
-  sed -i '\|/swapfile|d' /etc/fstab
+	# swapfile
+	if swapon --show=NAME | grep -q '^/swapfile$'; then
+		swapoff /swapfile
+	fi
+	rm -f /swapfile
+	sed -i '\|/swapfile|d' /etc/fstab
 
-  # sysctl
-  rm -f /etc/sysctl.d/99-voidbr-memory-tuning.conf
-  rm -f /etc/sysctl.d/99-chili-memory-tuning.conf
+	# sysctl
+	rm -f /etc/sysctl.d/99-voidbr-memory-tuning.conf
+	rm -f /etc/sysctl.d/99-chili-memory-tuning.conf
 
-  # zram blacklist
-  rm -f /etc/modprobe.d/disable-zram.conf
+	# zram blacklist
+	rm -f /etc/modprobe.d/disable-zram.conf
 
-  # zswap (GRUB)
-  if [ -f /etc/default/grub ]; then
-    sed -i '/^GRUB_CMDLINE_LINUX="/{
+	# zswap (GRUB)
+	if [ -f /etc/default/grub ]; then
+		sed -i '/^GRUB_CMDLINE_LINUX="/{
       s/\<zswap.enabled=[^ "]*\>//g
       s/\<zswap.max_pool_percent=[^ "]*\>//g
       s/  */ /g
@@ -915,72 +956,74 @@ uninstall() {
       s/ *"$/"/
     }' /etc/default/grub
 
-    if command -v update-grub >/dev/null; then
-      update-grub
-    else
-      grub-mkconfig -o /boot/grub/grub.cfg
-    fi
-  fi
+		if command -v update-grub >/dev/null; then
+			update-grub
+		else
+			grub-mkconfig -o /boot/grub/grub.cfg
+		fi
+	fi
 
-  # limpeza por init
-  case "$init" in
-    runit)
-      msg "Removendo configurações (runit)..."
-      rm -f /etc/runit/core-services/03-voidbr-scheduler.sh
-      rm -f /etc/runit/core-services/05-voidbr-thp.sh
-      rm -f /etc/runit/core-services/10-zram.sh
-      rm -f /etc/runit/core-services/10-voidbr-zram.sh
-      ;;
+	# limpeza por init
+	case "$init" in
+	runit)
+		msg "Removendo configurações (runit)..."
+		rm -f /etc/runit/core-services/03-voidbr-scheduler.sh
+		rm -f /etc/runit/core-services/05-voidbr-thp.sh
+		rm -f /etc/runit/core-services/10-zram.sh
+		rm -f /etc/runit/core-services/10-voidbr-zram.sh
+		;;
 
-    systemd)
-      msg "Removendo configurações (systemd)..."
-      systemctl disable chili-thp 2>/dev/null
-      rm -f /etc/systemd/system/chili-thp.service
+	systemd)
+		msg "Removendo configurações (systemd)..."
+		systemctl disable chili-thp 2>/dev/null
+		rm -f /etc/systemd/system/chili-thp.service
 
-      systemctl disable chili-bfq 2>/dev/null
-      rm -f /etc/systemd/system/chili-bfq.service
+		systemctl disable chili-bfq 2>/dev/null
+		rm -f /etc/systemd/system/chili-bfq.service
 
-      systemctl daemon-reload
-      ;;
-  esac
-
-  msg "${green}Remoção concluída.${rst}"
+		systemctl daemon-reload
+		;;
+	esac
+	disable_preload
+	msg "${green}Remoção concluída.${rst}"
+	warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
 }
 
 usage() {
-  echo -e "${cyan}Uso:${reset} $0 [opção]"
-  echo
-  echo -e "${cyan}Opções:${reset}"
-  echo -e "  ${yellow}Sem opção     ${reset} mostra resumo do sistema"
-  echo -e "  ${green}--install${reset}      Aplica configurações"
-  echo -e "  ${red}--uninstall${reset}    Remove configurações"
-  echo -e "  ${cyan}-h, --help${reset}     Mostra esta ajuda"
+	echo -e "${cyan}Uso:${reset} $APP [opção]"
+	echo -e "${cyan}Opções:${reset}"
+	echo -e "  ${yellow}-s, --show       ${reset} mostra resumo do sistema"
+	echo -e "  ${green}-i, --install${reset}     Aplica configurações"
+	echo -e "  ${red}-u, --uninstall${reset}   Remove configurações"
+	echo -e "  ${cyan}-h, --help${reset}        Mostra este ajuda"
 }
 
 case "$1" in
-  "")
-    detect_init
-    detect_fs
-    detect_ram
-    calculate_swap
-    detect_disk
-    ensure_debugfs
-    summary
-    usage
-    ;;
-  --install)
-    main
-    ;;
-  --uninstall)
-    check_root
-    uninstall
-    ;;
-  -h|--help)
-    usage
-    ;;
-  *)
-    err "Opção inválida: $1"
-    usage
-    exit 1
-    ;;
+"")
+	warn "erro: nenhuma operação especificada (use -h para obter ajuda)"
+	;;
+-s | --show)
+	detect_init
+	detect_fs
+	detect_ram
+	detect_disk
+	#calculate_swap
+	ensure_debugfs
+	summary
+	;;
+-i|--install)
+	main
+	;;
+-u|--uninstall)
+	check_root
+	uninstall
+	;;
+-h | --help)
+	usage
+	;;
+*)
+	err "Opção inválida: $1"
+	usage
+	exit 1
+	;;
 esac
