@@ -6,7 +6,7 @@
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
 #  Altered: qua 11 mar 2026 11:53:16 -04
-#  Updated: qui 23 abr 2026 00:31:27 -04
+#  Updated: qui 23 abr 2026 14:15:26 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -932,7 +932,8 @@ summary() {
 
 	# zswap básico
 	detect_zswap
-	if [[ $changed || ${zswap_enabled} = "N" ]]; then
+
+	if [[ $changed == true || ${zswap_enabled} = "N" ]]; then
 		warn "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
 	else
     msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
