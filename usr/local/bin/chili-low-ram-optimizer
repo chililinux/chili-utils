@@ -6,7 +6,7 @@
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
 #  Altered: qua 11 mar 2026 11:53:16 -04
-#  Updated: qua 22 abr 2026 11:13:17 -04
+#  Updated: qui 23 abr 2026 00:31:27 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -46,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.04.21-20260422"
+declare _VERSION_="0.04.21-20260423"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare -A PACKAGEDEP=(
@@ -69,13 +69,13 @@ declare -A DISTRO_PKGS=(
 )
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
-	["void"]="xbps-install -Syf"
-	["void-live"]="xbps-install -Syf"
-	["voidlinux"]="xbps-install -Syf"
-	["chili"]="pacman -Sy --needed --noconfirm"
-	["chililinux"]="pacman -Sy --needed --noconfirm"
-	["arch"]="pacman -Sy --needed --noconfirm"
-	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["void"]="xbps-install -y --ignore-file-conflicts"
+	["void-live"]="xbps-install -y --ignore-file-conflicts"
+	["voidlinux"]="xbps-install -y --ignore-file-conflicts"
+	["chili"]="pacman -S --needed --noconfirm"
+	["chililinux"]="pacman -S --needed --noconfirm"
+	["arch"]="pacman -S --needed --noconfirm"
+	["manjaro"]="pacman -S --needed --noconfirm"
 	["debian"]="apt-get install -y"
 )
 # Mapa: [distro]="lista de pacotes"
@@ -92,14 +92,14 @@ declare -A DISTRO_PKGS=(
 )
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
-	["void"]="xbps-install -Syf"
-	["void-live"]="xbps-install -Syf"
-	["voidlinux"]="xbps-install -Syf"
-	["chili"]="pacman -Sy --needed --noconfirm"
-	["chililinux"]="pacman -Sy --needed --noconfirm"
-	["arch"]="pacman -Sy --needed --noconfirm"
-	["viglinux"]="pacman -Sy --needed --noconfirm"
-	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["void"]="xbps-install -y --ignore-file-conflicts"
+	["void-live"]="xbps-install -y --ignore-file-conflicts"
+	["voidlinux"]="xbps-install -y --ignore-file-conflicts"
+	["chili"]="pacman -S --needed --noconfirm"
+	["chililinux"]="pacman -S --needed --noconfirm"
+	["arch"]="pacman -S --needed --noconfirm"
+	["viglinux"]="pacman -S --needed --noconfirm"
+	["manjaro"]="pacman -S --needed --noconfirm"
 	["debian"]="apt-get install -y"
 )
 declare dialogRcFile="$HOME/.dialogrc"
@@ -372,6 +372,7 @@ log_ok() { echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
 log_warn() { echo -e "${WARN} ${*}${reset}"; }
+warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
 msg_warn() { echo -e "${WARN} ${*}${reset}"; }
 warn() { echo -e "${WARN} ${*}${reset}"; }
 msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
@@ -386,7 +387,6 @@ die() {
 
 detect_distro() {
 	local id=""
-
 	if [[ -r /etc/os-release ]]; then
 		# Lê ID=void|arch|debian|... exatamente como a distro declara
 		id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
@@ -595,8 +595,10 @@ configure_swapfile() {
 		fi
 
 		# 2. Desativa e remove o antigo se existir
-		run_cmd swapoff /swapfile
-		run_cmd rm -f /swapfile
+		if [ -f /swapfile ]; then
+			run_cmd swapoff /swapfile
+			run_cmd rm -f /swapfile
+		fi
 
 		msg "Criando swapfile de ${swap_gb}G no $root_fs..."
 		case "$root_fs" in
@@ -659,7 +661,7 @@ configure_zswap() {
 	msg "Configurando zswap..."
 
 	[ -f "$file" ] || {
-		warn "GRUB não encontrado."
+		warn "Arquivo ${file} não encontrado."
 		return
 	}
 
@@ -684,13 +686,11 @@ configure_zswap() {
 	# só altera se mudou
 	if ! grep -q "GRUB_CMDLINE_LINUX=\"$new\"" "$file"; then
 		sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"$new\"|" "$file"
-
 		if command -v update-grub >/dev/null; then
 			run_cmd update-grub
 		else
 			rum_cmd grub-mkconfig -o /boot/grub/grub.cfg
 		fi
-
 		changed=true
 	else
 		msg_tab "${green}zswap já configurado.${rst}"
@@ -797,13 +797,16 @@ enable_swap() {
 }
 
 enable_preload() {
+	local cmd="${DISTRO_MGR[$DISTRO]}"
+	local pkgs="preload"
+
 	# 1. Instalação (apenas se não existir)
 	if ! command -v preload >/dev/null 2>&1; then
 		msg "Instalando preload..."
-		if command -v pacman >/dev/null 2>&1; then
-			run_cmd pacman -Sy --noconfirm --quiet preload
-		elif command -v xbps-install >/dev/null 2>&1; then
-			run_cmd xbps-install -Sy preload
+		# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+		if ! run_cmd $cmd "$pkgs"; then
+			warn "A instalação dos pacotes básicos falhou."
+			return 1
 		fi
 		changed=true
 	fi
@@ -812,7 +815,7 @@ enable_preload() {
 	if [[ "$init" == "systemd" ]]; then
 		# Verifica se o serviço NÃO está habilitado
 		if ! systemctl is-enabled --quiet preload 2>/dev/null; then
-			msg_tab "Habilitando serviço preload..."
+			msg_tab "Habilitando serviço preload (systemd)..."
 			run_cmd systemctl daemon-reload
 			run_cmd systemctl enable --now preload
 			changed=true
@@ -828,10 +831,11 @@ enable_preload() {
 }
 
 disable_preload() {
-	msg "Desativando preload..."
 	if command -v sv >/dev/null 2>&1; then
+		msg "Desativando preload (runit)..."
 		run_cmd sudo rm -f /var/service/preload
 	elif command -v systemctl >/dev/null 2>&1; then
+		msg "Desativando preload (systemd)..."
 		run_cmd sudo systemctl disable --now preload
 	fi
 }
@@ -849,6 +853,11 @@ detect_zswap() {
 	if [ -d /sys/module/zswap ]; then
 		zswap_enabled="$(cat /sys/module/zswap/parameters/enabled)"
 	fi
+}
+
+disable_zswap() {
+	msg "Desativando zswap..."
+	run_cmd 'echo 0 > /sys/module/zswap/parameters/enabled'
 }
 
 calculate_swap() {
@@ -913,6 +922,7 @@ summary() {
 	replicate '-'
 	echo "${blue}Resumo do sistema${rst}"
 	replicate '-'
+	msg "Distro detectada: ${cyan}${DISTRO}${rst}"
 	msg "Init detectado  : ${cyan}${init}${rst}"
 	msg "Filesystem raiz : ${cyan}${root_fs}${rst}"
 	msg "Disco detectado : ${cyan}$type ($disk)${rst}"
@@ -922,7 +932,11 @@ summary() {
 
 	# zswap básico
 	detect_zswap
-	msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
+	if [[ $changed || ${zswap_enabled} = "N" ]]; then
+		warn "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
+	else
+    msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
+	fi
 	if [ $zswap_enabled = 'Y' ]; then
 		msg_tab "$(sysctl vm.swappiness)"
 		for f in /sys/module/zswap/parameters/*; do
@@ -948,7 +962,7 @@ summary() {
 	fi
 }
 
-main() {
+sh_install() {
 	check_root
 	detect_init
 	detect_fs
@@ -968,7 +982,7 @@ main() {
 	summary
 }
 
-uninstall() {
+sh_uninstall() {
 	msg "Removendo configurações..."
 	detect_init
 
@@ -1023,6 +1037,7 @@ uninstall() {
 		;;
 	esac
 	disable_preload
+	disable_zswap
 	msg "${green}Remoção concluída.${rst}"
 	warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
 }
@@ -1036,9 +1051,12 @@ usage() {
 	echo -e "  ${cyan}-h, --help${reset}        Mostra este ajuda"
 }
 
+DISTRO="$(detect_distro)"
+
 case "$1" in
 "")
 	warn "erro: nenhuma operação especificada (use -h para obter ajuda)"
+	exit 1
 	;;
 -s | --show)
 	detect_init
@@ -1050,11 +1068,11 @@ case "$1" in
 	summary
 	;;
 -i | --install)
-	main
+	sh_install
 	;;
 -u | --uninstall)
 	check_root
-	uninstall
+	sh_uninstall
 	;;
 -h | --help)
 	usage
