@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: qua 25 mar 2026 01:27:56 -04
+#  Updated: qua 29 abr 2026 19:29:23 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -43,7 +43,7 @@ export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.04.08-20260325'
+readonly VERSION='3.04.29-20260429'
 readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1483,8 +1483,8 @@ print_summary_access_vm() {
    fi
 
 	msg_info "$(gettext 'acesso a VM via') ${cyan}ssh:"
-   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado do guest)')")"
-   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado do guest)')")"
+   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado no guest)')")"
+   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado no guest)')")"
    if ! $bridge; then
       msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
       msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
@@ -1619,8 +1619,7 @@ main() {
 	for img in "${devices[@]}"; do
 		media_type=$(file -b --mime-type "${img}")
 		#		qemu_options+=(-boot menu=on)
-#		if [[ "${media_type}" == "application/x-iso9660-image" ]]; then
-      if [[ "$img" == *.iso ]]; then
+    if [[ "$img" == *.iso ]]; then
 			msg_info "$(gettext 'Anexando iso') #${bootindex}: ${yellow}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
 			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
@@ -1630,11 +1629,6 @@ main() {
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 			((bootindex++))
-#		elif [[ "${img}" == /dev/* ]]; then
-#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=${cache_type})
-#			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-#			msg_info "Anexando device #${bootindex}: ${yellow}${img}"
-#			((bootindex++))
       elif [[ -b "$img" ]]; then
          # Disco físico (block device real):
          # Este bloco trata dispositivos reais em /dev (ex.: /dev/sdX, /dev/nvmeXnY).
@@ -1656,14 +1650,6 @@ main() {
          )
          qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
          ((bootindex++))
-#		else
-#			msg_info "Anexando vdisk #${bootindex}: ${yellow}${img}"
-#			#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-#			#			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-#			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw)
-#			qemu_options+=(-device ahci,id=sata${bootindex})
-#			qemu_options+=(-device ide-hd,drive=disk${bootindex},bus=sata${bootindex}.0,bootindex=${bootindex})
-#			((bootindex++))
       else
          # Fallback para imagem raw genérica:
          # Este bloco só é alcançado quando o arquivo NÃO é:
@@ -1724,31 +1710,32 @@ main() {
 			-display curses
 		)
 	else
-#		qemu_options+=(-device virtio-scsi-pci,id=scsi0)
-#		qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
-      audio="${audioserver:-$(detect_audio_server)}"
-      qemu_options+=(-audiodev "$audio",id=snd0)
+    #qemu_options+=(-device virtio-scsi-pci,id=scsi0)
+    #qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
+    audio="${audioserver:-$(detect_audio_server)}"
+    qemu_options+=(-audiodev "$audio",id=snd0)
 		qemu_options+=(-rtc base=localtime,clock=host)
 		qemu_options+=(-device ich9-intel-hda)
-#		qemu_options+=(-device hda-output,audiodev=snd0) # só saida de audio
+    #qemu_options+=(-device hda-output,audiodev=snd0) # só saida de audio
 		qemu_options+=(-device hda-duplex,audiodev=snd0)
 		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
-		if $lshare; then
-         #compartilhamento
-         qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
-         qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
-      fi
-      #
-      #qemu_options+=(-device intel-iommu)
-      #qemu_options+=(-display gtk,gl=on)
-	fi
+
+    if $lshare; then
+      #compartilhamento
+      qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
+      qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
+    fi
+    #
+    #qemu_options+=(-device intel-iommu)
+    #qemu_options+=(-display gtk,gl=on)
+  fi
 
 	if $spice; then
-      # SPICE video: use QXL. VGA é fallback; virtio-vga é para GTK, não SPICE.
-#		qemu_options+=(-device qxl)
-#		qemu_options+=(-device qxl,heads=1)
-#		qemu_options+=(-device qxl,heads=2)
+    # SPICE video: use QXL. VGA é fallback; virtio-vga é para GTK, não SPICE.
+    #qemu_options+=(-device qxl)
+    #qemu_options+=(-device qxl,heads=1)
+    #qemu_options+=(-device qxl,heads=2)
 		qemu_options+=(-device "$videodevice")
 		qemu_options+=(-device virtio-serial)
 		sh_start_with_spice
@@ -1757,26 +1744,38 @@ main() {
 		qemu_options+=(-device "$videodevice")
 #		qemu_options+=(-display gtk,gl=on)
 		qemu_options+=(-display sdl)
-		if $only_tty; then
-		   if $output; then
-            cat <<EOF
-# ${red}output${cyan}
+    if $only_tty; then
+		  if $output; then
+        cat <<EOF
+#${red}output${cyan}
 sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
 EOF
-			   exit 0
-	      fi
+			  exit 0
+      fi
 			cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		else
-		   if $output; then
-            cat <<EOF
-# ${red}output ${cyan}
-sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+      cmd=(
+        sudo -E setsid env
+        SDL_VIDEODRIVER=x11
+        XDG_RUNTIME_DIR="/run/user/$(id -u)"
+        qemu-system-x86_64 "${qemu_options[@]}"
+      )
+      if $output; then
+        #sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+        cat <<EOF
+#${red}output ${cyan}
+${cmd[*]} > /tmp/qemu.log 2>&1 &
+disown
 EOF
-   			exit 0
-	      fi
-			sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
-			exit 0
+        exit 0
+      fi
+
+      #sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+      "${cmd[@]}" > /tmp/qemu.log 2>&1 &
+      disown
+      exit 0
+
 		fi
 	fi
 }
@@ -1804,7 +1803,7 @@ if [ -z "$DISPLAY" ]; then
   exit 1
 fi
 
-OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:o:q
+OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
 LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 eval set -- "${opts[*]}"
