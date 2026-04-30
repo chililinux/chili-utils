@@ -4,107 +4,108 @@
 #
 #  chili-make-md5-iso
 #  Created: 2025/02/10 - 11:46
-#  Altered: 2025/02/10 - 11:46
+#  Altered: 2026/04/30 - 18:40
 #
-#  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
-#  All rights reserved.
-#
-#  Redistribution and use in source and binary forms, with or without
-#  modification, are permitted provided that the following conditions
-#  are met:
-#  1. Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#  2. Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#
-#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
-#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#  Copyright (c) 2025-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 ##############################################################################
-#export LANGUAGE=pt_BR
 export TEXTDOMAINDIR=/usr/share/locale
 export TEXTDOMAIN=chili-make-md5-iso
 
-# Definir a variável de controle para restaurar a formatação original
-reset=$(tput sgr0)
+# Cores e Estilos
+export reset=$(tput sgr0)
+export green=$(tput bold)$(tput setaf 2)
+export yellow=$(tput bold)$(tput setaf 3)
+export red=$(tput bold)$(tput setaf 1)
+export cyan=$(tput bold)$(tput setaf 6)
 
-# Definir os estilos de texto como variáveis
-bold=$(tput bold)
-underline=$(tput smul)   # Início do sublinhado
-nounderline=$(tput rmul) # Fim do sublinhado
-reverse=$(tput rev)      # Inverte as cores de fundo e texto
+# System
+declare _VERSION_="1.4.7"
 
-# Definir as cores ANSI como variáveis
-black=$(tput bold)$(tput setaf 0)
-red=$(tput bold)$(tput setaf 196)
-green=$(tput bold)$(tput setaf 2)
-yellow=$(tput bold)$(tput setaf 3)
-blue=$(tput setaf 4)
-pink=$(tput setaf 5)
-magenta=$(tput setaf 5)
-cyan=$(tput setaf 6)
-white=$(tput setaf 7)
-gray=$(tput setaf 8)
-orange=$(tput setaf 202)
-purple=$(tput setaf 125)
-violet=$(tput setaf 61)
-light_red=$(tput setaf 9)
-light_green=$(tput setaf 10)
-light_yellow=$(tput setaf 11)
-light_blue=$(tput setaf 12)
-light_magenta=$(tput setaf 13)
-light_cyan=$(tput setaf 14)
-bright_white=$(tput setaf 15)
+# Função principal de processamento
+process_iso() {
+	local iso="$1"
+	local job_idx="$2"
+	local md5_file="${iso}.md5"
+	local prefix=""
 
-#debug
-export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
-#set -x
-#set -e
-shopt -s extglob
+	[[ -n "$job_idx" ]] && prefix="[$job_idx] "
 
-#system
-declare APP="${0##*/}"
-declare _VERSION_="1.0.0-20250210"
-declare distro="$(uname -n)"
-declare DEPENDENCIES=(tput)
+	local cmd_md5
+	command -v md5sum >/dev/null 2>&1 && cmd_md5="md5sum" || return 1
 
-msg() {
-  echo -e "$1"
+	if [[ ! -f "$iso" ]]; then
+		echo -e "${prefix}${red}<arquivo não encontrado: $iso>${reset}"
+		return 1
+	fi
+
+	# Uso de ionice para melhorar a prioridade de I/O se disponível
+	local run_cmd="ionice -c 2 -n 0"
+	command -v ionice >/dev/null 2>&1 || run_cmd=""
+
+	if [[ ! -f "$md5_file" ]]; then
+		printf "${prefix}${yellow}Gerando MD5: %s${reset}\n" "$iso"
+		$run_cmd $cmd_md5 "$iso" >"$md5_file"
+	else
+		printf "${prefix}${cyan}Verificando MD5: %s${reset}\n" "$iso"
+		if ! $run_cmd $cmd_md5 -c "$md5_file" &>/dev/null; then
+			printf "${prefix}${red}Soma de verificação não confere! Gerando novamente: %s${reset}\n" "$iso"
+			$run_cmd $cmd_md5 "$iso" >"$md5_file"
+		fi
+	fi
+
+	if [[ -f "$md5_file" ]]; then
+		printf "${prefix}${green}%s${reset}\n" "$(<"$md5_file")"
+	fi
+}
+export -f process_iso
+
+# Função de ajuda
+show_help() {
+	cat <<EOF
+Uso: ${0##*/} [arquivos ISO]
+
+Gera e verifica arquivos de soma de verificação MD5 para imagens ISO.
+Se nenhum argumento for fornecido, todos os arquivos *.iso no diretório atual serão processados.
+
+Opções:
+  --help        Mostra esta mensagem de ajuda
+  --version     Mostra a versão do script
+EOF
 }
 
-# Inicializa a variável de contagem
-count=1
+# Argumentos especiais
+case "$1" in
+--help)
+	show_help
+	exit 0
+	;;
+--version)
+	echo "${0##*/} versão $_VERSION_"
+	exit 0
+	;;
+esac
 
+# Coleta de arquivos
 if [[ $# -eq 0 ]]; then
-  files=(*.iso)
+	shopt -s nullglob
+	files=(*.iso)
 else
-  files=("$@")
+	files=("$@")
 fi
 
-# Verifica se há arquivos na lista
-[[ "${#files[@]}" -lt 1 ]] && {
-  msg '${red}<files not found>${reset}'
-  exit 1
+[[ ${#files[@]} -eq 0 ]] && {
+	echo -e "${red}<arquivos não encontrados>${reset}"
+	exit 1
 }
 
-for iso in "${files[@]}"; do
-  if [[ ! -f "$iso" ]]; then
-    msg "${red}<file not found: $iso${reset}"
-    continue
-  fi
-  if ! md5sum -c "${iso}.md5" &>/dev/null; then
-    msg "${yellow}[$count] => Generating new MD5 for: $iso${reset}"
-    md5sum "$iso" > "${iso}.md5"
-  fi
-  echo -n $((count++))' => '$green; cat $iso.md5; echo -n $reset
-  ((count++))
-done
-
+# --- ESTRATÉGIA DE EXECUÇÃO ---
+if command -v parallel >/dev/null 2>&1; then
+	# --jobs 2: Evita gargalo de disco em arquivos grandes
+	parallel --will-cite -k --line-buffer --jobs 2 --delay 0.1 process_iso {} {#} ::: "${files[@]}"
+else
+	count=1
+	for iso in "${files[@]}"; do
+		process_iso "$iso" "$count"
+		((count++))
+	done
+fi
