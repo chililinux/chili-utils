@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166
+#
+#  chili-make-md5-iso
+#  Created: 2025/02/10 - 11:46
+#  Altered: 2026/04/30 - 18:40
+#
+#  Copyright (c) 2025-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+##############################################################################
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-make-md5-iso
+
+# Cores e Estilos
+export reset=$(tput sgr0)
+export green=$(tput bold)$(tput setaf 2)
+export yellow=$(tput bold)$(tput setaf 3)
+export red=$(tput bold)$(tput setaf 1)
+export cyan=$(tput bold)$(tput setaf 6)
+
+# System
+declare _VERSION_="1.4.7"
+
+# Função principal de processamento
+process_iso() {
+	local iso="$1"
+	local job_idx="$2"
+	local md5_file="${iso}.md5"
+	local prefix=""
+
+	[[ -n "$job_idx" ]] && prefix="[$job_idx] "
+
+	local cmd_md5
+	command -v md5sum >/dev/null 2>&1 && cmd_md5="md5sum" || return 1
+
+	if [[ ! -f "$iso" ]]; then
+		echo -e "${prefix}${red}<arquivo não encontrado: $iso>${reset}"
+		return 1
+	fi
+
+	# Uso de ionice para melhorar a prioridade de I/O se disponível
+	local run_cmd="ionice -c 2 -n 0"
+	command -v ionice >/dev/null 2>&1 || run_cmd=""
+
+	if [[ ! -f "$md5_file" ]]; then
+		printf "${prefix}${yellow}Gerando MD5: %s${reset}\n" "$iso"
+		$run_cmd $cmd_md5 "$iso" >"$md5_file"
+	else
+		printf "${prefix}${cyan}Verificando MD5: %s${reset}\n" "$iso"
+		if ! $run_cmd $cmd_md5 -c "$md5_file" &>/dev/null; then
+			printf "${prefix}${red}Soma de verificação não confere! Gerando novamente: %s${reset}\n" "$iso"
+			$run_cmd $cmd_md5 "$iso" >"$md5_file"
+		fi
+	fi
+
+	if [[ -f "$md5_file" ]]; then
+		printf "${prefix}${green}%s${reset}\n" "$(<"$md5_file")"
+	fi
+}
+export -f process_iso
+
+# Função de ajuda
+show_help() {
+	cat <<EOF
+Uso: ${0##*/} [arquivos ISO]
+
+Gera e verifica arquivos de soma de verificação MD5 para imagens ISO.
+Se nenhum argumento for fornecido, todos os arquivos *.iso no diretório atual serão processados.
+
+Opções:
+  --help        Mostra esta mensagem de ajuda
+  --version     Mostra a versão do script
+EOF
+}
+
+# Argumentos especiais
+case "$1" in
+--help)
+	show_help
+	exit 0
+	;;
+--version)
+	echo "${0##*/} versão $_VERSION_"
+	exit 0
+	;;
+esac
+
+# Coleta de arquivos
+if [[ $# -eq 0 ]]; then
+	shopt -s nullglob
+	files=(*.iso)
+else
+	files=("$@")
+fi
+
+[[ ${#files[@]} -eq 0 ]] && {
+	echo -e "${red}<arquivos não encontrados>${reset}"
+	exit 1
+}
+
+# --- ESTRATÉGIA DE EXECUÇÃO ---
+if command -v parallel >/dev/null 2>&1; then
+	# --jobs 2: Evita gargalo de disco em arquivos grandes
+	parallel --will-cite -k --line-buffer --jobs 2 --delay 0.1 process_iso {} {#} ::: "${files[@]}"
+else
+	count=1
+	for iso in "${files[@]}"; do
+		process_iso "$iso" "$count"
+		((count++))
+	done
+fi
