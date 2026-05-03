@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: qua 29 abr 2026 19:29:23 -04
+#  Updated: dom 03 mai 2026 08:01:53 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -36,14 +36,20 @@ export TEXTDOMAIN=chili-fr
 export TERM=${TERM:-xterm}
 export TERM=${TERM:-xterm-256color}
 
+red=$(tput bold)$(tput setaf 196)
+green=$(tput setaf 2)
+pink=$(tput setaf 5)
+reset=$(tput sgr0)
+
 #debug
-export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 #set -x
 #set -e
+#set -eou pipefail
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.04.29-20260429'
+readonly VERSION='3.05.03-20260503'
 readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -73,31 +79,13 @@ declare HOME_DIR="$HOME/.chili-fr"
 declare iface_bridge='br0'
 declare bridge=false
 declare xmem='8G'
-
-declare videodevice='none'
-declare videodevice='ati-vga'
-declare videodevice='vmware-svga'
-declare videodevice='cirrus'
-declare videodevice='cirrus-vga'
-declare videodevice='isa-cirrus-vga'
-declare videodevice='isa-vga'
-declare videodevice='qxl-vga'
-declare videodevice='secondary-vga'
-declare videodevice='virtio-vga-gl'
-declare videodevice='virtio-gpu'
-declare videodevice='virtio-vga-gl'
-declare videodevice='virtio-gpu-pci'
-declare videodevice='virtio-gpu-gl-pci'
-declare videodevice='qxl-vga'
-declare videodevice='bochs-display'
-declare videodevice='ramfb'
-declare videodevice='virtio-gpu-gl'
-declare videodevice='virtio-gpu'
-
-declare videodevice='qxl'
-declare videodevice='VGA'
+#
+declare -a avideodevice=(
+  none ati-vga vmware-svga cirrus cirrus-vga isa-cirrus-vga isa-vga qxl-vga secondary-vga
+  virtio-vga-gl virtio-gpu virtio-vga-gl virtio-gpu-pci virtio-gpu-gl-pci qxl-vga bochs-display
+  ramfb virtio-gpu-gl virtio-gpu qxl VGA)
 declare videodevice='virtio-vga'
-
+#
 declare lshare=false
 declare spice=false
 declare uefi=false
@@ -109,20 +97,48 @@ declare vdisk_name=''
 declare netdevice='virtio-net-pci'
 declare anetdevices=()
 declare netchoosedriver=false
-declare LC_DEFAULT=0
 declare -i lastrow=$(tput lines)
 declare -i lastcol=$(tput cols)
 declare -i Prow=0
 declare -i Pcol=0
 declare -a qemu_options=()
 declare -a avdisk_names=()
-trap cleanup_working_dir EXIT
+# garante que nunca ficam unset
+: "${GUEST_CID:=}"
+: "${HOST_FWD:=}"
+: "${HOST_GOTIFY:=}"
 
-function cleanup_working_dir {
-	if [[ -d "${working_dir}" ]]; then
-		rm -rf -- "${working_dir}"
+# Função para limpar sujeira se o script for interrompido ANTES do disown
+cleanup() {
+	local code="$1"
+	((code == 0)) && return
+
+	msg_err "Falha (exit=$code). Limpando processos..."
+
+	# 🔥 mata QEMU (se criado)
+	if [[ -n ${qemu_pid:-} ]]; then
+		kill "$qemu_pid" 2>/dev/null
+	fi
+
+	# 🔥 mata viewer (se criado)
+	if [[ -n ${viewer_pid:-} ]]; then
+		kill "$viewer_pid" 2>/dev/null
+	fi
+
+	# 🔌 fallback (caso algo escapou)
+	for port in "${HOST_FWD:-}" "${HOST_GOTIFY:-}"; do
+		[[ -z "$port" ]] && continue
+		cmd_sudo fuser -k -n tcp "$port" 2>/dev/null
+	done
+
+	# 🧠 fallback vsock
+	if [[ -n ${GUEST_CID:-} ]]; then
+		for pid in $(pgrep -f "qemu.*guest-cid=${GUEST_CID}"); do
+			cmd_sudo kill "$pid" 2>/dev/null
+		done
 	fi
 }
+trap 'cleanup $?' EXIT
 
 sh_setvarcolors() {
 	if command -v "tput" &>/dev/null; then
@@ -167,6 +183,11 @@ sh_setvarcolors() {
 	DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
 	OVER="\\r\\033[K"
 	DOTPREFIX="  ${black}::${reset} "
+}
+
+sh_unsetvarcolors() {
+	unset bold reset cyan red blue white black
+	unset green yellow orange pink cyan purple violet
 }
 
 create_menu_with_array() {
@@ -262,39 +283,24 @@ setpos() {
 	printf "\e[$((row + 1));$((col + 1))H"
 }
 
-sh_unsetvarcolors() {
-	unset bold reset cyan red blue white black
-	unset green yellow orange pink cyan purple violet
-}
-
-die() {
-	local msg="$1"
-	shift
-	printf "%b %s\n" "${CROSS}" "${red}${msg}${rst}"
-	exit 1
-}
-
-log_err() {
-	printf "%b %s\n" "${CROSS}" "${*}"
-}
-
-log_ok() {
-	printf "%b %s\n" "${TICK}" "${*}"
-}
-
 log_msg() {
-	local retval="${PIPESTATUS[0]}"
-	local pcount=$#
+  local retval=${PIPESTATUS[0]}
+  local pcount=$#
 
-	((pcount >= 2)) && {
-		retval=$1
-		shift
-	}
-	if [[ $retval -eq 0 ]]; then
-		$quiet || printf "%b %s\n" "${TICK}" "${*}"
-	else
-		$quiet || printf "%b %s\n" "${CROSS}" "${*}"
-	fi
+  if (( pcount >= 2 )); then
+    case "$1" in
+      true)  retval=0 ;;
+      false) retval=1 ;;
+      *)     retval=$1 ;;
+    esac
+    shift
+  fi
+
+  if (( retval == 0 )); then
+    $quiet || printf "%b %s\n" "${TICK}" "$*"
+  else
+    $quiet || printf "%b %s\n" "${CROSS}" "$*"
+  fi
 }
 
 msg_raw() {
@@ -317,64 +323,41 @@ msg_raw() {
 }
 export -f msg_raw
 
-msg() {
-	local msg="$1"
-	msg="$(sed 's/<[^>]*>//g' <<<"$msg")" # Remove as tags HTML
-	echo -e "  =>${cyan}running: ${yellow}${msg}${reset}"
-}
-export -f msg
-
-msg_ok() {
-	local msg="$1"
-	#  echo -e "  =>${cyan}feito: ${green}${msg}${reset}"
-	echo -e "${TICK} ${green}${*}${rst}"
-}
-export -f msg_ok
-
 msg_run() {
 	local msg="$1"
-	echo -e "BP=>${cyan}running: ${yellow}${msg}${reset}"
-	eval "$msg"
+	echo -e "CF=>${cyan}running: ${yellow}${msg}${reset}"
+	#eval "$msg"
+	"$@"
 }
-export -f msg_run
 
-msg_info() { $quiet || echo -e "${INFO} ${*}${reset}"; }
-msg_info_tab() { $quiet || echo -e "  ${INFO} ${*}${reset}"; }
-msg() { $quiet || echo -e "${INFO} ${*}${reset}"; }
-log_ok() { $quiet || echo -e "${TICK} ${*}${reset}"; }
-log_err() { $quiet || echo -e "${CROSS} ${*}${reset}"; }
-log_mid() { $quiet || echo -e "${MID} ${*}${reset}"; }
-log_warn() { $quiet || echo -e "${WARN} ${*}${reset}"; }
-msg_ex_tab() { $quiet || echo -e "  👉   ${*}${reset}"; }
-msg_ex() { $quiet || echo -e "👉   ${*}${reset}"; }
-msg_tab() { $quiet || echo -e "  ${INFO} ${*}${reset}"; }
-log_ok_tab() { $quiet || echo -e "  ${TICK} ${*}${reset}"; }
-log_err_tab() { $quiet || echo -e "  ${CROSS} ${*}${reset}"; }
-log_mid_tab() { $quiet || echo -e "  ${MID} ${*}${reset}"; }
-log_warn_tab() { $quiet || echo -e "  ${WARN} ${*}${reset}"; }
+_print() { printf "%b\n" "$@"; }
+_log() {
+	local prefix="$1"
+	shift
+	$quiet && return
+	printf "%b %b%b\n" "$prefix" "$*" "$reset"
+}
+msg_info() { _log "$INFO" "$@"; }
+msg_info_tab() { _log "  $INFO" "$@"; }
+msg() { _log "$INFO" "$@"; }
+log_ok() { _log "$TICK" "$@"; }
+msg_ok() { _log "$TICK" "${green}$*"; }
+log_err() { _log "$CROSS" "$@"; }
+log_mid() { _log "$MID" "$@"; }
+log_warn() { _log "$WARN" "$@"; }
+msg_ex() { _log "👉" "$@"; }
+msg_ex_tab() { _log "  👉" "$@"; }
+msg_tab() { _log "  $INFO" "$@"; }
+log_ok_tab() { _log "  $TICK" "$@"; }
+log_err_tab() { _log "  $CROSS" "$@"; }
+log_mid_tab() { _log "  $MID" "$@"; }
+log_warn_tab() { _log "  $WARN" "$@"; }
+msg_warning() { _log "$WARN" "$@"; }
+msg_warn() { _log "$WARN" "$@"; }
+msg_err() { _log "$CROSS" "$@"; }
 die() {
-	echo -e "${CROSS} ${red}${*}${reset}"
+	printf "%b %b%b\n" "$CROSS" "$*" "$reset" >&2
 	exit 1
-}
-
-msg_warning() {
-	local msg="$*"
-	#	echo -e "  =>${yellow}warning: ${cyan}${msg}${reset}"
-	echo -e "${WARN} ${*}${reset}"
-}
-export -f msg_warning
-
-msg_warn() {
-	local msg="$1"
-	#	printf "%s\n" "${yellow}[WARN] ${cyan}$msg${rst}"
-	echo -e "${WARN} ${*}${reset}"
-}
-export -f msg_warn
-
-# Função para exibir mensagens informativas
-msg_err() {
-	#	printf "%s\n" "${red}[ERRO] ${cyan}$1${rst}"
-	echo -e "${CROSS} ${*}${reset}"
 }
 
 replicate() {
@@ -384,7 +367,6 @@ replicate() {
 	local line
 	printf -v line "%*s" "$nsize" && echo -e "${ccolor}${line// /$char}${rst}"
 }
-export -f replicate
 
 maxcol() {
 	COLUMNS=$(stty size)
@@ -398,11 +380,7 @@ readconf() {
 	local color="${2:-${red}}"
 
 	echo -n -e "$color"
-	if [[ $LC_DEFAULT -eq 0 ]]; then
-		read -r -p "$msg [S/n]"
-	else
-		read -r -p "$msg [Y/n]"
-	fi
+	read -r -p "$msg [S/n]"
 	echo -n -e "$reset"
 	case "${REPLY^}" in
 	[SY]) return 0 ;;
@@ -491,7 +469,7 @@ sh_checkOVMFFiles() {
 		echo "${black}Ao decidir não instalar, o UEFI poderá não funcionar corretamente.${rst}"
 		replicate '='
 		if readconf "Deseja instalar o pacote e suprir arquivos necessários ?"; then
-			sudo pacman -S --quiet --noconfirm edk2-ovmf 1>/dev/null
+			cmd_sudo pacman -S --quiet --noconfirm edk2-ovmf 1>/dev/null
 		fi
 	fi
 }
@@ -519,10 +497,10 @@ get_next_free_bridge() {
 # cmd_sudo wrapper
 # ---------------------------
 cmd_sudo() {
-	if [[ $EUID -eq 0 ]]; then
+	if ((EUID == 0)); then
 		"$@"
 	else
-		sudo "$@"
+		sudo -- "$@"
 	fi
 }
 
@@ -1172,30 +1150,37 @@ supports_uefi() {
 }
 
 detect_distro() {
-	local id=""
-
 	if [[ -r /etc/os-release ]]; then
-		# Lê ID=void|arch|debian|... exatamente como a distro declara
-		id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+		. /etc/os-release
 	elif [[ -r /usr/lib/os-release ]]; then
-		id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
+		. /usr/lib/os-release
 	else
 		echo "unknown"
 		return
 	fi
-	echo "$id"
+	echo "${ID:-unknown}"
 }
 
+#detect_audio_server() {
+#	if pgrep -x pipewire >/dev/null; then
+#		echo "pipewire"
+#	elif pgrep -x pulseaudio >/dev/null; then
+#		echo "pa"
+#	elif pgrep -x jackd >/dev/null; then
+#		echo "jack"
+#	else
+#		echo "none"
+#	fi
+#}
+
 detect_audio_server() {
-	if pgrep -x pipewire >/dev/null; then
-		echo "pipewire"
-	elif pgrep -x pulseaudio >/dev/null; then
-		echo "pa"
-	elif pgrep -x jackd >/dev/null; then
-		echo "jack"
-	else
-		echo "none"
-	fi
+	for s in pipewire pulseaudio jackd; do
+		pgrep -x "$s" &>/dev/null && {
+			echo "$s"
+			return
+		}
+	done
+	echo "none"
 }
 
 sh_version() {
@@ -1217,7 +1202,7 @@ sh_version() {
 	exit 0
 }
 
-function sh_usage {
+sh_usage() {
 	cat <<EOF
 $(gettext 'uso:') ${orange}$APP${reset} [$(gettext 'Opções')]
 ${cyan}$(gettext 'Opções:')${reset}
@@ -1443,8 +1428,8 @@ is_graphical() {
 sh_copyright() {
 	echo -n $orange
 	echo "$APP - v${VERSION} - ${APPDESC}"
-	echo 'Copyright (c) 2019-2025, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>'
-	echo 'Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>'
+	echo 'Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>'
+	echo 'Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>'
 	echo $rst
 }
 
@@ -1476,41 +1461,52 @@ add_smb_share() {
 }
 
 print_summary_access_vm() {
-   if $bridge; then
-     msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'informado. Iniciando VM em modo') ${yellow}BRIDGE${rst} (IP via DHCP)"
-   else
-     msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'não informado. Iniciando VM em modo') ${yellow}NAT${rst} (hostfwd ativo)"
-   fi
+	if $bridge; then
+		msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'informado. Iniciando VM em modo') ${yellow}BRIDGE${rst} (IP via DHCP)"
+	else
+		msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'não informado. Iniciando VM em modo') ${yellow}NAT${rst} (hostfwd ativo)"
+	fi
 
 	msg_info "$(gettext 'acesso a VM via') ${cyan}ssh:"
-   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado no guest)')")"
-   msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@vsock/$GUEST_CID"  "# $(gettext 'via vsock (se habilitado no guest)')")"
-   if ! $bridge; then
-      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
-      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@127.0.0.1 -p $HOST_FWD"  "# $(gettext 'via redirecionamento NAT')")"
-      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh live@127.0.0.1 -p $HOST_FWD"   "# $(gettext 'via redirecionamento NAT')")"
-      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh anon@127.0.0.1 -p $HOST_FWD"   "# $(gettext 'via redirecionamento NAT')")"
-      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $HOST_FWD"                     "# $(gettext 'via ssh config')")"
-   else
-      bloco_br=$(ip -4 route show dev "$iface_bridge" | awk '$1 ~ "/" {print $1; exit}')
-      msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh <IP-da-VM>         "     "# $(gettext 'IP atribuído na VM via DHCP') ($bloco_br")"
-   fi
+	msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@vsock/$GUEST_CID" "# $(gettext 'via vsock (se habilitado no guest)')")"
+	msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@vsock/$GUEST_CID" "# $(gettext 'via vsock (se habilitado no guest)')")"
 
-  CFG="$HOME/.ssh/config"
-  mkdir -p "$HOME/.ssh"
-  touch "$CFG"
-  grep -qE '^Host[[:space:]]+$HOST_FWD' "$CFG" 2>/dev/null || cat >> "$CFG" <<EOF
+	if ! $bridge; then
+		msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@127.0.0.1 -p $HOST_FWD" "# $(gettext 'via redirecionamento NAT')")"
+		msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@127.0.0.1 -p $HOST_FWD" "# $(gettext 'via redirecionamento NAT')")"
+		msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh live@127.0.0.1 -p $HOST_FWD" "# $(gettext 'via redirecionamento NAT')")"
+		msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh anon@127.0.0.1 -p $HOST_FWD" "# $(gettext 'via redirecionamento NAT')")"
+		msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $HOST_FWD" "# $(gettext 'via ssh config')")"
+	else
+		bloco_br=$(ip -4 route show dev "$iface_bridge" | awk '$1 ~ "/" {print $1; exit}')
+		msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh <IP-da-VM>         " "# $(gettext 'IP atribuído na VM via DHCP') ($bloco_br")"
+	fi
+
+	CFG="$HOME/.ssh/config"
+	# HOST_FWD e USER devem estar definidos anteriormente no seu script
+	mkdir -p "$HOME/.ssh"
+	touch "$CFG"
+
+	# -i: ignore case
+	# -q: quiet (não imprime nada)
+	# -E: interpreta como busca estendida
+	# O padrão busca "Host" no início da linha seguido de um ou mais espaços e o nome exato do host
+	if ! grep -iqE "^Host[[:space:]]+$HOST_FWD([[:space:]]|$)" "$CFG"; then
+		cat >>"$CFG" <<EOF
 
 Host $HOST_FWD
-  HostName 127.0.0.1
-  Port $HOST_FWD
-  User $USER
-  IdentityFile ~/.ssh/id_rsa
+    HostName 127.0.0.1
+    Port $HOST_FWD
+    User $USER
+    IdentityFile ~/.ssh/id_rsa
 EOF
-
+		msg_info_tab "Configuração para $HOST_FWD adicionada com sucesso."
+	else
+		msg_info_tab "Host $HOST_FWD já presente no arquivo '${CFG}'. Nenhuma ação necessária."
+	fi
 }
 
-function sh_start_with_spice() {
+sh_start_with_spice() {
 	sh_start_vdagentd
 
 	# Informar as portas usadas
@@ -1528,33 +1524,34 @@ function sh_start_with_spice() {
 		-display none
 	)
 
-   if $output; then
-      cat <<EOF
-# ${red}output ${cyan}
+	if $output; then
+		cat <<EOF
+${cyan}
 sudo env XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]} &
 qemu_pid=\$!
 remote-viewer spice://localhost:$random_spice_port &
 viewer_pid=\$!
 wait \$viewer_pid
 kill \$qemu_pid &>/dev/null
+${reset}
 EOF
-      exit 0
-   fi
+		exit 0
+	fi
+
 	# Executar o QEMU
 	sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}" &
 	qemu_pid=$!
 	remote-viewer spice://localhost:$random_spice_port &
 	viewer_pid=$!
-
 	# Aguardar o remote-viewer e encerrar o QEMU quando ele fechar
 	wait $viewer_pid
-	kill $qemu_pid &>/dev/null
+	kill "$qemu_pid" &>/dev/null
 }
 
-main() {
+mainOLD() {
 	#	local img="$1"
 	local params=("$@")
-	local img
+	#local img
 	local random_port="$(shuf -i 4444-45000 -n 1)"
 	local random_spice_port="$(shuf -i 5900-5910 -n 1)"
 	local cache_type
@@ -1579,13 +1576,13 @@ main() {
 			img="$HOME_DIR/vdisk/$img"
 		fi
 		devices+=("$img")
-#		log_msg true "Check input ${yellow}#${count}: ${cyan}$img"
+		#		log_msg true "Check input ${yellow}#${count}: ${cyan}$img"
 
-      if (( count == 1 )); then
-         log_msg true "Boot source ${yellow}(#${count}): ${cyan}$img"
-      else
-         log_msg true "Data source ${yellow}(#${count}): ${cyan}$img"
-      fi
+		if ((count == 1)); then
+			log_msg true "Boot source ${yellow}(#${count}): ${cyan}$img"
+		else
+			log_msg true "Data source ${yellow}(#${count}): ${cyan}$img"
+		fi
 		((++count))
 	done
 
@@ -1601,7 +1598,7 @@ main() {
 
 	# Adicionar opções padrão do QEMU
 	qemu_options+=(-no-fd-bootchk)
-#	qemu_options+=(-machine accel=kvm)
+	#	qemu_options+=(-machine accel=kvm)
 	qemu_options+=(-cpu host)
 	qemu_options+=(-smp "$(nproc)")
 	qemu_options+=(-m ${xmem})
@@ -1619,7 +1616,7 @@ main() {
 	for img in "${devices[@]}"; do
 		media_type=$(file -b --mime-type "${img}")
 		#		qemu_options+=(-boot menu=on)
-    if [[ "$img" == *.iso ]]; then
+		if [[ "$img" == *.iso ]]; then
 			msg_info "$(gettext 'Anexando iso') #${bootindex}: ${yellow}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
 			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
@@ -1629,45 +1626,45 @@ main() {
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 			((bootindex++))
-      elif [[ -b "$img" ]]; then
-         # Disco físico (block device real):
-         # Este bloco trata dispositivos reais em /dev (ex.: /dev/sdX, /dev/nvmeXnY).
-         # Diferente dos discos virtuais (arquivos), aqui forçamos cache=none e aio=native
-         # para evitar qualquer cache duplo no host e reduzir risco de corrupção de dados.
-         #
-         # Essa decisão é intencional e NÃO usa cache_type configurável:
-         # writeback/unsafe em disco físico pode causar perda silenciosa de dados
-         # em caso de crash do host ou queda de energia.
-         #
-         # Em resumo:
-         # - Disco físico → segurança e previsibilidade acima de performance
-         # - Disco virtual → política de cache configurável (ver bloco seguinte)
-         # Disco físico (/dev): usa I/O direto (cache=none,aio=native) para evitar
-         # cache duplo e reduzir risco de corrupção. Política fixa por segurança.
-         msg_info "$(gettext 'Anexando device') #${bootindex}: ${yellow}${img}"
-         qemu_options+=(
-            -drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
-         )
-         qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-         ((bootindex++))
-      else
-         # Fallback para imagem raw genérica:
-         # Este bloco só é alcançado quando o arquivo NÃO é:
-         #  - ISO (cdrom)
-         #  - qcow2 (vdisk gerenciado)
-         #  - block device real (disco físico em /dev)
-         #
-         # Diferente do bloco anterior (disco físico), aqui assumimos que o disco
-         # é um ARQUIVO raw comum. Por isso usamos virtio-blk com cache configurável,
-         # mantendo bom desempenho sem os riscos de I/O direto no hardware.
-         #
-         # IDE/AHCI NÃO é usado aqui de propósito:
-         # virtio-blk é o caminho moderno, mais rápido e esperado para sistemas atuais.
-         # IDE fica restrito a compatibilidade legada explícita.
-         msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img} (raw)"
-         qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-         qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-         ((bootindex++))
+		elif [[ -b "$img" ]]; then
+			# Disco físico (block device real):
+			# Este bloco trata dispositivos reais em /dev (ex.: /dev/sdX, /dev/nvmeXnY).
+			# Diferente dos discos virtuais (arquivos), aqui forçamos cache=none e aio=native
+			# para evitar qualquer cache duplo no host e reduzir risco de corrupção de dados.
+			#
+			# Essa decisão é intencional e NÃO usa cache_type configurável:
+			# writeback/unsafe em disco físico pode causar perda silenciosa de dados
+			# em caso de crash do host ou queda de energia.
+			#
+			# Em resumo:
+			# - Disco físico → segurança e previsibilidade acima de performance
+			# - Disco virtual → política de cache configurável (ver bloco seguinte)
+			# Disco físico (/dev): usa I/O direto (cache=none,aio=native) para evitar
+			# cache duplo e reduzir risco de corrupção. Política fixa por segurança.
+			msg_info "$(gettext 'Anexando device') #${bootindex}: ${yellow}${img}"
+			qemu_options+=(
+				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+			)
+			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+			((bootindex++))
+		else
+			# Fallback para imagem raw genérica:
+			# Este bloco só é alcançado quando o arquivo NÃO é:
+			#  - ISO (cdrom)
+			#  - qcow2 (vdisk gerenciado)
+			#  - block device real (disco físico em /dev)
+			#
+			# Diferente do bloco anterior (disco físico), aqui assumimos que o disco
+			# é um ARQUIVO raw comum. Por isso usamos virtio-blk com cache configurável,
+			# mantendo bom desempenho sem os riscos de I/O direto no hardware.
+			#
+			# IDE/AHCI NÃO é usado aqui de propósito:
+			# virtio-blk é o caminho moderno, mais rápido e esperado para sistemas atuais.
+			# IDE fica restrito a compatibilidade legada explícita.
+			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img} (raw)"
+			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
+			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+			((bootindex++))
 		fi
 	done
 
@@ -1710,76 +1707,281 @@ main() {
 			-display curses
 		)
 	else
-    #qemu_options+=(-device virtio-scsi-pci,id=scsi0)
-    #qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
-    audio="${audioserver:-$(detect_audio_server)}"
-    qemu_options+=(-audiodev "$audio",id=snd0)
+		#qemu_options+=(-device virtio-scsi-pci,id=scsi0)
+		#qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
+		audio="${audioserver:-$(detect_audio_server)}"
+		qemu_options+=(-audiodev "$audio",id=snd0)
 		qemu_options+=(-rtc base=localtime,clock=host)
 		qemu_options+=(-device ich9-intel-hda)
-    #qemu_options+=(-device hda-output,audiodev=snd0) # só saida de audio
+		#qemu_options+=(-device hda-output,audiodev=snd0) # só saida de audio
 		qemu_options+=(-device hda-duplex,audiodev=snd0)
 		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
 
-    if $lshare; then
-      #compartilhamento
-      qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
-      qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
-    fi
-    #
-    #qemu_options+=(-device intel-iommu)
-    #qemu_options+=(-display gtk,gl=on)
-  fi
+		if $lshare; then
+			#compartilhamento
+			qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
+			qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
+		fi
+		#
+		#qemu_options+=(-device intel-iommu)
+		#qemu_options+=(-display gtk,gl=on)
+	fi
 
 	if $spice; then
-    # SPICE video: use QXL. VGA é fallback; virtio-vga é para GTK, não SPICE.
-    #qemu_options+=(-device qxl)
-    #qemu_options+=(-device qxl,heads=1)
-    #qemu_options+=(-device qxl,heads=2)
+		# SPICE video: use QXL. VGA é fallback; virtio-vga é para GTK, não SPICE.
+		#qemu_options+=(-device qxl)
+		#qemu_options+=(-device qxl,heads=1)
+		#qemu_options+=(-device qxl,heads=2)
 		qemu_options+=(-device "$videodevice")
 		qemu_options+=(-device virtio-serial)
 		sh_start_with_spice
 		exit 0
 	else
 		qemu_options+=(-device "$videodevice")
-#		qemu_options+=(-display gtk,gl=on)
+		#		qemu_options+=(-display gtk,gl=on)
 		qemu_options+=(-display sdl)
-    if $only_tty; then
-		  if $output; then
-        cat <<EOF
-#${red}output${cyan}
+		if $only_tty; then
+			if $output; then
+				cat <<EOF
+${cyan}
 sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+${reset}
 EOF
-			  exit 0
-      fi
+				exit 0
+			fi
 			cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 			exit 0
 		else
-      cmd=(
-        sudo -E setsid env
-        SDL_VIDEODRIVER=x11
-        XDG_RUNTIME_DIR="/run/user/$(id -u)"
-        qemu-system-x86_64 "${qemu_options[@]}"
-      )
-      if $output; then
-        #sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
-        cat <<EOF
-#${red}output ${cyan}
-${cmd[*]} > /tmp/qemu.log 2>&1 &
+			cmd=(
+				sudo -E setsid env
+				SDL_VIDEODRIVER=x11
+				XDG_RUNTIME_DIR="/run/user/$(id -u)"
+				qemu-system-x86_64 "${qemu_options[@]}"
+			)
+			if $output; then
+				#sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+				cat <<EOF
+${cyan}
+${cmd[*]} &
 disown
+${reset}
 EOF
-        exit 0
-      fi
-
-      #sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
-      "${cmd[@]}" > /tmp/qemu.log 2>&1 &
-      disown
-      exit 0
-
+				exit 0
+			fi
+			#sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+			run_qemu
 		fi
 	fi
 }
-export -f main
+export -f mainOLD
+
+main::init_main() {
+	params=("$@")
+
+	random_port="$(shuf -i 4444-45000 -n 1)"
+	random_spice_port="$(shuf -i 5900-5910 -n 1)"
+
+	cache_type='writeback'
+	bootindex=1
+	media_type=""
+	count=1
+
+	devices=()
+}
+
+main::process_devices() {
+	for img in "${params[@]}"; do
+		[[ -z "$img" ]] && {
+			sh_list_vdisks
+			die "Erro: vdisk/iso/device #${count} não especificada!"
+		}
+
+		if [[ ! -e "$img" ]]; then
+			[[ ! -e "$HOME_DIR/vdisk/$img" ]] && {
+				log_msg 1 "Check input ${yellow}#${count}: ${cyan}$img"
+				sh_list_vdisks
+				die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'não localizada, tente os listados acima!')${reset}"
+			}
+			img="$HOME_DIR/vdisk/$img"
+		fi
+
+		devices+=("$img")
+
+		if ((count == 1)); then
+			log_msg true "Boot source ${yellow}(#${count}): ${cyan}$img"
+		else
+			log_msg true "Data source ${yellow}(#${count}): ${cyan}$img"
+		fi
+
+		((++count))
+	done
+}
+
+main::configure_uefi() {
+	if $uefi; then
+		sh_checkOVMFFiles
+		msg_info "$(gettext 'Forçando inicialização UEFI...')"
+
+		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd "$HOME_DIR/"
+
+		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
+		qemu_options+=(-drive if=pflash,format=raw,file=$HOME_DIR/OVMF_VARS.4m.fd)
+	fi
+}
+
+main::build_base_qemu() {
+	qemu_options+=(-no-fd-bootchk)
+	qemu_options+=(-cpu host)
+	qemu_options+=(-smp "$(nproc)")
+	qemu_options+=(-m "${xmem}")
+	qemu_options+=(-k pt-br)
+}
+
+main::attach_primary_devices() {
+	for img in "${devices[@]}"; do
+		media_type=$(file -b --mime-type "${img}")
+
+		if [[ "$img" == *.iso ]]; then
+			msg_info "$(gettext 'Anexando iso') #${bootindex}: ${yellow}${img}"
+			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
+			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
+
+		elif [[ "$img" == *.qcow2 ]]; then
+			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img}"
+			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
+			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+
+		elif [[ -b "$img" ]]; then
+			msg_info "$(gettext 'Anexando device') #${bootindex}: ${yellow}${img}"
+			qemu_options+=(
+				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+			)
+			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+
+		else
+			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img} (raw)"
+			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
+			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+		fi
+
+		((bootindex++))
+	done
+}
+
+main::attach_extra_vdisks() {
+	$vdisk || return
+
+	for vdsk in "${avdisk_names[@]}"; do
+		[[ ! -e "$vdsk" ]] && vdsk="$HOME_DIR/vdisk/$vdsk"
+		[[ ! -e "$vdsk" ]] && continue
+
+		if [[ "$vdsk" == *.img ]]; then
+			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${vdsk}"
+			qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
+
+		elif [[ "$vdsk" == *.qcow2 ]]; then
+			msg_info "Anexando vdisk #${bootindex}: ${yellow}${vdsk}"
+			qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
+		fi
+
+		qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+		((bootindex++))
+	done
+}
+
+main::configure_name() {
+	qemu_options+=(-name "chili-fr")
+}
+
+main::configure_display_and_audio() {
+	if $only_tty; then
+		qemu_options+=(-vga std -display curses)
+		return
+	fi
+
+	audio="${audioserver:-$(detect_audio_server)}"
+
+	qemu_options+=(-audiodev "$audio",id=snd0)
+	qemu_options+=(-rtc base=localtime,clock=host)
+	qemu_options+=(-device ich9-intel-hda)
+	qemu_options+=(-device hda-duplex,audiodev=snd0)
+	qemu_options+=(-global ICH9-LPC.disable_s3=1)
+	qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
+
+	if $lshare; then
+		qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
+		qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
+	fi
+}
+
+main::handle_spice_or_display() {
+	if $spice; then
+		qemu_options+=(-device "$videodevice" -device virtio-serial)
+		sh_start_with_spice
+		exit 0
+	fi
+
+	qemu_options+=(-device "$videodevice" -display sdl)
+
+	if $only_tty; then
+		if $output; then
+			cat <<EOF
+${cyan}
+sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
+${reset}
+EOF
+			exit 0
+		fi
+
+		cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
+		exit 0
+	fi
+
+	cmd=(
+		sudo -E setsid env
+		SDL_VIDEODRIVER=x11
+		XDG_RUNTIME_DIR="/run/user/$(id -u)"
+		qemu-system-x86_64 "${qemu_options[@]}"
+	)
+
+	if $output; then
+		cat <<EOF
+${cyan}
+${cmd[*]} &
+disown
+${reset}
+EOF
+		exit 0
+	fi
+
+	run_qemu
+}
+
+main() {
+	main::init_main "$@"
+	main::process_devices
+	main::configure_uefi
+	main::build_base_qemu
+	main::attach_primary_devices
+	main::attach_extra_vdisks
+	main::configure_name
+	main::configure_display_and_audio
+	main::handle_spice_or_display
+}
+
+run_qemu() {
+	# 1. Lança o comando em background
+	# O stderr e stdout vão direto para o terminal, sem filtros.
+	"${cmd[@]}" &
+
+	# 2. Desvincula o processo para que ele não morra ao fechar o terminal
+	disown
+
+	# 3. Sai com sucesso.
+	# Se o comando lá em cima falhar ANTES do exit, o seu trap cleanup cuida do resto.
+	exit 0
+}
 
 params="${@}"
 sh_setvarcolors
@@ -1797,10 +1999,10 @@ sh_checkDependencies
 sh_checkVdiskFiles
 
 if [ -z "$DISPLAY" ]; then
-  log_err "DISPLAY='${DISPLAY:-<vazio>}'"
-  log_err "Erro: variável de ambiente DISPLAY não está definida."
-  log_err "Nenhum servidor X11 disponível para interface gráfica."
-  exit 1
+	log_err "DISPLAY='${DISPLAY:-<vazio>}'"
+	log_err "Erro: variável de ambiente DISPLAY não está definida."
+	log_err "Nenhum servidor X11 disponível para interface gráfica."
+	exit 1
 fi
 
 OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
@@ -1814,7 +2016,7 @@ while test ${#opts[*]} -gt 0; do
 		sh_unsetvarcolors
 		;;
 	-u | --uefi)
-      msg_info "$(gettext 'Parametro') ${yellow}--uefi${rst} $(gettext 'detectado: usando uefi') ${rst}"
+		msg_info "$(gettext 'Parametro') ${yellow}--uefi${rst} $(gettext 'detectado: usando uefi') ${rst}"
 
 		uefi=true
 		;;
@@ -1870,12 +2072,12 @@ while test ${#opts[*]} -gt 0; do
 		fi
 		;;
 	-q | --quiet)
-	   quiet=true
-	   ;;
+		quiet=true
+		;;
 	-a | --audio)
-      next_arg="${2:-}"
-      next_arg="${next_arg,,}"
-      if [[ "$next_arg" =~ ^(pipewire|pa|jack|none)$ ]]; then
+		next_arg="${2:-}"
+		next_arg="${next_arg,,}"
+		if [[ "$next_arg" =~ ^(pipewire|pa|jack|none)$ ]]; then
 			audioserver="$next_arg"
 			msg_info "$(gettext 'Parametro') ${yellow}--audio${rst} $(gettext 'detectado: usando') ${cyan}'$next_arg'${rst}"
 			shift
@@ -1957,8 +2159,8 @@ while test ${#opts[*]} -gt 0; do
 		fi
 		;;
 	-o | --output)
-	   output=true
-	   ;;
+		output=true
+		;;
 	-d | --drive)
 		if [[ -n $2 ]]; then
 			drive=true
@@ -2011,10 +2213,47 @@ if [[ $# > 0 ]]; then
 	#qemu_options+=(-device virtio-net-device,netdev=net0,mac=92:7b:15:c3:4d:ec)
 
 	# intervalo de 555 a 560 → tamanho = 560−555+1 = 6
-	export GUEST_CID=$((RANDOM % 6 + 555))
-#	export HOST_FWD=$((RANDOM % 10000 + 20000))
-   export HOST_FWD=$((RANDOM % 6 + 60022))
-   export HOST_GOTIFY=$((HOST_FWD + 1))
+	#export GUEST_CID=$((RANDOM % 6 + 555))
+	#export HOST_FWD=$((RANDOM % 10000 + 20000))
+	#export HOST_FWD=$((RANDOM % 6 + 60022))
+	#export HOST_GOTIFY=$((HOST_FWD + 1))
+
+	# Função para verificar se a porta está livre
+	port_is_free() {
+		! ss -tulpn | grep -q ":$1 "
+	}
+
+	# 1. Sorteio inicial dos valores base
+	CHECK_CID=$((RANDOM % 6 + 555))
+	CHECK_FWD=$((RANDOM % 6 + 60022))
+
+	# 2. Validação individual do CID
+	until port_is_free "$CHECK_CID"; do
+		msg_warn "CID $CHECK_CID ocupado, tentando próximo..."
+		CHECK_CID=$((CHECK_CID + 1))
+		# Opcional: resetar se passar do limite
+		[ $CHECK_CID -gt 560 ] && CHECK_CID=555
+	done
+
+	# 3. Validação da dupla de portas (FWD e GOTIFY)
+	# Como GOTIFY depende de FWD (FWD + 1), verificamos o par
+	while true; do
+		CHECK_GOTIFY=$((CHECK_FWD + 1))
+
+		if port_is_free "$CHECK_FWD" && port_is_free "$CHECK_GOTIFY"; then
+			break
+		fi
+		msg_warn "Portas $CHECK_FWD ou $CHECK_GOTIFY ocupadas, tentando próxima..."
+		CHECK_FWD=$((CHECK_FWD + 1))
+
+		# Opcional: resetar se passar do limite de segurança
+		[ $CHECK_FWD -gt 65000 ] && CHECK_FWD=60022
+	done
+
+	export GUEST_CID=$CHECK_CID
+	export HOST_FWD=$CHECK_FWD
+	export HOST_GOTIFY=$CHECK_GOTIFY
+	#msg "Portas selecionadas: SSH -> $HOST_FWD | Gotify -> $HOST_GOTIFY | CID -> $GUEST_CID"
 
 	if ! $uefi; then
 		msg_warn "$(gettext 'Parametro --uefi não informado, usando BIOS legacy (padrão)...')"
@@ -2026,49 +2265,49 @@ if [[ $# > 0 ]]; then
 		only_tty=true
 	fi
 
-   if $netchoosedriver; then
-      for netdevice in "${anetdevices[@]}"; do
-         ((nId++))
-         netdev_id="net$nId"
+	if $netchoosedriver; then
+		for netdevice in "${anetdevices[@]}"; do
+			((nId++))
+			netdev_id="net$nId"
 
-         # Verificar o tipo de rede (bridge ou user)
-         if $bridge; then
-            qemu_options+=(-netdev bridge,id="$netdev_id",br="$iface_bridge")
-         else
-            # Apenas o primeiro dispositivo recebe hostfwd e smb
-            if (( nId == 1 )); then
-               #qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
-               qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
-            else
-               qemu_options+=(-netdev user,id="$netdev_id")
-            fi
-         fi
+			# Verificar o tipo de rede (bridge ou user)
+			if $bridge; then
+				qemu_options+=(-netdev bridge,id="$netdev_id",br="$iface_bridge")
+			else
+				# Apenas o primeiro dispositivo recebe hostfwd e smb
+				if ((nId == 1)); then
+					#qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
+					qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
+				else
+					qemu_options+=(-netdev user,id="$netdev_id")
+				fi
+			fi
 
-         # Associar o dispositivo de rede
-         qemu_options+=(-device "$netdevice",netdev="$netdev_id")
-      done
-   else
-      netdev_id="net0"
-      if $bridge; then
-         qemu_options+=(-netdev bridge,id="$netdev_id",br="$iface_bridge")
-      else
-#        qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
-         qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
-      fi
-      qemu_options+=(-device "$netdevice",netdev="$netdev_id")
-   fi
+			# Associar o dispositivo de rede
+			qemu_options+=(-device "$netdevice",netdev="$netdev_id")
+		done
+	else
+		netdev_id="net0"
+		if $bridge; then
+			qemu_options+=(-netdev bridge,id="$netdev_id",br="$iface_bridge")
+		else
+			#        qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
+			qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
+		fi
+		qemu_options+=(-device "$netdevice",netdev="$netdev_id")
+	fi
 
-   # Adicionando vhost-vsock
-   qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid="$GUEST_CID")
+	# Adicionando vhost-vsock
+	qemu_options+=(-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid="$GUEST_CID")
 	print_summary_access_vm
 
 	#windows
-#   if ! $spice; then
-      # usb-tablet fornece dispositivo de apontamento absoluto.
-      # Útil para GTK/VNC (evita mouse desalinhado).
-      # Em SPICE com vdagent ativo, é desnecessário e pode ser omitido.
-   	qemu_options+=(-usb -device usb-tablet)
-#   fi
+	#   if ! $spice; then
+	# usb-tablet fornece dispositivo de apontamento absoluto.
+	# Útil para GTK/VNC (evita mouse desalinhado).
+	# Em SPICE com vdagent ativo, é desnecessário e pode ser omitido.
+	qemu_options+=(-usb -device usb-tablet)
+	#   fi
 
 	if $drive; then
 		msg_info "$(gettext 'Anexando disco/drive externo:') ${yellow}$drive_path"
@@ -2076,11 +2315,11 @@ if [[ $# > 0 ]]; then
 	fi
 	main "$@"
 else
-   log_err "${red}Error${rst}: $(gettext 'Falta parâmetro de imagem/disco/device.') ${cyan}$(gettext 'Tente os vdisks listados abaixo.') ${yellow}$(gettext '(usar -h para ajuda)')"
+	log_err "${red}Error${rst}: $(gettext 'Falta parâmetro de imagem/disco/device.') ${cyan}$(gettext 'Tente os vdisks listados abaixo.') ${yellow}$(gettext '(usar -h para ajuda)')"
 	msg_ex_tab "${green}$ ${reset}${APP} ${params} ${rst}vda.img"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}/path/filename.img|qcow2|iso|raw"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}/dev/sdX"
 	msg_ex_tab "${green}$ ${rst}${APP} ${params} ${rst}filename.iso /dev/sdX"
 	sh_list_vdisks
-   :
+	:
 fi
