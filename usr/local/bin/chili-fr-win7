@@ -5,9 +5,9 @@
 #  chili-fr-win7
 #  Created: sex 14 nov 2025 01:18:45 -04
 #  Altered: sex 14 nov 2025 01:18:45 -04
-#  Updated: sex 14 nov 2025 01:18:45 -04
+#  Updated: ter 05 mai 2026 00:34:18 -04
 #
-#  Copyright (c) 2025-2025, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2025-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Assembled By Vilmar Catafesta for the ChiliLinux project.
 #  All rights reserved.
 #
@@ -43,21 +43,16 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.11.14-20251114"
+declare _VERSION_="1.05.05-20260505"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput)
-declare dialogRcFile="$HOME/.dialogrc"
 
-cleanup() { rm -f "$dialogRcFile"; }
 #trap cleanup EXIT
 #MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}";}
 #trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
 
-sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
-
 set_varcolors() {
-	sh_check_terminal
 	# does the terminal support true-color?
 	if [[ -n "$(command -v "tput")" ]]; then
 		#tput setaf 127 | cat -v  #capturar saida
@@ -123,27 +118,11 @@ set_varcolors() {
 		: "${OVER="\\r\\033[K"}"
 		: "${DOTPREFIX="  ${black}::${reset} "}"
 		: "${clrkey=${light_white}}"
-		: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
-		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
+		: "${TICK="${clrkey}[${green} ✓ ${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red} ✗ ${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
 		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
 		: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
-
-		# dialog colors
-		REVERSE="\Zr"
-		UNDERLINE="\Zu"
-		BOLD="\Zb"
-		RESET="\Zn"
-		BLACK="\Z0"
-		YELLOW="\Z3"
-		AMARELO="\Zb\Z3"
-		WHITE="\Z7"
-		BLUE="\Z4"
-		AZUL="\Zb\Z4"
-		CYAN="\Z6"
-		RED="\Z1"
-		GREEN="\Z2"
-		MAGENTA="\Z5"
 	else
 		unset_varcolors
 	fi
@@ -158,67 +137,6 @@ unset_varcolors() {
 	TICK="${white}[${verde}✓${rst}${white}]${rst}"
 	CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
 	INFO="${white}[${cinza}i${rst}${white}]${rst}"
-}
-
-sh_create_dialogrc() {
-	cat >"$dialogRcFile" <<EOF_DIALOGRC
-screen_color = (white,black,off)
-dialog_color = (white,black,off)
-title_color = (cyan,black,on)
-border_color = dialog_color
-shadow_color = (black,black,on)
-button_inactive_color = dialog_color
-button_key_inactive_color = dialog_color
-button_label_inactive_color = dialog_color
-button_active_color = (white,cyan,on)
-button_key_active_color = button_active_color
-button_label_active_color = (black,cyan,on)
-tag_key_selected_color = (white,cyan,on)
-item_selected_color = tag_key_selected_color
-form_text_color = (BLUE,black,ON)
-form_item_readonly_color = (green,black,on)
-itemhelp_color = (white,cyan,off)
-inputbox_color = dialog_color
-inputbox_border_color = dialog_color
-searchbox_color = dialog_color
-searchbox_title_color = title_color
-searchbox_border_color = border_color
-position_indicator_color = title_color
-menubox_color = dialog_color
-menubox_border_color = border_color
-item_color = dialog_color
-tag_color = title_color
-tag_selected_color = button_label_active_color
-tag_key_color = button_key_inactive_color
-check_color = dialog_color
-check_selected_color = button_active_color
-uarrow_color = screen_color
-darrow_color = screen_color
-form_active_text_color = button_active_color
-gauge_color = title_color
-border2_color = dialog_color
-searchbox_border2_color = dialog_color
-menubox_border2_color = dialog_color
-separate_widget = ''
-tab_len = 0
-visit_items = off
-use_shadow = off
-use_colors = on
-EOF_DIALOGRC
-	export DIALOGRC="$dialogRcFile"
-}
-
-# Teste se o terminal suporta caracteres gráficos estendidos
-sh_ascii_lines() {
-	#Isso força o dialog a usar caracteres ASCII básicos para as bordas.
-	#if [[ "$LANG" =~ 'UTF-8' ]]; then
-	[[ "$(printf '\u250C')" == "┌" ]]
-	export NCURSES_NO_UTF8_ACS=$((!$?))
-}
-
-sh_setEnvironment() {
-	[[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
-	sh_ascii_lines
 }
 
 sh_checkroot() {
@@ -329,20 +247,61 @@ die() {
 	exit 1
 }
 
+detect_distro() {
+	if [[ -r /etc/os-release ]]; then
+		. /etc/os-release
+	elif [[ -r /usr/lib/os-release ]]; then
+		. /usr/lib/os-release
+	else
+		echo "unknown"
+		return
+	fi
+	echo "${ID:-unknown}"
+}
+
+detect_audio_server() {
+  for s in pipewire pulseaudio jackd; do
+    pgrep -x "$s" &>/dev/null && {
+      echo "$s"
+      return
+    }
+  done
+  echo "none"
+}
+
 # configure ambiente
 set_varcolors
 #sh_checkroot "$@"
+DISTRO=$(detect_distro)
 
 ##########################################################################################################
+
+sh_usage() {
+	cat <<EOF
+$(gettext 'uso:') ${orange}$APP${reset} [$(gettext 'Opções')]
+${cyan}$(gettext 'Opções:')${reset}
+  ${rst}-s|--spice                             ${cyan}# $(gettext 'ativar o') spice - (default: $(gettext 'desligado'))
+  ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: BIOS)
+  ${rst}-h|--help                              ${cyan}# $(gettext 'imprime este ajuda')
+${cyan}$(gettext 'Forma de uso mais comum:')${rst}
+  $ ${orange}$APP${reset} /path/filename.img ${rst}
+  $ ${orange}$APP${reset} -u /path/filename.img ${rst}
+  $ ${orange}$APP${reset} -s /path/filename.img ${rst}
+EOF
+}
+
 sh_main() {
-  local random_spice_port="$(shuf -i 5900-5910 -n 1)"
-  local qemu_options=()
-  local	UEFI_OPTS=()
+	local random_spice_port="$(shuf -i 5900-5910 -n 1)"
+	local qemu_options=()
+	local UEFI_OPTS=()
 
 	if $uefi; then
 		OVMF_CODE="/usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd"
 		OVMF_VARS="$HOME/OVMF_VARS.4m.fd"
-		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd "$OVMF_VARS"
+		case "$DISTRO" in
+		void*) cp -f /usr/share/edk2/x64/OVMF_VARS.4m.fd "$OVMF_VARS" ;;
+		*) cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd "$OVMF_VARS" ;;
+		esac
 		UEFI_OPTS=(
 			-drive if=pflash,format=raw,readonly=on,file="${OVMF_CODE}"
 			-drive if=pflash,format=raw,file="${OVMF_VARS}"
@@ -359,17 +318,24 @@ sh_main() {
 	qemu_options+=(-k pt-br)
 	qemu_options+=(-rtc base=localtime,clock=host)
 	qemu_options+=(-global ICH9-LPC.disable_s3=1)
-	qemu_options+=(-audiodev "$(pgrep pipewire >/dev/null && echo pipewire || echo pa)",id=snd0)
+#	qemu_options+=(-audiodev "$(pgrep pipewire >/dev/null && echo pipewire || echo pa)",id=snd0)
+  audio="$(detect_audio_server)"
+  qemu_options+=(-audiodev "$audio",id=snd0)
 	qemu_options+=(-device AC97,audiodev=snd0)
-
 	qemu_options+=(-device virtio-serial)
-	qemu_options+=(-spice port=$random_spice_port,disable-ticketing=on)
-	qemu_options+=(-chardev spicevmc,id=vdagent,name=vdagent)
-	qemu_options+=(-device virtserialport,chardev=vdagent,name=com.redhat.spice.0)
-	qemu_options+=(-vga qxl)
-#	qemu_options+=(-display spice-app)
-# qemu_options+=(-display spice-app,gl=on) # -- NÃO funciona “multi-client”
-  qemu_options+=(-display none)
+
+	if $spice; then
+		qemu_options+=(-spice port=$random_spice_port,disable-ticketing=on)
+		qemu_options+=(-chardev spicevmc,id=vdagent,name=vdagent)
+		qemu_options+=(-device virtserialport,chardev=vdagent,name=com.redhat.spice.0)
+		msg "spice running on port: ${yellow}$random_spice_port"
+		msg "remote-viewer spice://localhost:$random_spice_port"
+		qemu_options+=(-vga qxl)
+		qemu_options+=(-display none)
+	else
+		qemu_options+=(-device virtio-vga)
+		qemu_options+=(-display sdl)
+	fi
 
 	qemu_options+=(-usb -device usb-tablet)
 	qemu_options+=(-device e1000,netdev=net0)
@@ -379,31 +345,45 @@ sh_main() {
 	qemu_options+=(-device ahci,id=sata1)
 	qemu_options+=(-drive file="$disk",format=raw,if=none,id=disk1)
 	qemu_options+=(-device ide-hd,drive=disk1,bus=sata1.0,bootindex=1)
-	qemu_options+=(-drive file=w7-updates.iso,media=cdrom)
+	if [[ -e w7-updates.iso ]]; then
+		qemu_options+=(-drive file=w7-updates.iso,media=cdrom)
+	else
+		msg "arquivo w7-updates.iso não localizado em $PWD"
+	fi
+	qemu_options+=(-name "chili-fr-win7 $disk")
 
-	# echo "${qemu_options[@]}"
-  msg_info "spice running on port: ${yellow}$random_spice_port"
-  msg_info "remote-viewer spice://localhost:$random_spice_port"
-
-  #	sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${UEFI_OPTS[@]}" "${qemu_options[@]}"
-  sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${UEFI_OPTS[@]}" "${qemu_options[@]}" &
-  qemu_pid=$!
-  remote-viewer "spice://localhost:$random_spice_port" &
-  viewer_pid=$!
-  wait $viewer_pid
-
-  # Só mata se não houver OUTROS remote-viewer conectados
-  if ! pgrep -f "remote-viewer.*$random_spice_port" >/dev/null ; then
-    kill $qemu_pid
-  fi
-  exit 0
+	if ! $spice; then
+		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${UEFI_OPTS[@]}" "${qemu_options[@]}"
+	else
+		sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${UEFI_OPTS[@]}" "${qemu_options[@]}" &
+		qemu_pid=$!
+		remote-viewer "spice://localhost:$random_spice_port" &
+		viewer_pid=$!
+		wait $viewer_pid
+		# Só mata se não houver OUTROS remote-viewer conectados
+		if ! pgrep -f "remote-viewer.*$random_spice_port" >/dev/null; then
+			kill $qemu_pid >/dev/null 2>&1
+		fi
+	fi
+	exit 0
 }
 
+# Display usage information if no arguments are passed
+if [[ $# -eq 0 || $1 == @(-h|-H|--help) ]]; then
+	sh_usage
+	exit 0
+fi
+
 uefi=false
+spice=false
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	-u | --uefi)
 		uefi=true
+		shift
+		;;
+	-s | --spice)
+		spice=true
 		shift
 		;;
 	*)
@@ -414,6 +394,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! -e "$disk" ]]; then
-	die "Imagem não encontrada"
+	die "Disco de imagem/iso ${yellow}'$disk' ${red}não encontrada${rst}"
 fi
 sh_main "$@"
