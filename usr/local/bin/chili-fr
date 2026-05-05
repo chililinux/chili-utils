@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 03 mai 2026 08:01:53 -04
+#  Updated: ter 05 mai 2026 11:48:45 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -49,8 +49,8 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.05.03-20260503'
-readonly APPDESC="$(gettext 'Wrapper magro para o qemu')"
+readonly VERSION='3.05.05-20260505'
+readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
 	'qemu-system-x86_64'
@@ -81,9 +81,9 @@ declare bridge=false
 declare xmem='8G'
 #
 declare -a avideodevice=(
-  none ati-vga vmware-svga cirrus cirrus-vga isa-cirrus-vga isa-vga qxl-vga secondary-vga
-  virtio-vga-gl virtio-gpu virtio-vga-gl virtio-gpu-pci virtio-gpu-gl-pci qxl-vga bochs-display
-  ramfb virtio-gpu-gl virtio-gpu qxl VGA)
+	none ati-vga vmware-svga cirrus cirrus-vga isa-cirrus-vga isa-vga qxl-vga secondary-vga
+	virtio-vga-gl virtio-gpu virtio-vga-gl virtio-gpu-pci virtio-gpu-gl-pci qxl-vga bochs-display
+	ramfb virtio-gpu-gl virtio-gpu qxl VGA)
 declare videodevice='virtio-vga'
 #
 declare lshare=false
@@ -113,8 +113,7 @@ cleanup() {
 	local code="$1"
 	((code == 0)) && return
 
-	msg_err "Falha (exit=$code). Limpando processos..."
-
+	#msg_err "Falha (exit=$code). Limpando processos..."
 	# 🔥 mata QEMU (se criado)
 	if [[ -n ${qemu_pid:-} ]]; then
 		kill "$qemu_pid" 2>/dev/null
@@ -284,23 +283,23 @@ setpos() {
 }
 
 log_msg() {
-  local retval=${PIPESTATUS[0]}
-  local pcount=$#
+	local retval=${PIPESTATUS[0]}
+	local pcount=$#
 
-  if (( pcount >= 2 )); then
-    case "$1" in
-      true)  retval=0 ;;
-      false) retval=1 ;;
-      *)     retval=$1 ;;
-    esac
-    shift
-  fi
+	if ((pcount >= 2)); then
+		case "$1" in
+		true) retval=0 ;;
+		false) retval=1 ;;
+		*) retval=$1 ;;
+		esac
+		shift
+	fi
 
-  if (( retval == 0 )); then
-    $quiet || printf "%b %s\n" "${TICK}" "$*"
-  else
-    $quiet || printf "%b %s\n" "${CROSS}" "$*"
-  fi
+	if ((retval == 0)); then
+		$quiet || printf "%b %s\n" "${TICK}" "$*"
+	else
+		$quiet || printf "%b %s\n" "${CROSS}" "$*"
+	fi
 }
 
 msg_raw() {
@@ -345,8 +344,8 @@ msg_ok() { _log "$TICK" "${green}$*"; }
 log_err() { _log "$CROSS" "$@"; }
 log_mid() { _log "$MID" "$@"; }
 log_warn() { _log "$WARN" "$@"; }
-msg_ex() { _log "👉" "$@"; }
-msg_ex_tab() { _log "  👉" "$@"; }
+msg_ex() { _log '👉"  ' "$@"; }
+msg_ex_tab() { _log '  👉"  ' "$@"; }
 msg_tab() { _log "  $INFO" "$@"; }
 log_ok_tab() { _log "  $TICK" "$@"; }
 log_err_tab() { _log "  $CROSS" "$@"; }
@@ -1238,20 +1237,9 @@ ${cyan}$(gettext 'Exemplos:')${rst}
   $ ${orange}$APP${reset} -b file.img                 ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando BIOS')${rst}
   $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#$(gettext 'Execute uma device, 16GB memória, usando BIOS') ${rst}
 ${cyan}$(gettext 'Forma de uso mais comum:')${rst}
-  $ ${orange}$APP${reset} filename.iso ${rst}
-  $ ${orange}$APP${reset} -u filename.iso ${rst}
-  $ ${orange}$APP${reset} /dev/sdX ${rst}
-  $ ${orange}$APP${reset} -u /dev/sdX ${rst}
-  $ ${orange}$APP${reset} -d /dev/sdX filename.iso ${rst}
-  $ ${orange}$APP${reset} -u -d /dev/sdX filename.iso ${rst}
-  $ ${orange}$APP${reset} -v vdisk_name.img filename.iso ${rst}
-  $ ${orange}$APP${reset} -u -v vdisk_name.img filename.iso ${rst}
+  $ ${orange}$APP${reset} [-u] /dev/sdX ${rst}
+  $ ${orange}$APP${reset} [-u] filename.iso sda.img ${rst}
   $ ${orange}$APP${reset} $HOME_DIR/vdisk/vdisk_name.img ${rst}
-${cyan}$(gettext 'acesso a vm/convidado via ssh:')${rst}
-  $ ${rst} ssh live@vsock/555                 ${cyan}# $(gettext 'via') vsock ${rst}
-  $ ${rst} ssh live@127.0.0.1 -p 60022        ${cyan}# $(gettext 'via redirecionamento') ${rst}
-  $ ${rst} ssh <ip_vm>                        ${cyan}# $(gettext 'via ponte (caso vm iniciada com -b)') ${rst}
-  $ ${rst} ssh $USER@127.0.0.1 -p 60022    ${cyan}# $(gettext 'via redirecionamento') ${rst}
 EOF
 	exit 0
 }
@@ -1464,7 +1452,7 @@ print_summary_access_vm() {
 	if $bridge; then
 		msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'informado. Iniciando VM em modo') ${yellow}BRIDGE${rst} (IP via DHCP)"
 	else
-		msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'não informado. Iniciando VM em modo') ${yellow}NAT${rst} (hostfwd ativo)"
+		msg_warn "$(gettext 'Parametro') ${cyan}--bridge${rst} $(gettext 'não informado. Iniciando VM em modo') ${yellow}NAT${rst} (hostfwd ativo)"
 	fi
 
 	msg_info "$(gettext 'acesso a VM via') ${cyan}ssh:"
@@ -1502,7 +1490,8 @@ Host $HOST_FWD
 EOF
 		msg_info_tab "Configuração para $HOST_FWD adicionada com sucesso."
 	else
-		msg_info_tab "Host $HOST_FWD já presente no arquivo '${CFG}'. Nenhuma ação necessária."
+		#msg_info_tab "Host $HOST_FWD já presente no arquivo '${CFG}'. Nenhuma ação necessária."
+		:
 	fi
 }
 
@@ -2005,19 +1994,20 @@ if [ -z "$DISPLAY" ]; then
 	exit 1
 fi
 
-OPTIONS=a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
-LONGOPTIONS=audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
-opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
-eval set -- "${opts[*]}"
+#OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
+#LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
+#opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
+#eval set -- "${opts[*]}"
+#eval set -- "${opts[@]}"
 
-while test ${#opts[*]} -gt 0; do
+#while test ${#opts[*]} -gt 0; do
+while [ $# -gt 0 ]; do
 	case $1 in
 	-n | --nocolor)
 		sh_unsetvarcolors
 		;;
 	-u | --uefi)
 		msg_info "$(gettext 'Parametro') ${yellow}--uefi${rst} $(gettext 'detectado: usando uefi') ${rst}"
-
 		uefi=true
 		;;
 	-i | --image)
@@ -2030,7 +2020,9 @@ while test ${#opts[*]} -gt 0; do
 		;;
 	-c | --create_real_bridge)
 		if [[ -z "$2" ]]; then
-			die "$(gettext 'Argumento inválido para') --create_real_bridge. Ex: --create_real_bridge br0"
+			echo -e "${red}Erro:${rst} $(gettext 'Argumento inválido para') ${cyan}${1}${rst}" >&2
+			msg_ex_tab "$APP ${cyan}--create_real_bridge br0${rst}"
+			exit 0
 		else
 			create_real_bridge "$2"
 			exit 0
@@ -2178,7 +2170,7 @@ while test ${#opts[*]} -gt 0; do
 	-m | --memory)
 		if [[ $2 =~ ^[0-9]+[MGmg]$ ]]; then
 			xmem=$2
-			log_msg "$(gettext 'Parametro') ${yellow}$1 ${rst}$(gettext 'detectado: Usando') $2"
+			log_msg "$(gettext 'Parametro') ${yellow}$1 ${rst}$(gettext 'detectado:') ${cyan}$2${rst}"
 			shift
 		else
 			die "$(gettext 'Argumento inválido para') ${yellow}${1}${red}. $(gettext 'Use um formato como 16G (por exemplo).')" >&2
@@ -2192,7 +2184,8 @@ while test ${#opts[*]} -gt 0; do
 		die "-$OPTARG $(gettext 'requer um argumento')" >&2
 		;;
 	*)
-		die "$(gettext 'operação não suportada:') $1 $(gettext '(usar -h para ajuda')"
+		break
+		#die "$(gettext 'operação não suportada:') $1 $(gettext '(usar -h para ajuda')"
 		;;
 	esac
 	shift
@@ -2256,7 +2249,7 @@ if [[ $# > 0 ]]; then
 	#msg "Portas selecionadas: SSH -> $HOST_FWD | Gotify -> $HOST_GOTIFY | CID -> $GUEST_CID"
 
 	if ! $uefi; then
-		msg_warn "$(gettext 'Parametro --uefi não informado, usando BIOS legacy (padrão)...')"
+		msg_warn "$(gettext 'Parametro') ${cyan}--uefi${rst} $(gettext 'não informado, usando BIOS legacy (padrão)...')"
 	fi
 
 	if ! is_graphical; then
