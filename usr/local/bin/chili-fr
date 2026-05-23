@@ -103,6 +103,7 @@ declare -i Prow=0
 declare -i Pcol=0
 declare -a qemu_options=()
 declare -a avdisk_names=()
+declare LPARAM_AUDIO=false
 # garante que nunca ficam unset
 : "${GUEST_CID:=}"
 : "${HOST_FWD:=}"
@@ -340,6 +341,7 @@ msg_info() { _log "$INFO" "$@"; }
 msg_info_tab() { _log "  $INFO" "$@"; }
 msg() { _log "$INFO" "$@"; }
 log_ok() { _log "$TICK" "$@"; }
+msg_tick() { _log "$TICK" "$@"; }
 msg_ok() { _log "$TICK" "${green}$*"; }
 log_err() { _log "$CROSS" "$@"; }
 log_mid() { _log "$MID" "$@"; }
@@ -1224,6 +1226,7 @@ ${cyan}$(gettext 'Opções:')${reset}
   ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: BIOS)
   ${rst}-V|--version                           ${cyan}# $(gettext 'exibe a versão do aplicativo')
   ${rst}-o|--output                            ${cyan}# $(gettext 'exibe a saída gerada pelo comando e sai')
+  ${rst}-a|--audio ${orange}<pipewire|pa|jack>          ${cyan}# $(gettext 'audio server - default: auto')
   ${rst}   --share                             ${cyan}# $(gettext 'compartilha pasta local na VM - (ex: --share /home/user/Imagens)')
   ${rst}-h|-H|--help                           ${cyan}# $(gettext 'imprime este ajuda')
 ${cyan}$(gettext 'Exemplos:')${rst}
@@ -2084,6 +2087,7 @@ while [ $# -gt 0 ]; do
 		if [[ "$next_arg" =~ ^(pipewire|pa|jack|none)$ ]]; then
 			audioserver="$next_arg"
 			msg_info "$(gettext 'Parametro') ${yellow}--audio${rst} $(gettext 'detectado: usando') ${cyan}'$next_arg'${rst}"
+      LPARAM_AUDIO=true
 			shift
 		else
 			echo -e "${red}Erro:${rst} $(gettext 'Argumento inválido para') ${cyan}${1}${rst} - válidos: ${yellow}pipewire pa jack none"
@@ -2202,6 +2206,13 @@ while [ $# -gt 0 ]; do
 	esac
 	shift
 done
+
+audio="${audioserver:-$(detect_audio_server)}"
+if $LPARAM_AUDIO; then
+  msg_tick "Servidor audio informado: ${cyan}${audio}${rst}"
+else
+  msg_tick "Servidor audio detectado: ${cyan}${audio}${rst}"
+fi
 
 if [[ $# > 0 ]]; then
 	# Configurar rede
