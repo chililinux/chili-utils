@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: chili-tradutor-go 2.1.12-20260113\n"
-"POT-Creation-Date: 2026-01-13 12:20-0400\n"
-"PO-Revision-Date: 2026-01-13 12:20-0400\n"
+"POT-Creation-Date: 2026-05-25 07:42-0400\n"
+"PO-Revision-Date: 2026-05-25 07:42-0400\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "MIME-Version: 1.0\n"
@@ -14,54 +14,54 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Language: ja\n"
 
-#: /chili/chili-dialog-theme-selector:46
+#: usr/local/bin/chili-dialog-theme-selector:46
 msgid "Seletor de temas para o Dialog"
 msgstr "ダイアログのテーマセレクター"
 
-#: /chili/chili-dialog-theme-selector:48
+#: usr/local/bin/chili-dialog-theme-selector:48
 msgid "Menu de Temas"
 msgstr "テーマメニュー"
 
-#: /chili/chili-dialog-theme-selector:148
+#: usr/local/bin/chili-dialog-theme-selector:148
 msgid "Use as teclas"
 msgstr "キーを使用する"
 
-#: /chili/chili-dialog-theme-selector:149
+#: usr/local/bin/chili-dialog-theme-selector:149
 msgid "PARA CIMA"
 msgstr "上"
 
-#: /chili/chili-dialog-theme-selector:150
+#: usr/local/bin/chili-dialog-theme-selector:150
 msgid "e"
 msgstr "そして"
 
-#: /chili/chili-dialog-theme-selector:151
+#: usr/local/bin/chili-dialog-theme-selector:151
 msgid "PARA BAIXO"
 msgstr "下"
 
-#: /chili/chili-dialog-theme-selector:152
+#: usr/local/bin/chili-dialog-theme-selector:152
 msgid "para navegar"
 msgstr "ナビゲートする"
 
-#: /chili/chili-dialog-theme-selector:153
+#: usr/local/bin/chili-dialog-theme-selector:153
 msgid "Use"
 msgstr "使用"
 
-#: /chili/chili-dialog-theme-selector:154
+#: usr/local/bin/chili-dialog-theme-selector:154
 msgid "para alternar entre os botões"
 msgstr "ボタンを切り替えるには"
 
-#: /chili/chili-dialog-theme-selector:155
+#: usr/local/bin/chili-dialog-theme-selector:155
 msgid "para selecionar"
 msgstr "選択する"
 
-#: /chili/chili-dialog-theme-selector:321
+#: usr/local/bin/chili-dialog-theme-selector:322
 msgid "Selecionar"
 msgstr "選択"
 
-#: /chili/chili-dialog-theme-selector:322
+#: usr/local/bin/chili-dialog-theme-selector:323
 msgid "Sair"
 msgstr "外出する"
 
-#: /chili/chili-dialog-theme-selector:323
+#: usr/local/bin/chili-dialog-theme-selector:324
 msgid "Escolha o tema desejado"
 msgstr "希望のテーマを選択してください"
