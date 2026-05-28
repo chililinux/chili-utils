@@ -6,7 +6,7 @@
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
 #  Altered: qua 11 mar 2026 11:53:16 -04
-#  Updated: qui 23 abr 2026 14:15:26 -04
+#  Updated: qui 28 mai 2026 12:45:21 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -46,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.04.21-20260423"
+declare _VERSION_="0.05.28-20260528"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare -A PACKAGEDEP=(
@@ -918,6 +918,36 @@ calculate_swap() {
 	fi
 }
 
+sh_summary_swap() {
+  replicate '-'
+# vm.swappiness
+swappiness=$(sysctl -n vm.swappiness)
+
+# zswap / zram
+accept_threshold_percent=$(cat /sys/module/zswap/parameters/accept_threshold_percent 2>/dev/null)
+enabled=$(cat /sys/module/zswap/parameters/enabled 2>/dev/null)
+max_pool_percent=$(cat /sys/module/zswap/parameters/max_pool_percent 2>/dev/null)
+shrinker_enabled=$(cat /sys/module/zswap/parameters/shrinker_enabled 2>/dev/null)
+# pega somente o compressor ativo entre [ ]
+compressor=$(cat /sys/module/zswap/parameters/compressor)
+
+echo "\
+[➡  ] vm.swappiness = $swappiness ${yellow}
+      Define o quanto o kernel prefere usar swap.
+      Valores altos favorecem zram/zswap e ajudam multitarefa. ${rst}
+[➡  ] accept_threshold_percent : $accept_threshold_percent ${yellow}
+      Percentual de uso de memória para começar a aceitar páginas no zswap. ${rst}
+[➡  ] compressor : $compressor ${yellow}
+      Algoritmo de compressão usado.
+      zstd oferece ótimo equilíbrio entre velocidade e compressão. ${rst}
+[➡  ] enabled : $enabled ${yellow}
+      Define se o zswap está ativado. ${rst}
+[➡  ] max_pool_percent : $max_pool_percent ${yellow}
+      Limite máximo de RAM que o zswap pode utilizar. ${rst}
+[➡  ] shrinker_enabled : $shrinker_enabled ${yellow}
+      Permite ao kernel liberar memória com mais agressividade sob pressão. ${rst}"
+}
+
 summary() {
 	replicate '-'
 	echo "${blue}Resumo do sistema${rst}"
@@ -938,6 +968,7 @@ summary() {
 	else
     msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
 	fi
+
 	if [ $zswap_enabled = 'Y' ]; then
 		msg_tab "$(sysctl vm.swappiness)"
 		for f in /sys/module/zswap/parameters/*; do
@@ -1046,10 +1077,11 @@ sh_uninstall() {
 usage() {
 	echo -e "${cyan}Uso:${reset} $APP [opção]"
 	echo -e "${cyan}Opções:${reset}"
-	echo -e "  ${yellow}-s, --show       ${reset} mostra resumo do sistema"
-	echo -e "  ${green}-i, --install${reset}     Aplica configurações"
-	echo -e "  ${red}-u, --uninstall${reset}   Remove configurações"
-	echo -e "  ${cyan}-h, --help${reset}        Mostra este ajuda"
+	echo -e "  ${yellow}-s, --show           ${rst} mostra resumo do sistema"
+	echo -e "  ${yellow}-ss, --show-extended ${rst} mostra resumo explicado do sistema"
+	echo -e "  ${green}-i, --install${reset}         ${rst}Aplica configurações"
+	echo -e "  ${red}-u, --uninstall${reset}       ${rst}Remove configurações"
+	echo -e "  ${cyan}-h, --help${reset}            ${rst}Mostra este ajuda"
 }
 
 DISTRO="$(detect_distro)"
@@ -1067,6 +1099,16 @@ case "$1" in
 	#calculate_swap
 	ensure_debugfs
 	summary
+	;;
+-ss| --show-extended)
+	detect_init
+	detect_fs
+	detect_ram
+	detect_disk
+	#calculate_swap
+	ensure_debugfs
+	summary
+  sh_summary_swap
 	;;
 -i | --install)
 	sh_install
