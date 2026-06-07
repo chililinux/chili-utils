@@ -1,0 +1,148 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-07 00:29-0400\n"
+"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: it\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-mount-qemu:62
+msgid "Erro:"
+msgstr "ERRORE:"
+
+#: usr/local/bin/chili-mount-qemu:77
+msgid "O arquivo especificado não foi encontrado localmente nem em"
+msgstr "Il file specificato non è stato trovato localmente o in"
+
+#: usr/local/bin/chili-mount-qemu:81
+msgid "Diretório de imagens não encontrado:"
+msgstr "Directory delle immagini non trovata:"
+
+#: usr/local/bin/chili-mount-qemu:90
+msgid "Nenhuma imagem (.qcow2 ou .img) foi selecionada ou encontrada."
+msgstr "Nessuna immagine (.qcow2 o .img) è stata selezionata o trovata."
+
+#: usr/local/bin/chili-mount-qemu:94
+msgid "Carregando módulos de kernel (nbd)"
+msgstr "Caricamento dei moduli del kernel (nbd)"
+
+#: usr/local/bin/chili-mount-qemu:101
+msgid "Nenhuma imagem disponível para conectar."
+msgstr "Nessuna immagine disponibile per il collegamento."
+
+#: usr/local/bin/chili-mount-qemu:104
+msgid "Conectando imagens"
+msgstr "Collegamento di immagini"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "A imagem"
+msgstr "L'immagine"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "já está conectada em"
+msgstr "è già connesso a"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "Ignorando..."
+msgstr "Ignorando..."
+
+#: usr/local/bin/chili-mount-qemu:130
+msgid "Conectando"
+msgstr "Connessione"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "Falha ao inicializar dispositivo de bloco"
+msgstr "Impossibile inizializzare il dispositivo a blocchi"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "no tempo limite."
+msgstr "nel limite di tempo."
+
+#: usr/local/bin/chili-mount-qemu:150
+msgid "Processos qemu-nbd ativos:"
+msgstr "Processi qemu-nbd attivi:"
+
+#: usr/local/bin/chili-mount-qemu:151
+msgid "Nenhum processo qemu-nbd em execução."
+msgstr "Nessun processo qemu-nbd in esecuzione."
+
+#: usr/local/bin/chili-mount-qemu:153 usr/local/bin/chili-mount-qemu:181
+msgid "Dispositivos de bloco ativos:"
+msgstr "Dispositivi a blocco attivi:"
+
+#: usr/local/bin/chili-mount-qemu:158
+msgid "Desconectando imagens"
+msgstr "Disconnettere le immagini"
+
+#: usr/local/bin/chili-mount-qemu:169
+msgid "Status pós-desconexão:"
+msgstr "Stato post-disconnessione:"
+
+#: usr/local/bin/chili-mount-qemu:170
+msgid "Todos os processos qemu-nbd foram encerrados."
+msgstr "Tutti i processi qemu-nbd sono stati terminati."
+
+#: usr/local/bin/chili-mount-qemu:176
+msgid "Status dos dispositivos"
+msgstr "Stato di due dispositivi"
+
+#: usr/local/bin/chili-mount-qemu:178
+msgid "Processos ativos:"
+msgstr "Processi attivi:"
+
+#: usr/local/bin/chili-mount-qemu:184
+msgid "Nenhum dispositivo/processo nbd ativo conectado."
+msgstr "Nessun dispositivo/processo nbd attivo connesso."
+
+#: usr/local/bin/chili-mount-qemu:193
+msgid "Existem dispositivos NBD ativos no sistema."
+msgstr "Nel sistema sono presenti dispositivi NBD attivi."
+
+#: usr/local/bin/chili-mount-qemu:199 usr/local/bin/chili-mount-qemu:207
+msgid "VER STATUS DETALHADO"
+msgstr "VISUALIZZA STATO DETTAGLIATO"
+
+#: usr/local/bin/chili-mount-qemu:200 usr/local/bin/chili-mount-qemu:210
+msgid "DESCONECTAR TUDO (OFF)"
+msgstr "SCOLLEGARE TUTTO (OFF)"
+
+#: usr/local/bin/chili-mount-qemu:201 usr/local/bin/chili-mount-qemu:215
+msgid "SAIR"
+msgstr "Uscire"
+
+#: usr/local/bin/chili-mount-qemu:203
+msgid "Escolha uma imagem para conectar ou uma ação: "
+msgstr "Scegli un'immagine da connettere o un'azione:"
+
+#: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
+#: usr/local/bin/chili-mount-qemu:293
+msgid "Descarregando módulos"
+msgstr "Scarico dei moduli"
+
+#: usr/local/bin/chili-mount-qemu:226 usr/local/bin/chili-mount-qemu:234
+msgid "Ver Status detalhado"
+msgstr "VISUALIZZA STATO DETTAGLIATO"
+
+#: usr/local/bin/chili-mount-qemu:227 usr/local/bin/chili-mount-qemu:238
+msgid "Desconectar tudo (off)"
+msgstr "SCOLLEGARE TUTTO (OFF)"
+
+#: usr/local/bin/chili-mount-qemu:228 usr/local/bin/chili-mount-qemu:244
+msgid "Sair"
+msgstr "Uscire"
+
+#: usr/local/bin/chili-mount-qemu:231
+msgid "Escolha uma ação ou imagem para conectar: "
+msgstr "Scegli un'azione o un'immagine per connetterti:"
+
+#: usr/local/bin/chili-mount-qemu:259
+msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
+msgstr "Attenzione: assicurati di sostituire /dev/sdX con la destinazione corretta!"

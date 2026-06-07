@@ -1,0 +1,148 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-07 00:29-0400\n"
+"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ko\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-mount-qemu:62
+msgid "Erro:"
+msgstr "오류:"
+
+#: usr/local/bin/chili-mount-qemu:77
+msgid "O arquivo especificado não foi encontrado localmente nem em"
+msgstr "지정된 파일을 로컬 또는 위치에서 찾을 수 없습니다."
+
+#: usr/local/bin/chili-mount-qemu:81
+msgid "Diretório de imagens não encontrado:"
+msgstr "이미지 디렉터리를 찾을 수 없습니다:"
+
+#: usr/local/bin/chili-mount-qemu:90
+msgid "Nenhuma imagem (.qcow2 ou .img) foi selecionada ou encontrada."
+msgstr "이미지(.qcow2 또는 .img)를 선택하거나 찾을 수 없습니다."
+
+#: usr/local/bin/chili-mount-qemu:94
+msgid "Carregando módulos de kernel (nbd)"
+msgstr "커널 모듈 로드(nbd)"
+
+#: usr/local/bin/chili-mount-qemu:101
+msgid "Nenhuma imagem disponível para conectar."
+msgstr "링크할 수 있는 이미지가 없습니다."
+
+#: usr/local/bin/chili-mount-qemu:104
+msgid "Conectando imagens"
+msgstr "이미지 연결하기"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "A imagem"
+msgstr "이미지"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "já está conectada em"
+msgstr "이미 연결되어 있습니다"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "Ignorando..."
+msgstr "묵살..."
+
+#: usr/local/bin/chili-mount-qemu:130
+msgid "Conectando"
+msgstr "연결 중"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "Falha ao inicializar dispositivo de bloco"
+msgstr "블록 장치를 초기화하지 못했습니다."
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "no tempo limite."
+msgstr "제한 시간 내에."
+
+#: usr/local/bin/chili-mount-qemu:150
+msgid "Processos qemu-nbd ativos:"
+msgstr "활성 qemu-nbd 프로세스:"
+
+#: usr/local/bin/chili-mount-qemu:151
+msgid "Nenhum processo qemu-nbd em execução."
+msgstr "qemu-nbd 프로세스가 실행되고 있지 않습니다."
+
+#: usr/local/bin/chili-mount-qemu:153 usr/local/bin/chili-mount-qemu:181
+msgid "Dispositivos de bloco ativos:"
+msgstr "활성 블록 장치:"
+
+#: usr/local/bin/chili-mount-qemu:158
+msgid "Desconectando imagens"
+msgstr "이미지 연결 끊기"
+
+#: usr/local/bin/chili-mount-qemu:169
+msgid "Status pós-desconexão:"
+msgstr "연결 해제 후 상태:"
+
+#: usr/local/bin/chili-mount-qemu:170
+msgid "Todos os processos qemu-nbd foram encerrados."
+msgstr "모든 qemu-nbd 프로세스가 종료되었습니다."
+
+#: usr/local/bin/chili-mount-qemu:176
+msgid "Status dos dispositivos"
+msgstr "두 장치의 상태"
+
+#: usr/local/bin/chili-mount-qemu:178
+msgid "Processos ativos:"
+msgstr "활성 프로세스:"
+
+#: usr/local/bin/chili-mount-qemu:184
+msgid "Nenhum dispositivo/processo nbd ativo conectado."
+msgstr "연결된 활성 NBD 장치/프로세스가 없습니다."
+
+#: usr/local/bin/chili-mount-qemu:193
+msgid "Existem dispositivos NBD ativos no sistema."
+msgstr "시스템에 활성 NBD 장치가 있습니다."
+
+#: usr/local/bin/chili-mount-qemu:199 usr/local/bin/chili-mount-qemu:207
+msgid "VER STATUS DETALHADO"
+msgstr "자세한 상태 보기"
+
+#: usr/local/bin/chili-mount-qemu:200 usr/local/bin/chili-mount-qemu:210
+msgid "DESCONECTAR TUDO (OFF)"
+msgstr "모든 연결 해제(꺼짐)"
+
+#: usr/local/bin/chili-mount-qemu:201 usr/local/bin/chili-mount-qemu:215
+msgid "SAIR"
+msgstr "외출하다"
+
+#: usr/local/bin/chili-mount-qemu:203
+msgid "Escolha uma imagem para conectar ou uma ação: "
+msgstr "연결할 이미지 또는 작업을 선택하세요."
+
+#: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
+#: usr/local/bin/chili-mount-qemu:293
+msgid "Descarregando módulos"
+msgstr "모듈 언로드"
+
+#: usr/local/bin/chili-mount-qemu:226 usr/local/bin/chili-mount-qemu:234
+msgid "Ver Status detalhado"
+msgstr "자세한 상태 보기"
+
+#: usr/local/bin/chili-mount-qemu:227 usr/local/bin/chili-mount-qemu:238
+msgid "Desconectar tudo (off)"
+msgstr "모든 연결 해제(꺼짐)"
+
+#: usr/local/bin/chili-mount-qemu:228 usr/local/bin/chili-mount-qemu:244
+msgid "Sair"
+msgstr "외출하다"
+
+#: usr/local/bin/chili-mount-qemu:231
+msgid "Escolha uma ação ou imagem para conectar: "
+msgstr "연결할 작업이나 이미지를 선택하세요."
+
+#: usr/local/bin/chili-mount-qemu:259
+msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
+msgstr "주의: /dev/sdX를 올바른 대상으로 바꾸었는지 확인하십시오!"

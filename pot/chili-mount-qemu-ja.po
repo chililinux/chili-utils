@@ -1,0 +1,148 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-07 00:29-0400\n"
+"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-mount-qemu:62
+msgid "Erro:"
+msgstr "エラー："
+
+#: usr/local/bin/chili-mount-qemu:77
+msgid "O arquivo especificado não foi encontrado localmente nem em"
+msgstr "指定されたファイルがローカルまたは次の場所に見つかりませんでした。"
+
+#: usr/local/bin/chili-mount-qemu:81
+msgid "Diretório de imagens não encontrado:"
+msgstr "画像ディレクトリが見つかりません:"
+
+#: usr/local/bin/chili-mount-qemu:90
+msgid "Nenhuma imagem (.qcow2 ou .img) foi selecionada ou encontrada."
+msgstr "画像 (.qcow2 または .img) が選択されていないか、見つかりませんでした。"
+
+#: usr/local/bin/chili-mount-qemu:94
+msgid "Carregando módulos de kernel (nbd)"
+msgstr "カーネルモジュールのロード (nbd)"
+
+#: usr/local/bin/chili-mount-qemu:101
+msgid "Nenhuma imagem disponível para conectar."
+msgstr "リンクできる画像がありません。"
+
+#: usr/local/bin/chili-mount-qemu:104
+msgid "Conectando imagens"
+msgstr "イメージを繋ぐ"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "A imagem"
+msgstr "画像"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "já está conectada em"
+msgstr "すでに接続されています"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "Ignorando..."
+msgstr "無視しています..."
+
+#: usr/local/bin/chili-mount-qemu:130
+msgid "Conectando"
+msgstr "接続中"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "Falha ao inicializar dispositivo de bloco"
+msgstr "ブロックデバイスの初期化に失敗しました"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "no tempo limite."
+msgstr "制限時間内に。"
+
+#: usr/local/bin/chili-mount-qemu:150
+msgid "Processos qemu-nbd ativos:"
+msgstr "アクティブな qemu-nbd プロセス:"
+
+#: usr/local/bin/chili-mount-qemu:151
+msgid "Nenhum processo qemu-nbd em execução."
+msgstr "qemu-nbd プロセスが実行されていません。"
+
+#: usr/local/bin/chili-mount-qemu:153 usr/local/bin/chili-mount-qemu:181
+msgid "Dispositivos de bloco ativos:"
+msgstr "アクティブなブロックデバイス:"
+
+#: usr/local/bin/chili-mount-qemu:158
+msgid "Desconectando imagens"
+msgstr "画像の接続を解除する"
+
+#: usr/local/bin/chili-mount-qemu:169
+msgid "Status pós-desconexão:"
+msgstr "切断後のステータス:"
+
+#: usr/local/bin/chili-mount-qemu:170
+msgid "Todos os processos qemu-nbd foram encerrados."
+msgstr "すべての qemu-nbd プロセスが終了しました。"
+
+#: usr/local/bin/chili-mount-qemu:176
+msgid "Status dos dispositivos"
+msgstr "2 台のデバイスのステータス"
+
+#: usr/local/bin/chili-mount-qemu:178
+msgid "Processos ativos:"
+msgstr "アクティブなプロセス:"
+
+#: usr/local/bin/chili-mount-qemu:184
+msgid "Nenhum dispositivo/processo nbd ativo conectado."
+msgstr "アクティブな nbd デバイス/プロセスが接続されていません。"
+
+#: usr/local/bin/chili-mount-qemu:193
+msgid "Existem dispositivos NBD ativos no sistema."
+msgstr "システム内にアクティブな NBD デバイスがあります。"
+
+#: usr/local/bin/chili-mount-qemu:199 usr/local/bin/chili-mount-qemu:207
+msgid "VER STATUS DETALHADO"
+msgstr "詳細なステータスを表示"
+
+#: usr/local/bin/chili-mount-qemu:200 usr/local/bin/chili-mount-qemu:210
+msgid "DESCONECTAR TUDO (OFF)"
+msgstr "すべての接続を切断します (オフ)"
+
+#: usr/local/bin/chili-mount-qemu:201 usr/local/bin/chili-mount-qemu:215
+msgid "SAIR"
+msgstr "外出する"
+
+#: usr/local/bin/chili-mount-qemu:203
+msgid "Escolha uma imagem para conectar ou uma ação: "
+msgstr "接続する画像またはアクションを選択してください:"
+
+#: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
+#: usr/local/bin/chili-mount-qemu:293
+msgid "Descarregando módulos"
+msgstr "モジュールのアンロード"
+
+#: usr/local/bin/chili-mount-qemu:226 usr/local/bin/chili-mount-qemu:234
+msgid "Ver Status detalhado"
+msgstr "詳細なステータスを表示"
+
+#: usr/local/bin/chili-mount-qemu:227 usr/local/bin/chili-mount-qemu:238
+msgid "Desconectar tudo (off)"
+msgstr "すべての接続を切断します (オフ)"
+
+#: usr/local/bin/chili-mount-qemu:228 usr/local/bin/chili-mount-qemu:244
+msgid "Sair"
+msgstr "外出する"
+
+#: usr/local/bin/chili-mount-qemu:231
+msgid "Escolha uma ação ou imagem para conectar: "
+msgstr "接続するアクションまたは画像を選択してください:"
+
+#: usr/local/bin/chili-mount-qemu:259
+msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
+msgstr "注意: /dev/sdX を正しい宛先に置き換えてください。"

@@ -1,0 +1,148 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-07 00:29-0400\n"
+"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_TW\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-mount-qemu:62
+msgid "Erro:"
+msgstr "錯誤："
+
+#: usr/local/bin/chili-mount-qemu:77
+msgid "O arquivo especificado não foi encontrado localmente nem em"
+msgstr "在本地或其他地方找不到指定的文件"
+
+#: usr/local/bin/chili-mount-qemu:81
+msgid "Diretório de imagens não encontrado:"
+msgstr "未找到圖像目錄："
+
+#: usr/local/bin/chili-mount-qemu:90
+msgid "Nenhuma imagem (.qcow2 ou .img) foi selecionada ou encontrada."
+msgstr "未選擇或找到任何圖像（.qcow2 或 .img）。"
+
+#: usr/local/bin/chili-mount-qemu:94
+msgid "Carregando módulos de kernel (nbd)"
+msgstr "載入核心模組（nbd）"
+
+#: usr/local/bin/chili-mount-qemu:101
+msgid "Nenhuma imagem disponível para conectar."
+msgstr "沒有可連結的圖像。"
+
+#: usr/local/bin/chili-mount-qemu:104
+msgid "Conectando imagens"
+msgstr "連接影像"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "A imagem"
+msgstr "影像"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "já está conectada em"
+msgstr "已經連接到"
+
+#: usr/local/bin/chili-mount-qemu:117
+msgid "Ignorando..."
+msgstr "忽略..."
+
+#: usr/local/bin/chili-mount-qemu:130
+msgid "Conectando"
+msgstr "連接中"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "Falha ao inicializar dispositivo de bloco"
+msgstr "區塊設備初始化失敗"
+
+#: usr/local/bin/chili-mount-qemu:139
+msgid "no tempo limite."
+msgstr "在時間限制內。"
+
+#: usr/local/bin/chili-mount-qemu:150
+msgid "Processos qemu-nbd ativos:"
+msgstr "活動的 qemu-nbd 流程："
+
+#: usr/local/bin/chili-mount-qemu:151
+msgid "Nenhum processo qemu-nbd em execução."
+msgstr "沒有 qemu-nbd 程序正在運行。"
+
+#: usr/local/bin/chili-mount-qemu:153 usr/local/bin/chili-mount-qemu:181
+msgid "Dispositivos de bloco ativos:"
+msgstr "活動塊設備："
+
+#: usr/local/bin/chili-mount-qemu:158
+msgid "Desconectando imagens"
+msgstr "斷開影像連接"
+
+#: usr/local/bin/chili-mount-qemu:169
+msgid "Status pós-desconexão:"
+msgstr "斷線後狀態："
+
+#: usr/local/bin/chili-mount-qemu:170
+msgid "Todos os processos qemu-nbd foram encerrados."
+msgstr "所有 qemu-nbd 程序均已終止。"
+
+#: usr/local/bin/chili-mount-qemu:176
+msgid "Status dos dispositivos"
+msgstr "兩台設備的狀態"
+
+#: usr/local/bin/chili-mount-qemu:178
+msgid "Processos ativos:"
+msgstr "活躍進程："
+
+#: usr/local/bin/chili-mount-qemu:184
+msgid "Nenhum dispositivo/processo nbd ativo conectado."
+msgstr "沒有連接活動的 nbd 設備/流程。"
+
+#: usr/local/bin/chili-mount-qemu:193
+msgid "Existem dispositivos NBD ativos no sistema."
+msgstr "系統中存在活動的NBD設備。"
+
+#: usr/local/bin/chili-mount-qemu:199 usr/local/bin/chili-mount-qemu:207
+msgid "VER STATUS DETALHADO"
+msgstr "查看詳細狀態"
+
+#: usr/local/bin/chili-mount-qemu:200 usr/local/bin/chili-mount-qemu:210
+msgid "DESCONECTAR TUDO (OFF)"
+msgstr "斷開所有連接（關閉）"
+
+#: usr/local/bin/chili-mount-qemu:201 usr/local/bin/chili-mount-qemu:215
+msgid "SAIR"
+msgstr "退出"
+
+#: usr/local/bin/chili-mount-qemu:203
+msgid "Escolha uma imagem para conectar ou uma ação: "
+msgstr "選擇要連接的影像或操作："
+
+#: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
+#: usr/local/bin/chili-mount-qemu:293
+msgid "Descarregando módulos"
+msgstr "解除安裝模組"
+
+#: usr/local/bin/chili-mount-qemu:226 usr/local/bin/chili-mount-qemu:234
+msgid "Ver Status detalhado"
+msgstr "查看詳細狀態"
+
+#: usr/local/bin/chili-mount-qemu:227 usr/local/bin/chili-mount-qemu:238
+msgid "Desconectar tudo (off)"
+msgstr "斷開所有連接（關閉）"
+
+#: usr/local/bin/chili-mount-qemu:228 usr/local/bin/chili-mount-qemu:244
+msgid "Sair"
+msgstr "退出"
+
+#: usr/local/bin/chili-mount-qemu:231
+msgid "Escolha uma ação ou imagem para conectar: "
+msgstr "選擇要連結的動作或影像："
+
+#: usr/local/bin/chili-mount-qemu:259
+msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
+msgstr "注意：確保將 /dev/sdX 替換為正確的目標！"
