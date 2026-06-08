@@ -1,0 +1,75 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-08 16:03-0400\n"
+"PO-Revision-Date: 2026-06-08 16:03-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-wifi-config:76
+msgid "Wrapper configuração wifi para o NetworkManager"
+msgstr "NetworkManager の WiFi 構成ラッパー"
+
+#: usr/local/bin/chili-wifi-config:286
+msgid "Nenhuma interface wifi encontrada. Saindo..."
+msgstr "Wi-Fi インターフェースが見つかりません。出発中..."
+
+#: usr/local/bin/chili-wifi-config:293
+msgid "Selecione a Interface de Rede"
+msgstr "ネットワークインターフェースの選択"
+
+#: usr/local/bin/chili-wifi-config:294
+msgid "Escolha a interface de rede"
+msgstr "ネットワークインターフェースを選択してください"
+
+#: usr/local/bin/chili-wifi-config:302
+msgid "Nenhuma interface selecionada. Saindo..."
+msgstr "インターフェイスが選択されていません。出発中..."
+
+#: usr/local/bin/chili-wifi-config:329
+msgid "Selecione a Rede Wi-Fi"
+msgstr "Wi-Fiネットワークを選択"
+
+#: usr/local/bin/chili-wifi-config:330
+msgid "Escolha a rede Wi-Fi"
+msgstr "Wi-Fiネットワークを選択してください"
+
+#: usr/local/bin/chili-wifi-config:338
+msgid "Nenhuma rede selecionada. Saindo..."
+msgstr "ネットワークが選択されていません。出発中..."
+
+#: usr/local/bin/chili-wifi-config:345
+msgid "Senha da Rede Wi-Fi"
+msgstr "Wi-Fiネットワークパスワード"
+
+#: usr/local/bin/chili-wifi-config:392
+msgid "Configuração Wi-Fi"
+msgstr "WiFiセットアップ"
+
+#: usr/local/bin/chili-wifi-config:393
+msgid "Bem-vindo ao assistente de configuração de Wi-Fi!"
+msgstr "Wi-Fi セットアップ ウィザードへようこそ!"
+
+#: usr/local/bin/chili-wifi-config:410
+msgid "Nenhuma rede Wi-Fi encontrada. Saindo..."
+msgstr "Wi-Fi ネットワークが見つかりません。出発中..."
+
+#: usr/local/bin/chili-wifi-config:429
+msgid "Você já está conectado à internet!"
+msgstr "これでインターネットに接続されました。"
+
+#: usr/local/bin/chili-wifi-config:429
+msgid "Rota padrão"
+msgstr "デフォルトルート"
+
+#: usr/local/bin/chili-wifi-config:429
+msgid "Deseja continuar mesmo assim?"
+msgstr "それでも続行しますか?"
