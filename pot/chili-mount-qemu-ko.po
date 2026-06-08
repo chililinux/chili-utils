@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
-"POT-Creation-Date: 2026-06-07 00:29-0400\n"
-"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"POT-Creation-Date: 2026-06-07 22:59-0400\n"
+"PO-Revision-Date: 2026-06-07 22:59-0400\n"
 "Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
 "Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
 "MIME-Version: 1.0\n"
@@ -123,7 +123,7 @@ msgid "Escolha uma imagem para conectar ou uma ação: "
 msgstr "연결할 이미지 또는 작업을 선택하세요."
 
 #: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
-#: usr/local/bin/chili-mount-qemu:293
+#: usr/local/bin/chili-mount-qemu:294
 msgid "Descarregando módulos"
 msgstr "모듈 언로드"
 
@@ -146,3 +146,51 @@ msgstr "연결할 작업이나 이미지를 선택하세요."
 #: usr/local/bin/chili-mount-qemu:259
 msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
 msgstr "주의: /dev/sdX를 올바른 대상으로 바꾸었는지 확인하십시오!"
+
+#: usr/local/bin/chili-mount-qemu:264
+msgid "Uso:"
+msgstr "사용:"
+
+#: usr/local/bin/chili-mount-qemu:267
+msgid "Descrição:"
+msgstr "설명:"
+
+#: usr/local/bin/chili-mount-qemu:268
+msgid "conecta imagens (.qcow2 e .img)"
+msgstr "이미지 연결(.qcow2 및 .img)"
+
+#: usr/local/bin/chili-mount-qemu:269
+msgid "desconecta todos dispositivos nbd e descarrega o módulo"
+msgstr "모든 nbd 장치의 연결을 끊고 모듈을 언로드합니다."
+
+#: usr/local/bin/chili-mount-qemu:270
+msgid "mostra dispositivos e processos conectados"
+msgstr "연결된 장치와 프로세스를 보여줍니다"
+
+#: usr/local/bin/chili-mount-qemu:271
+msgid "abre menu interativo (fzf/select) para gerenciamento"
+msgstr "관리를 위한 대화형 메뉴(fzf/select) 열기"
+
+#: usr/local/bin/chili-mount-qemu:273
+msgid "Diretório padrão de busca:"
+msgstr "기본 검색 디렉터리:"
+
+#: usr/local/bin/chili-mount-qemu:276
+msgid "Exemplos:"
+msgstr "예:"
+
+#: usr/local/bin/chili-mount-qemu:277
+msgid "Conecta todas imagens do diretório padrão"
+msgstr "기본 디렉터리의 모든 이미지 연결"
+
+#: usr/local/bin/chili-mount-qemu:280
+msgid "Abre interface de seleção interativa"
+msgstr "대화형 선택 인터페이스를 엽니다."
+
+#: usr/local/bin/chili-mount-qemu:281 usr/local/bin/chili-mount-qemu:282
+msgid "Conecta apenas"
+msgstr "연결만 가능"
+
+#: usr/local/bin/chili-mount-qemu:283
+msgid "Conecta uma imagem fora do diretório padrão"
+msgstr "기본 디렉터리 외부에 이미지 연결"

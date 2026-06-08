@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
-"POT-Creation-Date: 2026-06-07 00:29-0400\n"
-"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"POT-Creation-Date: 2026-06-07 22:59-0400\n"
+"PO-Revision-Date: 2026-06-07 22:59-0400\n"
 "Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
 "Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
 "MIME-Version: 1.0\n"
@@ -123,7 +123,7 @@ msgid "Escolha uma imagem para conectar ou uma ação: "
 msgstr "选择要连接的图像或操作："
 
 #: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
-#: usr/local/bin/chili-mount-qemu:293
+#: usr/local/bin/chili-mount-qemu:294
 msgid "Descarregando módulos"
 msgstr "卸载模块"
 
@@ -146,3 +146,51 @@ msgstr "选择要连接的动作或图像："
 #: usr/local/bin/chili-mount-qemu:259
 msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
 msgstr "注意：确保将 /dev/sdX 替换为正确的目标！"
+
+#: usr/local/bin/chili-mount-qemu:264
+msgid "Uso:"
+msgstr "使用："
+
+#: usr/local/bin/chili-mount-qemu:267
+msgid "Descrição:"
+msgstr "描述："
+
+#: usr/local/bin/chili-mount-qemu:268
+msgid "conecta imagens (.qcow2 e .img)"
+msgstr "连接图像（.qcow2 和 .img）"
+
+#: usr/local/bin/chili-mount-qemu:269
+msgid "desconecta todos dispositivos nbd e descarrega o módulo"
+msgstr "断开所有nbd设备并卸载模块"
+
+#: usr/local/bin/chili-mount-qemu:270
+msgid "mostra dispositivos e processos conectados"
+msgstr "显示连接的设备和进程"
+
+#: usr/local/bin/chili-mount-qemu:271
+msgid "abre menu interativo (fzf/select) para gerenciamento"
+msgstr "打开交互式菜单（fzf/select）进行管理"
+
+#: usr/local/bin/chili-mount-qemu:273
+msgid "Diretório padrão de busca:"
+msgstr "默认搜索目录："
+
+#: usr/local/bin/chili-mount-qemu:276
+msgid "Exemplos:"
+msgstr "示例："
+
+#: usr/local/bin/chili-mount-qemu:277
+msgid "Conecta todas imagens do diretório padrão"
+msgstr "连接默认目录中的所有图像"
+
+#: usr/local/bin/chili-mount-qemu:280
+msgid "Abre interface de seleção interativa"
+msgstr "打开交互式选择界面"
+
+#: usr/local/bin/chili-mount-qemu:281 usr/local/bin/chili-mount-qemu:282
+msgid "Conecta apenas"
+msgstr "仅连接"
+
+#: usr/local/bin/chili-mount-qemu:283
+msgid "Conecta uma imagem fora do diretório padrão"
+msgstr "连接默认目录之外的图像"

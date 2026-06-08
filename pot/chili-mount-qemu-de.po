@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
-"POT-Creation-Date: 2026-06-07 00:29-0400\n"
-"PO-Revision-Date: 2026-06-07 00:29-0400\n"
+"POT-Creation-Date: 2026-06-07 22:59-0400\n"
+"PO-Revision-Date: 2026-06-07 22:59-0400\n"
 "Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
 "Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
 "MIME-Version: 1.0\n"
@@ -123,7 +123,7 @@ msgid "Escolha uma imagem para conectar ou uma ação: "
 msgstr "Wählen Sie ein Bild zum Verbinden oder eine Aktion aus:"
 
 #: usr/local/bin/chili-mount-qemu:212 usr/local/bin/chili-mount-qemu:240
-#: usr/local/bin/chili-mount-qemu:293
+#: usr/local/bin/chili-mount-qemu:294
 msgid "Descarregando módulos"
 msgstr "Module entladen"
 
@@ -146,3 +146,51 @@ msgstr "Wählen Sie eine Aktion oder ein Bild zum Verbinden aus:"
 #: usr/local/bin/chili-mount-qemu:259
 msgid "Atenção: Certifique-se de substituir /dev/sdX pelo destino correto!"
 msgstr "Achtung: Stellen Sie sicher, dass Sie /dev/sdX durch das richtige Ziel ersetzen!"
+
+#: usr/local/bin/chili-mount-qemu:264
+msgid "Uso:"
+msgstr "verwenden:"
+
+#: usr/local/bin/chili-mount-qemu:267
+msgid "Descrição:"
+msgstr "Beschreibung:"
+
+#: usr/local/bin/chili-mount-qemu:268
+msgid "conecta imagens (.qcow2 e .img)"
+msgstr "verbindet Bilder (.qcow2 und .img)"
+
+#: usr/local/bin/chili-mount-qemu:269
+msgid "desconecta todos dispositivos nbd e descarrega o módulo"
+msgstr "Trennen Sie alle NBD-Geräte und entladen Sie das Modul"
+
+#: usr/local/bin/chili-mount-qemu:270
+msgid "mostra dispositivos e processos conectados"
+msgstr "zeigt angeschlossene Geräte und Prozesse"
+
+#: usr/local/bin/chili-mount-qemu:271
+msgid "abre menu interativo (fzf/select) para gerenciamento"
+msgstr "Öffnet das interaktive Menü (fzf/select) zur Verwaltung"
+
+#: usr/local/bin/chili-mount-qemu:273
+msgid "Diretório padrão de busca:"
+msgstr "Standardsuchverzeichnis:"
+
+#: usr/local/bin/chili-mount-qemu:276
+msgid "Exemplos:"
+msgstr "Beispiele:"
+
+#: usr/local/bin/chili-mount-qemu:277
+msgid "Conecta todas imagens do diretório padrão"
+msgstr "Verbinden Sie alle Bilder aus dem Standardverzeichnis"
+
+#: usr/local/bin/chili-mount-qemu:280
+msgid "Abre interface de seleção interativa"
+msgstr "Öffnet die interaktive Auswahloberfläche"
+
+#: usr/local/bin/chili-mount-qemu:281 usr/local/bin/chili-mount-qemu:282
+msgid "Conecta apenas"
+msgstr "Nur verbinden"
+
+#: usr/local/bin/chili-mount-qemu:283
+msgid "Conecta uma imagem fora do diretório padrão"
+msgstr "Verbinden Sie ein Bild außerhalb des Standardverzeichnisses"
