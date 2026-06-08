@@ -4,7 +4,7 @@
 #
 #  chili-mount-qemu
 #  Created: ter 26 nov 2023 09:20:07 -04
-#  Updated: sab 06 jun 2026 23:59:02 -04
+#  Updated: dom 07 jun 2026 22:52:58 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -261,25 +261,26 @@ sh_copia() {
 }
 
 usage() {
-  echo -e "${c1}Uso:${c0}"
+  echo -e "${c1}$(gettext "Uso:")${c0}"
   echo -e "  ${c5}$APP${c0} ${c3}{on|off|status|interactive}${c0} ${c2}[arquivo.qcow2|/caminho/imagem.img]${c0}"
   echo
-  echo -e "${c1}Descrição:${c0}"
-  echo -e "  ${c3}on${c0}           conecta imagens (.qcow2 e .img)"
-  echo -e "  ${c3}off${c0}          desconecta todos dispositivos nbd e descarrega o módulo"
-  echo -e "  ${c3}status${c0}       mostra dispositivos e processos conectados"
-  echo -e "  ${c3}interactive${c0}  abre menu interativo (fzf/select) para gerenciamento"
+  echo -e "${c1}$(gettext "Descrição:")${c0}"
+  echo -e "  ${c3}on${c0}           $(gettext "conecta imagens (.qcow2 e .img)")"
+  echo -e "  ${c3}off${c0}          $(gettext "desconecta todos dispositivos nbd e descarrega o módulo")"
+  echo -e "  ${c3}status${c0}       $(gettext "mostra dispositivos e processos conectados")"
+  echo -e "  ${c3}interactive${c0}  $(gettext "abre menu interativo (fzf/select) para gerenciamento")"
   echo
-  echo -e "${c1}Diretório padrão de busca:${c0}"
+  echo -e "${c1}$(gettext "Diretório padrão de busca:")${c0}"
   echo -e "  ${c5}$IMGDIR${c0}"
   echo
-  echo -e "${c1}Exemplos:${c0}"
-  echo -e "  ${c2}$APP on${c0}                              ${cyan}# Conecta todas do diretório padrão${c0}"
-  echo -e "  ${c2}$APP on sda.qcow2${c0}                    ${cyan}# Conecta apenas $IMGDIR/sda.qcow2${c0}"
-  echo -e "  ${c2}$APP on /tmp/sistema.img${c0}             ${cyan}# Conecta uma imagem fora do diretório padrão${c0}"
-  echo -e "  ${c2}$APP interactive${c0}                     ${cyan}# Abre interface de seleção interativa${c0}"
+  echo -e "${c1}$(gettext "Exemplos:")${c0}"
+  echo -e "  ${c2}$APP on${c0}                ${cyan}# $(gettext "Conecta todas imagens do diretório padrão")${c0}"
   echo -e "  ${c2}$APP status${c0}"
   echo -e "  ${c2}$APP off${c0}"
+  echo -e "  ${c2}$APP interactive${c0}       ${cyan}# $(gettext "Abre interface de seleção interativa")${c0}"
+  echo -e "  ${c2}$APP on vda.qcow2${c0}      ${cyan}# $(gettext "Conecta apenas") \$IMGDIR/vda.qcow2${c0}"
+  echo -e "  ${c2}$APP on sda.img${c0}        ${cyan}# $(gettext "Conecta apenas") \$IMGDIR/sda.img${c0}"
+  echo -e "  ${c2}$APP on /tmp/file.img${c0}  ${cyan}# $(gettext "Conecta uma imagem fora do diretório padrão")${c0}"
   exit 1
 }
 
