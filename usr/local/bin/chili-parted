@@ -214,11 +214,16 @@ function sh_parted() {
 		fi
 		echo -e "${yellow}AVISO, CUIDADO, tudo será apagado!!"
 		if conf "Continuar com o particionamento?"; then
-      parted --align=opt --script "$sd" -- \
-        mklabel gpt \
-        mkpart primary fat32 2MiB 4MiB set 1 bios_grub on name 1 BIOS \
-        mkpart primary fat32 4MiB 132MiB set 2 esp on name 2 EFI \
-        mkpart primary ext4 132MiB 100% name 3 ROOT
+			wipefs -a "$sd"
+			sgdisk --zap-all "$sd"
+			parted --align=opt --script "$sd" -- \
+				mklabel gpt \
+				mkpart primary 2MiB 4MiB \
+				set 1 bios_grub on name 1 BIOS \
+				mkpart primary fat32 4MiB 132MiB \
+				set 2 esp on name 2 EFI \
+				mkpart primary ext4 132MiB 100% \
+				name 3 ROOT
 			parted --script "$sd" -- print
 		fi
 	fi
