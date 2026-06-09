@@ -11,57 +11,57 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: none\n"
+"Language: zh_TW\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #: usr/local/bin/chili-dialog-theme-selector:45
 msgid "Seletor de temas para o Dialog"
-msgstr ""
+msgstr "對話框的主題選擇器"
 
 #: usr/local/bin/chili-dialog-theme-selector:136
 msgid "Menu de Temas"
-msgstr ""
+msgstr "主題選單"
 
 #: usr/local/bin/chili-dialog-theme-selector:251
 msgid "Use as teclas"
-msgstr ""
+msgstr "用作 Teclas"
 
 #: usr/local/bin/chili-dialog-theme-selector:252
 msgid "PARA CIMA"
-msgstr ""
+msgstr "登頂"
 
 #: usr/local/bin/chili-dialog-theme-selector:253
 msgid "e"
-msgstr ""
+msgstr "e"
 
 #: usr/local/bin/chili-dialog-theme-selector:254
 msgid "PARA BAIXO"
-msgstr ""
+msgstr "向下"
 
 #: usr/local/bin/chili-dialog-theme-selector:255
 msgid "para navegar"
-msgstr ""
+msgstr "導航"
 
 #: usr/local/bin/chili-dialog-theme-selector:256
 msgid "Use"
-msgstr ""
+msgstr "使用"
 
 #: usr/local/bin/chili-dialog-theme-selector:257
 msgid "para alternar entre os botões"
-msgstr ""
+msgstr "在按鈕之間切換"
 
 #: usr/local/bin/chili-dialog-theme-selector:258
 msgid "para selecionar|aceitar"
-msgstr ""
+msgstr "選擇|接受"
 
 #: usr/local/bin/chili-dialog-theme-selector:264
 msgid "Selecionar"
-msgstr ""
+msgstr "選擇"
 
 #: usr/local/bin/chili-dialog-theme-selector:265
 msgid "Sair"
-msgstr ""
+msgstr "退出"
 
 #: usr/local/bin/chili-dialog-theme-selector:266
 msgid "Escolha o tema desejado"
-msgstr ""
+msgstr "選擇所需的主題"

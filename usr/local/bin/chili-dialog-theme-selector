@@ -4,8 +4,7 @@
 #
 #  chili-dialog-theme-selector - Seletor de temas para o Dialog
 #  Created: 2025/02/03 - 00:54
-#  Altered: 2025/02/03 - 00:54
-#  Updated: seg 25 mai 2026 07:39:46 -04
+#  Updated: ter 09 jun 2026 11:58:17 -04
 #
 #  Copyright (c) 2025-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -30,7 +29,7 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
-#export LANGUAGE=pt_BR
+export LANGUAGE="${LANGUAGE:-pt_BR}"
 export TEXTDOMAINDIR=/usr/share/locale
 export TEXTDOMAIN=chili-dialog-theme-selector
 
@@ -42,11 +41,8 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_='4.05.25.20260525'
+declare _VERSION_='1.06.09.20260609'
 declare APPDESC="$(gettext 'Seletor de temas para o Dialog')"
-declare ccabec="ChiliLinux - $APP - v$_VERSION_ - $APPDESC"
-declare ctitle="$(gettext 'Menu de Temas')"
-declare DIALOG='dialog'
 declare DEPENDENCIES=(dialog setfont tput)
 
 sh_setVarColors() {
@@ -137,23 +133,10 @@ sh_setVarColors() {
 	: "${D_ITEM_HELP=4}"
 	: "${D_ESC=255}"
 
+  : "${ctitle="$(gettext 'Menu de Temas')"}"
+  : "${DIALOG=dialog}"
+  : "${ccabec="${BOLD}${WHITE}${REVERSE}${APP} ${YELLOW}v$_VERSION_ ${BLUE}https://github.com/chililinux/chili-utils"}"
 }
-
-sh_unsetVarColors() {
-	unset reset green red bold blue cyan
-	unset orange pink white yellow violet purple
-	sh_setLogPrefix
-}
-
-cLB1=$(gettext "Use as teclas")
-cLB2=$(gettext "PARA CIMA")
-cLB3=$(gettext "e")
-cLB4=$(gettext "PARA BAIXO")
-cLB5=$(gettext "para navegar")
-cLB6=$(gettext "Use")
-cLB7=$(gettext "para alternar entre os botões")
-cLB8=$(gettext "para selecionar")
-cmsg_LABEL="$cLB1${BLUE} ↑ $cLB2$RESET $cLB3 ${BLUE}↓ $cLB4$RESET $cLB5\n$cLB6${BLUE} TAB${RESET} $cLB7${BLUE} ENTER${RESET} $cLB8"
 
 declare -A themes
 themes["Default"]="screen_color = (CYAN,BLUE,ON)|shadow_color = (BLACK,BLACK,ON)|dialog_color = (BLACK,WHITE,OFF)|title_color = (BLUE,WHITE,ON)|border_color = (WHITE,WHITE,ON)|button_active_color = (WHITE,BLUE,ON)|button_inactive_color = dialog_color|button_key_active_color = (WHITE,BLUE,ON)|button_key_inactive_color = (RED,WHITE,OFF)|button_label_active_color = (YELLOW,BLUE,ON)|button_label_inactive_color = dialog_color|inputbox_color = dialog_color|inputbox_border_color = dialog_color|searchbox_color = dialog_color|searchbox_title_color = title_color|searchbox_border_color = border_color|position_indicator_color = (BLUE,WHITE,ON)|menubox_color = dialog_color|menubox_border_color = border_color|item_color = dialog_color|item_selected_color = (WHITE,BLUE,ON)|tag_color = (BLUE,WHITE,ON)|tag_selected_color = button_label_active_color|tag_key_color = (RED,WHITE,OFF)|tag_key_selected_color = (RED,BLUE,ON)|check_color = dialog_color|check_selected_color = (WHITE,BLUE,ON)|uarrow_color = (GREEN,WHITE,ON)|darrow_color = (GREEN,WHITE,ON)|itemhelp_color = (WHITE,BLACK,OFF)|form_active_text_color = (WHITE,BLUE,ON)|form_text_color = (BLACK,WHITE,OFF)|form_item_readonly_color = (CYAN,WHITE,ON)|gauge_color = (BLUE,WHITE,ON)|border2_color = border_color|inputbox_border2_color = border_color|searchbox_border2_color = border_color|menubox_border2_color = border_color|use_shadow = ON|use_colors = ON|tab_len = 0|visit_items = OFF|separate_widget = \"\""
@@ -258,27 +241,38 @@ themes["Basic Green"]="screen_color = (white,black,off)|dialog_color = (white,bl
 themes["Basic Blue"]="screen_color = (white,black,off)|dialog_color = (white,black,off)|title_color = (blue,black,on)|button_active_color = (black,blue,on)|check_selected_color = button_active_color|use_colors = on"
 themes["Basic Cyan"]="screen_color = (white,black,off)|dialog_color = (white,black,off)|title_color = (cyan,black,on)|button_active_color = (black,cyan,on)|check_selected_color = button_active_color|use_colors = on"
 
-#dom 11 jan 2026 09:51:57 -04
-# Converte o array associativo "themes" do formato antigo
-# (com valores contendo quebras de linha) para o novo formato,
-# onde cada campo é separado por "|" em uma única linha.
+sh_unsetVarColors() {
+	unset reset green red bold blue cyan
+	unset orange pink white yellow violet purple
+	sh_setLogPrefix
+}
+
+sh_Language() {
+  cLB1="$(gettext "Use as teclas")"
+  cLB2="$(gettext "PARA CIMA")"
+  cLB3="$(gettext "e")"
+  cLB4="$(gettext "PARA BAIXO")"
+  cLB5="$(gettext "para navegar")"
+  cLB6="$(gettext "Use")"
+  cLB7="$(gettext "para alternar entre os botões")"
+  cLB8="$(gettext "para selecionar|aceitar")"
+  ccolor="${BOLD}${RED}"
+  cmsg_LABEL="$cLB1 ${ccolor}↑ $cLB2$RESET \
+$cLB3 ${ccolor}↓ $cLB4$RESET \
+$cLB5\n$cLB6 ${ccolor}⇥ TAB${RESET} \
+$cLB7 ${ccolor}↵ ENTER${RESET} $cLB8"
+  cmsg_Selecionar="$(gettext 'Selecionar')"
+  cmsg_Sair="$(gettext 'Sair')"
+  cmsg_Escolha_o_tema_desejado="$(gettext "Escolha o tema desejado")"
+}
+
 convert_old_format_array_theme() {
-  # Loop por todas as chaves do array associativo "themes"
   for k in "${!themes[@]}"; do
     # Obtém o valor bruto do tema referente a essa chave
     val=${themes[$k]}
-
-    # Substitui quebras de linha ($'\n') por pipes "|"
-    # Obs: $'\n' é escape literal de newline no Bash, não texto "\n"
     val=${val//$'\n'/|}
-
-    # Remove pipe inicial caso exista (resultado comum quando a
-    # primeira linha do valor era precedida de newline)
     val=${val#|}
 
-    # Imprime o tema já convertido no formato:
-    # themes["Nome"]="campo1|campo2|campo3|..."
-    # Ideal para importar no novo sistema de temas
     printf 'themes["%s"]="%s"\n' "$k" "$val"
   done
 }
@@ -286,6 +280,7 @@ convert_old_format_array_theme() {
 apply_theme() {
 	local theme_name="$1"
 	local theme_data="${themes[$theme_name]}"
+
 	[[ -z "$theme_data" ]] && return 1
 
 	# explode por |
@@ -306,7 +301,6 @@ sh_main() {
 	theme_list=()
 	mapfile -t sorted_keys < <(printf "%s\n" "${!themes[@]}" | sort)
 
-	# Contador para a numeração na coluna 2
 	local count=1
 	for key in "${sorted_keys[@]}"; do
 		theme_list+=("$key" "$count")
@@ -319,15 +313,15 @@ sh_main() {
 			--colors \
 			--title "$ctitle" \
 			--backtitle "$ccabec" \
-			--ok-label "'$(gettext 'Selecionar')" \
-			--cancel-label "'$(gettext 'Sair')" \
-			--menu "${cmsg_LABEL}\n\n${YELLOW}$(gettext "Escolha o tema desejado"):${RESET}" \
-			22 0 2 "${theme_list[@]}" \
+			--ok-label "${cmsg_Selecionar}" \
+			--cancel-label "${cmsg_Sair}" \
+			--menu "${cmsg_LABEL}\n\n${YELLOW}${cmsg_Escolha_o_tema_desejado}:${RESET}" \
+			22 00 2 "${theme_list[@]}" \
 			2>&1 >/dev/tty)
 
 		if [ -n "$theme_choice" ]; then
 			apply_theme "$theme_choice"
-			${DIALOG} --msgbox "$(gettext "Tema '$theme_choice' aplicado com sucesso!")" 0 0
+#			${DIALOG} --msgbox "$(gettext "Tema '$theme_choice' aplicado com sucesso!")" 0 0
 		else
 			exit 0
 		fi
@@ -335,4 +329,5 @@ sh_main() {
 }
 
 sh_setVarColors
+sh_Language
 sh_main
