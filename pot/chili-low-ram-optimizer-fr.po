@@ -1,0 +1,79 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-09 23:28-0400\n"
+"PO-Revision-Date: 2026-06-09 23:28-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-low-ram-optimizer:360
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "Il s'agit d'un logiciel libre : vous êtes libre de le modifier et de le redistribuer."
+
+#: usr/local/bin/chili-low-ram-optimizer:362
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "comprend des logiciels open source sous diverses autres licences."
+
+#: usr/local/bin/chili-low-ram-optimizer:363
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "Vous pouvez lire les instructions sur la façon de télécharger et de créer par vous-même"
+
+#: usr/local/bin/chili-low-ram-optimizer:364
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "le code source spécifique utilisé pour créer cette copie."
+
+#: usr/local/bin/chili-low-ram-optimizer:365
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "Ce programme est livré avec absolument AUCUNE garantie."
+
+#: usr/local/bin/chili-low-ram-optimizer:411
+msgid "Não foi possível encontrar o comando"
+msgstr "Impossible de trouver la commande"
+
+#: usr/local/bin/chili-low-ram-optimizer:412
+msgid "instalar pacote"
+msgstr "installer le paquet"
+
+#: usr/local/bin/chili-low-ram-optimizer:428
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "IMPOSSIBLE DE CONTINUER"
+
+#: usr/local/bin/chili-low-ram-optimizer:429
+msgid "Este script precisa dos comandos listados acima"
+msgstr "Ce script nécessite les commandes répertoriées ci-dessus"
+
+#: usr/local/bin/chili-low-ram-optimizer:430
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "Installez-les et/ou assurez-vous qu'ils sont sur votre"
+
+#: usr/local/bin/chili-low-ram-optimizer:438
+msgid "Instalar dependências base agora?"
+msgstr "Installer les dépendances de base maintenant ?"
+
+#: usr/local/bin/chili-low-ram-optimizer:439
+msgid "Preparando ambiente para"
+msgstr "Préparation de l'environnement pour"
+
+#: usr/local/bin/chili-low-ram-optimizer:443
+msgid "Erro Crítico:"
+msgstr "Erreur critique :"
+
+#: usr/local/bin/chili-low-ram-optimizer:443
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "L'installation des packages de base a échoué."
+
+#: usr/local/bin/chili-low-ram-optimizer:447
+msgid "Sucesso:"
+msgstr "Succès:"
+
+#: usr/local/bin/chili-low-ram-optimizer:447
+msgid "Dependências instaladas."
+msgstr "Dépendances installées."

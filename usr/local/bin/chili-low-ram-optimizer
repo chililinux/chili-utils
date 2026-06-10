@@ -5,8 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Altered: qua 11 mar 2026 11:53:16 -04
-#  Updated: qui 28 mai 2026 12:45:21 -04
+#  Updated: ter 09 jun 2026 23:26:21 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -46,7 +45,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.05.28-20260528"
+declare _VERSION_="0.06.09-20260609"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare -A PACKAGEDEP=(
@@ -847,6 +846,18 @@ ensure_debugfs() {
 	fi
 }
 
+detect_zswap_support() {
+  if zgrep -q '^CONFIG_ZSWAP=[ym]$' /proc/config.gz 2>/dev/null; then
+    return 0
+  fi
+
+  if grep -q '^CONFIG_ZSWAP=[ym]$' "/boot/config-$(uname -r)" 2>/dev/null; then
+    return 0
+  fi
+
+  return 1
+}
+
 detect_zswap() {
 	zswap_enabled='N'
 	# zswap básico
@@ -968,6 +979,12 @@ summary() {
 	else
     msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
 	fi
+
+  if detect_zswap_support; then
+    log_ok_tab "${green}Kernel compilado com suporte a zswap${rst}"
+  else
+    log_warn_tab "${red}Kernel sem suporte a zswap${rst}"
+  fi
 
 	if [ $zswap_enabled = 'Y' ]; then
 		msg_tab "$(sysctl vm.swappiness)"

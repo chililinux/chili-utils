@@ -1,0 +1,79 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-06-09 23:28-0400\n"
+"PO-Revision-Date: 2026-06-09 23:28-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: usr/local/bin/chili-low-ram-optimizer:360
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "これはフリー ソフトウェアです。自由に変更したり再配布したりできます。"
+
+#: usr/local/bin/chili-low-ram-optimizer:362
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "他のさまざまなライセンスに基づくオープンソース ソフトウェアが含まれます。"
+
+#: usr/local/bin/chili-low-ram-optimizer:363
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "ダウンロードして自分で作成する方法についての説明を読むことができます"
+
+#: usr/local/bin/chili-low-ram-optimizer:364
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "このコピーの作成に使用された特定のソース コード。"
+
+#: usr/local/bin/chili-low-ram-optimizer:365
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "このプログラムには一切の保証がありません。"
+
+#: usr/local/bin/chili-low-ram-optimizer:411
+msgid "Não foi possível encontrar o comando"
+msgstr "コマンドが見つかりません"
+
+#: usr/local/bin/chili-low-ram-optimizer:412
+msgid "instalar pacote"
+msgstr "パッケージをインストールする"
+
+#: usr/local/bin/chili-low-ram-optimizer:428
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "続行不可能"
+
+#: usr/local/bin/chili-low-ram-optimizer:429
+msgid "Este script precisa dos comandos listados acima"
+msgstr "このスクリプトには上記のコマンドが必要です"
+
+#: usr/local/bin/chili-low-ram-optimizer:430
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "それらをインストールするか、それらがあなたのコンピュータにあることを確認してください。"
+
+#: usr/local/bin/chili-low-ram-optimizer:438
+msgid "Instalar dependências base agora?"
+msgstr "基本の依存関係を今すぐインストールしますか?"
+
+#: usr/local/bin/chili-low-ram-optimizer:439
+msgid "Preparando ambiente para"
+msgstr "環境の準備"
+
+#: usr/local/bin/chili-low-ram-optimizer:443
+msgid "Erro Crítico:"
+msgstr "重大なエラー:"
+
+#: usr/local/bin/chili-low-ram-optimizer:443
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "基本パッケージのインストールに失敗しました。"
+
+#: usr/local/bin/chili-low-ram-optimizer:447
+msgid "Sucesso:"
+msgstr "成功："
+
+#: usr/local/bin/chili-low-ram-optimizer:447
+msgid "Dependências instaladas."
+msgstr "インストールされた依存関係。"
