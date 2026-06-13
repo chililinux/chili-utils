@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: sex 12 jun 2026 21:44:55 -04
+#  Updated: sáb 13 jun 2026 00:54:13 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -45,12 +45,28 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.06.12-20260612"
+declare _VERSION_="0.06.13-20260613"
 declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
+declare -A ASERVICES=(
+	[thp - systemd]='/etc/systemd/system/chili-thp.service'
+	[thp - runit]='/etc/runit/core-services/05-voidbr-thp.sh'
+	[bfq - systemd]='/etc/systemd/system/chili-bfq.service'
+	[bfq - runit]='/etc/runit/core-services/03-voidbr-scheduler.sh'
+)
+# Lista de arquivos órfãos (comuns a ambos os sistemas de init)
+declare -a legacy_files=(
+	"/etc/runit/core-services/10-zram.sh"
+	"/etc/runit/core-services/10-voidbr-zram.sh"
+	"/etc/runit/core-services/03-voidbr-scheduler.sh"
+	"/etc/runit/core-services/05-voidbr-thp.sh"
+	"/usr/local/sbin/chili-thp"
+	"/usr/local/sbin/chili-bfq"
+	"/usr/local/sbin/chili-zram"
+)
 declare -A ASYSCTL=(
 	['vm.swappiness']=180
 	['vm.vfs_cache_pressure']=200
@@ -397,17 +413,6 @@ check_root() {
 cleanup_legacy() {
 	msg "Limpando vestígios de versões anteriores..."
 
-	# 1. Lista de arquivos órfãos (comuns a ambos os sistemas de init)
-	local legacy_files=(
-		"/etc/runit/core-services/10-zram.sh"
-		"/etc/runit/core-services/10-voidbr-zram.sh"
-		"/etc/runit/core-services/03-voidbr-scheduler.sh"
-		"/etc/runit/core-services/05-voidbr-thp.sh"
-		"/usr/local/sbin/chili-thp"
-		"/usr/local/sbin/chili-bfq"
-		"/usr/local/sbin/chili-zram"
-	)
-
 	for f in "${legacy_files[@]}"; do
 		if [ -f "$f" ]; then
 			msg_warn "Removendo arquivo legado: $(basename "$f")"
@@ -628,7 +633,7 @@ configure_thp() {
 
 	msg "Configurando THP"
 	if [[ "$init" == "runit" ]]; then
-		cfile=/etc/runit/core-services/05-voidbr-thp.sh
+		cfile="${ASERVICES[thp - runit]}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<'EOF' >"${cfile}"
 #!/bin/sh
@@ -639,8 +644,9 @@ EOF
 		else
 			msg_tab "${green}THP já configurado.${rst}"
 		fi
+
 	elif [[ "$init" == "systemd" ]]; then
-		cfile=/etc/systemd/system/chili-thp.service
+		cfile="${ASERVICES[thp - systemd]}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<'EOF' >"${cfile}"
 [Unit]
@@ -685,7 +691,7 @@ configure_scheduler() {
 	local cfile
 
 	if [[ "$init" == "runit" ]]; then
-		cfile=/etc/runit/core-services/03-voidbr-scheduler.sh
+		cfile="${ASERVICES[bfq - runit]}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<EOF >"${cfile}"
 #!/bin/sh
@@ -693,13 +699,17 @@ for d in /sys/block/*; do
 	[ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null
 done
 EOF
+
 			run_cmd chmod +x "${cfile}"
 			changed=true
+
 		else
 			msg_tab "${green}Scheduler já configurado.${rst}"
+
 		fi
+
 	elif [[ "$init" == "systemd" ]]; then
-		cfile=/etc/systemd/system/chili-bfq.service
+		cfile="${ASERVICES[bfq - systemd]}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<EOF >"${cfile}"
 [Unit]
@@ -1001,7 +1011,7 @@ sh_uninstall() {
 	case "$init" in
 	runit)
 		msg "Removendo configurações (runit)..."
-		run_cmd rm -f /etc/runit/core-services/05-voidbr-thp.sh
+		run_cmd rm -f "${ASERVICES[thp - runit]}"
 		run_cmd rm -f /etc/runit/core-services/10-zram.sh
 		run_cmd rm -f /etc/runit/core-services/10-voidbr-zram.sh
 		;;
@@ -1009,10 +1019,10 @@ sh_uninstall() {
 	systemd)
 		msg "Removendo configurações (systemd)..."
 		run_cmd systemctl disable chili-thp
-		run_cmd rm -f /etc/systemd/system/chili-thp.service
+		run_cmd rm -f "${ASERVICES[thp - systemd]}"
 
 		run_cmd systemctl disable chili-bfq
-		run_cmd rm -f /etc/systemd/system/chili-bfq.service
+		run_cmd rm -f "${ASERVICES[bfq - systemd]}"
 		run_cmd systemctl daemon-reload
 		;;
 	esac
@@ -1112,7 +1122,7 @@ sh_health_check() {
 	done
 
 	# 2. Validação do Swapfile
-  calculate_swap
+	calculate_swap
 
 	# 3. Validação do Zswap
 	if [[ -f /sys/module/zswap/parameters/enabled ]]; then
@@ -1133,13 +1143,13 @@ sh_health_check() {
 		fi
 	fi
 
-# 4. Validação de Sysctl (Comparação direta com o arquivo)
+	# 4. Validação de Sysctl (Comparação direta com o arquivo)
 	if [[ -f "${sysctl_conf}" ]]; then
 		msg "Sysctl: ${green}Verificando parâmetros no arquivo ${cyan}${sysctl_conf}${rst}"
 
 		for param in "${!ASYSCTL[@]}"; do
 			local expected_val="${ASYSCTL[$param]}"
-			
+
 			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
 			local file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
 
@@ -1168,13 +1178,28 @@ sh_health_check() {
 			fi
 		done
 		;;
-	runit)
-		for svc in preload thp bfq; do
-			[[ -d "/var/service/$svc" ]] && msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}" || log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
-		done
-		;;
-	esac
+  runit)
+    for svc in preload; do
+      if [[ -d "/var/service/$svc" ]]; then
+        msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
+      else
+        log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
+      fi
+    done
 
+    for service in "${ASERVICES[@]}"; do
+      if [[ "$service" =~ "systemd" ]]; then
+        continue
+      fi
+
+      if [[ -f "$service" ]]; then
+        msg_tab "Config ${green}Ativo em ${service}${rst}"
+      else
+        log_warn_tab "Config ${yellow}Não encontrado em ${service}${rst}"
+      fi
+    done
+    ;;
+  esac
 	[[ $errors -eq 0 ]] && log_ok "${green}Diagnóstico concluído: Sistema íntegro.${rst}" || msg "${red}Diagnóstico concluído: $errors erro(s) encontrado(s).${rst}"
 }
 
