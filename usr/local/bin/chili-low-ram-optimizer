@@ -51,6 +51,15 @@ declare distro="$(uname -n)"
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
+declare -A ASYSCTL=(
+	['vm.swappiness']=180
+	['vm.vfs_cache_pressure']=200
+	['vm.page-cluster']=0
+	['vm.dirty_background_ratio']=3
+	['vm.dirty_ratio']=10
+	['vm.dirty_expire_centisecs']=3000
+	['vm.dirty_writeback_centisecs']=500
+)
 
 declare -A PACKAGEDEP=(
 	[gettext]=gettext
@@ -409,8 +418,8 @@ cleanup_legacy() {
 
 	# 2. Limpeza específica para runit
 	if [[ "$init" == "runit" ]]; then
-    if [[ -e "${sysctl_conf_runit}" ]]; then
-      run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
+		if [[ -e "${sysctl_conf_runit}" ]]; then
+			run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
 			changed=true
 		fi
 	fi
@@ -838,9 +847,9 @@ calculate_swap() {
 	local active_info=$(swapon --show=NAME,TYPE,SIZE,PRIO | grep "^/swapfile ")
 
 	if [[ -n "$active_info" ]]; then
-		msg_tab "Status ativo     : ${cyan}${active_info}${reset}"
+		msg_tab "Swap ativo       : ${cyan}${active_info}${reset}"
 	else
-		msg_tab "Status ativo     : ${red}/swapfile NÃO está em uso!${reset}"
+		msg_tab "Swap inativo     : ${red}/swapfile NÃO está em uso/ativo!${reset}"
 	fi
 
 	# 6. Monitoramento de redundância (outras swaps ativas)
@@ -1020,7 +1029,7 @@ usage() {
 	echo -e "  ${yellow}-ss, --show-extended ${rst} mostra resumo explicado do sistema"
 	echo -e "  ${green}-i, --install${reset}         ${rst}Aplica configurações"
 	echo -e "  ${red}-u, --uninstall${reset}       ${rst}Remove configurações"
-  echo -e "  ${yellow}-c, --check           ${rst}Realiza diagnóstico de saúde do sistema"
+	echo -e "  ${yellow}-c, --check           ${rst}Realiza diagnóstico de saúde do sistema"
 	echo -e "  ${green}-b, --backup${reset}          ${rst}Cria checkpoint ${cyan}'${bkp_dir}' ${rst}dos arquivos críticos"
 	echo -e "  ${red}-r, --rollback${reset}        ${rst}Reverte os arquivos críticos para o último backup"
 	echo -e "  ${cyan}-h, --help${reset}            ${rst}Mostra este ajuda"
@@ -1088,59 +1097,59 @@ sh_rollback() {
 }
 
 sh_health_check() {
-	msg "Iniciando diagnóstico profundo do sistema (${cyan}${DISTRO}${rst})..."
 	local errors=0
+
+	msg "Iniciando diagnóstico profundo do sistema${rst}"
+	msg "Distro detectada: ${green}${cyan}$DISTRO${rst}"
 
 	# 1. Validação de Arquivos de Configuração críticos
 	local files=("/etc/fstab" "/etc/default/grub" "/boot/grub/grub.cfg")
 	for f in "${files[@]}"; do
-		[[ -f "$f" ]] && msg_tab "Config: ${green}$f encontrado${rst}" || { log_err_tab "Config: ${red}$f ausente!${rst}"; ((errors++)); }
+		[[ -f "$f" ]] && msg_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
+			log_err_tab "Config: ${red}$f ausente!${rst}"
+			((errors++))
+		}
 	done
 
 	# 2. Validação do Swapfile
-	if swapon --show=NAME | grep -q "/swapfile"; then
-		msg_tab "Swapfile: ${green}Ativo no kernel${rst}"
-	else
-		log_err_tab "Swapfile: ${red}Não detectado em swapon${rst}"
-		((errors++))
-	fi
+  calculate_swap
 
 	# 3. Validação do Zswap
 	if [[ -f /sys/module/zswap/parameters/enabled ]]; then
 		local status
 		status=$(cat /sys/module/zswap/parameters/enabled)
-		[[ "$status" == "Y" ]] && msg_tab "Zswap: ${green}Ativado (Y)${rst}" || { log_err_tab "Zswap: ${red}Desativado (Status: $status)${rst}"; ((errors++)); }
+		[[ "$status" == "Y" ]] && msg "Zswap: ${green}Ativado ${cyan}(Y)${rst}" || {
+			log_err_tab "Zswap: ${red}Desativado (Status: $status)${rst}"
+			((errors++))
+		}
 	else
 		log_warn_tab "Zswap: ${yellow}Módulo não carregado${rst}"
 	fi
 
-  if [[ "$init" == "runit" ]]; then
-    if [[ -e "${sysctl_conf_runit}" ]]; then
-      run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
+	if [[ "$init" == "runit" ]]; then
+		if [[ -e "${sysctl_conf_runit}" ]]; then
+			run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
 			changed=true
 		fi
 	fi
 
-	# 4. Validação de Sysctl (Otimizações de Memória)
+# 4. Validação de Sysctl (Comparação direta com o arquivo)
 	if [[ -f "${sysctl_conf}" ]]; then
-		msg_tab "Sysctl: ${green}Configurações encontradas em $sysctl_conf${rst}"
-		local params=(
-            vm.swappiness
-            vm.vfs_cache_pressure
-            vm.page-cluster
-            vm.dirty_background_ratio
-            vm.dirty_ratio
-            vm.dirty_expire_centisecs
-            vm.dirty_writeback_centisecs
-          )
+		msg "Sysctl: ${green}Verificando parâmetros no arquivo ${cyan}${sysctl_conf}${rst}"
 
-		for param in "${params[@]}"; do
-			local expected_val=$(grep "$param" "$sysctl_conf" | cut -d'=' -f2 | tr -d ' ')
-			local current_val=$(sysctl -n "$param" 2>/dev/null)
-			if [[ "$expected_val" == "$current_val" ]]; then
-				msg_tab "  - $param: ${green}OK ($current_val)${rst}"
+		for param in "${!ASYSCTL[@]}"; do
+			local expected_val="${ASYSCTL[$param]}"
+			
+			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
+			local file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
+
+			if [[ -z "$file_val" ]]; then
+				log_warn_tab "$param: ${red}Não encontrado no arquivo${rst}"
+				((errors++))
+			elif [[ "$expected_val" == "$file_val" ]]; then
+				msg_tab "$param: ${green}OK ${cyan}($file_val)${rst}"
 			else
-				log_warn_tab "  - $param: ${yellow}Divergente (Arquivo: $expected_val | Kernel: $current_val)${rst}"
+				log_warn_tab "$param: ${yellow}Divergente (recomendado: $expected_val | Arquivo: $file_val)${rst}"
 				((errors++))
 			fi
 		done
@@ -1150,23 +1159,23 @@ sh_health_check() {
 	fi
 
 	# 5. Validação de Serviços por INIT
-	msg "Verificando serviços via ${cyan}${init}${rst}..."
+	msg "Verificando serviços via ${green}${cyan}${init}${rst}"
 	case "$init" in
-		systemd)
-			for svc in preload chili-thp chili-bfq; do
-				if systemctl list-unit-files "$svc.service" >/dev/null 2>&1; then
-					systemctl is-active --quiet "$svc" && msg_tab "Serviço ($svc): ${green}Rodando${rst}" || log_warn_tab "Serviço ($svc): ${yellow}Instalado, mas parado${rst}"
-				fi
-			done
-			;;
-		runit)
-			for svc in preload thp bfq; do
-				[[ -d "/var/service/$svc" ]] && msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}" || log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
-			done
-			;;
+	systemd)
+		for svc in preload chili-thp chili-bfq; do
+			if systemctl list-unit-files "$svc.service" >/dev/null 2>&1; then
+				systemctl is-active --quiet "$svc" && msg_tab "Serviço ($svc): ${green}Rodando${rst}" || log_warn_tab "Serviço ($svc): ${yellow}Instalado, mas parado${rst}"
+			fi
+		done
+		;;
+	runit)
+		for svc in preload thp bfq; do
+			[[ -d "/var/service/$svc" ]] && msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}" || log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
+		done
+		;;
 	esac
 
-	[[ $errors -eq 0 ]] && msg "${green}Diagnóstico concluído: Sistema íntegro.${rst}" || msg "${red}Diagnóstico concluído: $errors erro(s) encontrado(s).${rst}"
+	[[ $errors -eq 0 ]] && log_ok "${green}Diagnóstico concluído: Sistema íntegro.${rst}" || msg "${red}Diagnóstico concluído: $errors erro(s) encontrado(s).${rst}"
 }
 
 DISTRO="$(detect_distro)"
@@ -1207,9 +1216,9 @@ case "$1" in
 	sh_rollback
 	;;
 -c | --check)
-    detect_init
-    sh_health_check
-    ;;
+	detect_init
+	sh_health_check
+	;;
 -u | --uninstall)
 	check_root
 	sh_uninstall
