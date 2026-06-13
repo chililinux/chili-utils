@@ -50,6 +50,7 @@ declare APPDESC="$APP - Wraper for "
 declare distro="$(uname -n)"
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
+declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
 
 declare -A PACKAGEDEP=(
 	[gettext]=gettext
@@ -406,7 +407,15 @@ cleanup_legacy() {
 		fi
 	done
 
-	# 2. Limpeza específica para Systemd
+	# 2. Limpeza específica para runit
+	if [[ "$init" == "runit" ]]; then
+    if [[ -e "${sysctl_conf_runit}" ]]; then
+      run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
+			changed=true
+		fi
+	fi
+
+	# 3. Limpeza específica para Systemd
 	if [[ "$init" == "systemd" ]]; then
 		local services=("chili-thp" "chili-bfq" "chili-zram")
 		for svc in "${services[@]}"; do
@@ -928,9 +937,7 @@ sh_install() {
 	check_root
 	detect_init
 	detect_fs
-
 	sh_create_checkpoint #Dispara o checkpoint global de uma vez só antes de mexer em qualquer bit
-
 	cleanup_legacy
 	detect_ram
 	calculate_swap
@@ -1105,6 +1112,13 @@ sh_health_check() {
 		[[ "$status" == "Y" ]] && msg_tab "Zswap: ${green}Ativado (Y)${rst}" || { log_err_tab "Zswap: ${red}Desativado (Status: $status)${rst}"; ((errors++)); }
 	else
 		log_warn_tab "Zswap: ${yellow}Módulo não carregado${rst}"
+	fi
+
+  if [[ "$init" == "runit" ]]; then
+    if [[ -e "${sysctl_conf_runit}" ]]; then
+      run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
+			changed=true
+		fi
 	fi
 
 	# 4. Validação de Sysctl (Otimizações de Memória)
