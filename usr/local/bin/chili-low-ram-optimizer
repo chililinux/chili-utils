@@ -51,11 +51,12 @@ declare distro="$(uname -n)"
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
+declare -i errors=0
 declare -A ASERVICES=(
-	[thp - systemd]='/etc/systemd/system/chili-thp.service'
-	[thp - runit]='/etc/runit/core-services/05-voidbr-thp.sh'
-	[bfq - systemd]='/etc/systemd/system/chili-bfq.service'
-	[bfq - runit]='/etc/runit/core-services/03-voidbr-scheduler.sh'
+	['thp-systemd']='/etc/systemd/system/chili-thp.service'
+	['thp-runit']='/etc/runit/core-services/05-voidbr-thp.sh'
+	['bfq-systemd']='/etc/systemd/system/chili-bfq.service'
+	['bfq-runit']='/etc/runit/core-services/03-voidbr-scheduler.sh'
 )
 # Lista de arquivos órfãos (comuns a ambos os sistemas de init)
 declare -a legacy_files=(
@@ -184,7 +185,7 @@ set_varcolors() {
 		: "${OVER="\\r\\033[K"}"
 		: "${DOTPREFIX="  ${black}::${reset} "}"
 		: "${clrkey=${light_white}}"
-		: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
+		: "${TICK="${clrkey}[${green} ✓ ${clrkey}]${rst}"}"
 		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
 		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
@@ -410,6 +411,16 @@ check_root() {
 	fi
 }
 
+sh_rename_service_on_runit() {
+	# 2. Limpeza específica para runit
+	if [[ "$init" == "runit" ]]; then
+		if [[ -e "${sysctl_conf_runit}" ]]; then
+			run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
+			changed=true
+		fi
+	fi
+}
+
 cleanup_legacy() {
 	msg "Limpando vestígios de versões anteriores..."
 
@@ -422,12 +433,7 @@ cleanup_legacy() {
 	done
 
 	# 2. Limpeza específica para runit
-	if [[ "$init" == "runit" ]]; then
-		if [[ -e "${sysctl_conf_runit}" ]]; then
-			run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
-			changed=true
-		fi
-	fi
+	sh_rename_service_on_runit
 
 	# 3. Limpeza específica para Systemd
 	if [[ "$init" == "systemd" ]]; then
@@ -633,7 +639,7 @@ configure_thp() {
 
 	msg "Configurando THP"
 	if [[ "$init" == "runit" ]]; then
-		cfile="${ASERVICES[thp - runit]}"
+		cfile="${ASERVICES['thp-runit']}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<'EOF' >"${cfile}"
 #!/bin/sh
@@ -646,7 +652,7 @@ EOF
 		fi
 
 	elif [[ "$init" == "systemd" ]]; then
-		cfile="${ASERVICES[thp - systemd]}"
+		cfile="${ASERVICES['thp-systemd']}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<'EOF' >"${cfile}"
 [Unit]
@@ -691,7 +697,7 @@ configure_scheduler() {
 	local cfile
 
 	if [[ "$init" == "runit" ]]; then
-		cfile="${ASERVICES[bfq - runit]}"
+		cfile="${ASERVICES['bfq-runit']}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<EOF >"${cfile}"
 #!/bin/sh
@@ -709,7 +715,7 @@ EOF
 		fi
 
 	elif [[ "$init" == "systemd" ]]; then
-		cfile="${ASERVICES[bfq - systemd]}"
+		cfile="${ASERVICES['bfq-systemd']}"
 		if [ ! -f "${cfile}" ]; then
 			cat <<EOF >"${cfile}"
 [Unit]
@@ -787,6 +793,41 @@ ensure_debugfs() {
 	fi
 }
 
+sh_check_zswap_lifecycle() {
+	msg "Diagnóstico Zswap:"
+
+	# 1. Suporte no Kernel
+	if detect_zswap_support; then
+		msg_tab "Suporte do Kernel: ${green}OK (Compilado)${rst}"
+	else
+		log_warn_tab "Suporte do Kernel: ${red}Ausente!${rst}"
+		((errors++))
+		return # Se não tem suporte, não adianta checar o resto
+	fi
+
+	# 2. Intenção no Boot (Grub/Cmdline)
+	if grep -q "zswap.enabled=1" /proc/cmdline; then
+		msg_tab "Parâmetro de Boot: ${green}OK (Ativado no Kernel Cmdline)${rst}"
+	else
+		log_warn_tab "Parâmetro de Boot: ${red}Ausente (Verifique seu GRUB/Bootloader)${rst}"
+		((errors++))
+	fi
+
+	# 3. Estado do Módulo
+	if [[ -f "/sys/module/zswap/parameters/enabled" ]]; then
+		local active=$(cat /sys/module/zswap/parameters/enabled)
+		if [[ "$active" == "Y" ]]; then
+			msg_tab "Módulo           : ${green}Ativo ${cyan}(${active})${rst}"
+		else
+			log_warn_tab "Módulo      : ${yellow}Carregado mas desativado (${active})${rst}"
+			((errors++))
+		fi
+	else
+		log_warn_tab "Módulo: ${red}Não carregado no Kernel${rst}"
+		((errors++))
+	fi
+}
+
 detect_zswap_support() {
 	if zgrep -q '^CONFIG_ZSWAP=[ym]$' /proc/config.gz 2>/dev/null; then
 		return 0
@@ -810,6 +851,11 @@ detect_zswap() {
 disable_zswap() {
 	msg "Desativando zswap..."
 	run_cmd 'echo 0 > /sys/module/zswap/parameters/enabled'
+}
+
+enable_zswap() {
+	msg "Ativando zswap..."
+	run_cmd 'echo 1 > /sys/module/zswap/parameters/enabled'
 }
 
 calculate_swap() {
@@ -970,6 +1016,7 @@ sh_install() {
 	enable_swap
 	enable_preload
 	ensure_debugfs
+	enable_zswap
 	summary
 }
 
@@ -1011,7 +1058,8 @@ sh_uninstall() {
 	case "$init" in
 	runit)
 		msg "Removendo configurações (runit)..."
-		run_cmd rm -f "${ASERVICES[thp - runit]}"
+		run_cmd rm -f "${ASERVICES['thp-runit']}"
+		run_cmd rm -f "${ASERVICES['bfq-runit']}"
 		run_cmd rm -f /etc/runit/core-services/10-zram.sh
 		run_cmd rm -f /etc/runit/core-services/10-voidbr-zram.sh
 		;;
@@ -1019,10 +1067,9 @@ sh_uninstall() {
 	systemd)
 		msg "Removendo configurações (systemd)..."
 		run_cmd systemctl disable chili-thp
-		run_cmd rm -f "${ASERVICES[thp - systemd]}"
-
 		run_cmd systemctl disable chili-bfq
-		run_cmd rm -f "${ASERVICES[bfq - systemd]}"
+		run_cmd rm -f "${ASERVICES['thp-systemd']}"
+		run_cmd rm -f "${ASERVICES['bfq-systemd']}"
 		run_cmd systemctl daemon-reload
 		;;
 	esac
@@ -1106,9 +1153,30 @@ sh_rollback() {
 	msg "Rollback concluído. ${yellow}Recomendado reiniciar o sistema.${rst}"
 }
 
-sh_health_check() {
-	local errors=0
+check_system_status() {
+	local status_count=0
+	local total_checks=4 # Swapfile, Sysctl, Serviço THP, Serviço BFQ
 
+	detect_init
+  for f in /swapfile "${sysctl_conf}" "${ASERVICES["thp-$init"]}" "${ASERVICES["bfq-$init"]}"; do
+    if [[ -f "$f" ]]; then
+      ((++status_count))
+    else
+      ((++errors))
+    fi
+  done
+
+  #	echo -e "\n${cyan}=== Estado da Otimização ===${rst}"
+	if [[ $status_count -eq $total_checks ]]; then
+		msg "Status: ${green}OTIMIZADO${rst} (Todos os componentes configurados)"
+	elif [[ $status_count -eq 0 ]]; then
+		msg "Status: ${red}NÃO OTIMIZADO${rst} (Execute --install)"
+	else
+		msg "Status: ${yellow}PARCIAL${rst} ($status_count de $total_checks componentes encontrados)"
+	fi
+}
+
+sh_health_check() {
 	msg "Iniciando diagnóstico profundo do sistema${rst}"
 	msg "Distro detectada: ${green}${cyan}$DISTRO${rst}"
 
@@ -1125,23 +1193,9 @@ sh_health_check() {
 	calculate_swap
 
 	# 3. Validação do Zswap
-	if [[ -f /sys/module/zswap/parameters/enabled ]]; then
-		local status
-		status=$(cat /sys/module/zswap/parameters/enabled)
-		[[ "$status" == "Y" ]] && msg "Zswap: ${green}Ativado ${cyan}(Y)${rst}" || {
-			log_err_tab "Zswap: ${red}Desativado (Status: $status)${rst}"
-			((errors++))
-		}
-	else
-		log_warn_tab "Zswap: ${yellow}Módulo não carregado${rst}"
-	fi
+	sh_check_zswap_lifecycle
 
-	if [[ "$init" == "runit" ]]; then
-		if [[ -e "${sysctl_conf_runit}" ]]; then
-			run_cmd mv -f "${sysctl_conf_runit}" "${sysctl_conf}"
-			changed=true
-		fi
-	fi
+	sh_rename_service_on_runit
 
 	# 4. Validação de Sysctl (Comparação direta com o arquivo)
 	if [[ -f "${sysctl_conf}" ]]; then
@@ -1149,7 +1203,6 @@ sh_health_check() {
 
 		for param in "${!ASYSCTL[@]}"; do
 			local expected_val="${ASYSCTL[$param]}"
-
 			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
 			local file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
 
@@ -1178,29 +1231,38 @@ sh_health_check() {
 			fi
 		done
 		;;
-  runit)
-    for svc in preload; do
-      if [[ -d "/var/service/$svc" ]]; then
-        msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
-      else
-        log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
-      fi
-    done
+	runit)
+		for svc in preload; do
+			if [[ -d "/var/service/$svc" ]]; then
+				msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
+			else
+				log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
+			fi
+		done
 
-    for service in "${ASERVICES[@]}"; do
-      if [[ "$service" =~ "systemd" ]]; then
-        continue
-      fi
+		for key in "${!ASERVICES[@]}"; do
+			service="${ASERVICES[$key]}"
+			if [[ "$key" =~ "systemd" ]]; then
+				continue
+			fi
 
-      if [[ -f "$service" ]]; then
-        msg_tab "Config ${green}Ativo em ${service}${rst}"
-      else
-        log_warn_tab "Config ${yellow}Não encontrado em ${service}${rst}"
-      fi
-    done
-    ;;
-  esac
-	[[ $errors -eq 0 ]] && log_ok "${green}Diagnóstico concluído: Sistema íntegro.${rst}" || msg "${red}Diagnóstico concluído: $errors erro(s) encontrado(s).${rst}"
+			if [[ -f "$service" ]]; then
+				msg_tab "Config ${green}Ativo em ${service}${rst}"
+			else
+				log_warn_tab "Config ${yellow}Não encontrado em ${service}${rst}"
+			fi
+		done
+		;;
+	esac
+
+	# Chama a nova verificação de estado
+	check_system_status
+	if [[ $errors -eq 0 ]]; then
+    log_ok "${rst}Diagnóstico concluído: ${green}Sistema íntegro.${rst}"
+  else
+    msg    "${rst}Diagnóstico concluído: ${red}$errors erro(s) encontrado(s).${rst}"
+  fi
+
 }
 
 DISTRO="$(detect_distro)"
