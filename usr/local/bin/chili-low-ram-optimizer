@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: dom 14 jun 2026 00:35:44 -04
+#  Updated: dom 14 jun 2026 17:59:46 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -50,6 +50,7 @@ declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
+declare quiet=true
 declare -i errors=0
 declare -a aCritic_Files=(
   "/etc/fstab"
@@ -192,7 +193,7 @@ set_varcolors() {
 		: "${TICK="${clrkey}[${green} ✓ ${clrkey}]${rst}"}"
 		: "${CROSS="${clrkey}[${red} ✗ ${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
-		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
+		: "${WARN="${clrkey}[${yellow} ⚠ ${clrkey}]${yellow}"}"
 		: "${INFO="${clrkey}[${black}➡  ${clrkey}]${rst}"}"
 	else
 		unset_varcolors
@@ -218,8 +219,11 @@ elevate_to_root() {
 	msg "This script must be run as root. Elevating privileges..."
 	ccabec+='root [elevated]'
 	# Tenta usar sudo primeiro (caso esteja configurado)
+
 	if command -v sudo >/dev/null 2>&1; then
-		exec sudo bash "$0" "$@"
+#		exec sudo bash "$0" "$@"
+#   exec sudo -E bash "$0" "$@"
+    exec sudo --preserve-env=quiet bash "$0" "$@"
 	fi
 	# Se sudo falhar, tenta su
 	if command -v su >/dev/null 2>&1; then
@@ -272,13 +276,15 @@ run_cmd() {
 	if [[ $DRYRUN -eq 1 ]]; then
 		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
 	else
-		echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
+    ! $quiet && echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
 		# Executa o comando de forma segura
 		# Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
 		if [[ "$cmd" == *"mkdir -p"* ]] || [[ "$cmd" == *"umount -R"* ]]; then
 			eval "$cmd" &>/dev/null || true
+			return 0
 		else
 			eval "$cmd" &>/dev/null || log_warn_tab "Falha ao executar: $cmd"
+			return 1
 		fi
 	fi
 }
@@ -293,29 +299,16 @@ sh_copyright() {
 	EOF-COPY
 }
 
-sh_version() {
-	cat <<-EOF-VERSION
-		  $(sh_copyright)
-
-		        $(gettext "Este é um software livre: você é livre para alterá-lo e redistribuí-lo.")
-		        $(gettext "O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e")
-		        $(gettext "inclui software de código aberto sob uma variedade de outras licenças.")
-		        $(gettext "Você pode ler instruções sobre como baixar e criar para você mesmo")
-		        $(gettext "o código fonte específico usado para criar esta cópia.")
-		        ${red}$(gettext "Este programa vem com absolutamente NENHUMA garantia.")${reset}
-	EOF-VERSION
-}
-
-msg() { echo -e "${INFO} ${*}${reset}"; }
-log_ok() { echo -e "${TICK} ${*}${reset}"; }
+msg() { ! $quiet && echo -e "${INFO} ${*}${reset}"; }
+log_ok() { ! $quiet && echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
 log_warn() { echo -e "${WARN} ${*}${reset}"; }
 warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
 msg_warn() { echo -e "${WARN} ${*}${reset}"; }
 warn() { echo -e "${WARN} ${*}${reset}"; }
-msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
-log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
+msg_tab() { ! $quiet && echo -e "  ${INFO} ${*}${reset}"; }
+log_ok_tab() { ! $quiet && echo -e "  ${TICK} ${*}${reset}"; }
 log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
 log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
 log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
@@ -398,10 +391,6 @@ sh_checkDependencies() {
 	fi
 }
 
-# configure ambiente
-set_varcolors
-sh_checkroot "$@"
-
 ##########################################################################################################
 
 #warn() { printf "${yellow}==> AVISO:${reset} %s\n" "$1"; }
@@ -435,11 +424,11 @@ sh_rename_service_on_runit() {
 }
 
 cleanup_legacy() {
-	msg "Limpando vestígios de versões anteriores..."
+	msg "Removendo arquivos legados de versões anteriores..."
 
 	for f in "${legacy_files[@]}"; do
 		if [ -f "$f" ]; then
-			msg_warn "Removendo arquivo legado: $(basename "$f")"
+#			msg_warn "Removendo arquivo legado: $(basename "$f")"
 			run_cmd rm -f "$f"
 			changed=true
 		fi
@@ -614,11 +603,12 @@ EOF
 configure_zswap() {
 	local cfile
 	cfile="/etc/default/grub"
-	msg "Configurando zswap..."
+	msg "Ativando parametros do zswap no GRUB..."
 
-	[ -f "${cfile}" ] || {
-		warn "Arquivo ${cfile} não encontrado."
-		return
+	[[ -f "${cfile}" ]] || {
+		log_err_tab "${red}Arquivo ${cfile} não encontrado.${rst}"
+    ((++errors))
+		return 1
 	}
 
 	# garante linha
@@ -696,7 +686,7 @@ EOF
 configure_thp() {
 	local cfile
 
-	msg "Configurando THP"
+	msg "Configurando THP/BFQ/SCHEDULER"
 	if [[ "$init" == "runit" ]]; then
 		cfile="${ASERVICES['thp-runit']}"
 		if [ ! -f "${cfile}" ]; then
@@ -753,9 +743,16 @@ detect_disk() {
 }
 
 enable_swap() {
+  msg "Ativando swap"
+
+  if detect_is_live; then
+    log_err_tab "${red}Sistema está rodando em live. Impossivel ativar swap em ${cyan}'overlayfs'!${rst}"
+  fi
+
 	if ! swapon --show=NAME | grep -q "^/swapfile$"; then
-		run_cmd swapon /swapfile
+		run_cmd swapon /swapfile || ((++errors))
 	fi
+	return $?
 }
 
 enable_preload() {
@@ -777,7 +774,7 @@ enable_preload() {
 	if [[ "$init" == "systemd" ]]; then
 		# Verifica se o serviço NÃO está habilitado
 		if ! systemctl is-enabled --quiet preload 2>/dev/null; then
-			msg_tab "Habilitando serviço preload (systemd)..."
+			msg "Ativando serviço preload (systemd)..."
 			run_cmd systemctl daemon-reload
 			run_cmd systemctl enable --now preload
 			changed=true
@@ -785,7 +782,7 @@ enable_preload() {
 	elif [[ "$init" == "runit" ]]; then
 		# No runit, verificamos o link simbólico em /var/service
 		if [ ! -L /var/service/preload ]; then
-			msg_tab "Ativando serviço preload (runit)..."
+			msg "Ativando serviço preload (runit)..."
 			run_cmd ln -sf /etc/sv/preload /var/service/
 			changed=true
 		fi
@@ -816,8 +813,8 @@ sh_check_zswap_lifecycle() {
 	if detect_zswap_support; then
 		msg_tab "Suporte do Kernel: ${green}OK ${cyan}(Kernel compilado com suporte a zswap)${rst}"
 	else
-		log_warn_tab "Suporte do Kernel: ${red}Ausente!${rst}"
-		((errors++))
+		log_err_tab "Suporte do Kernel: ${red}Não encontrado!${rst}"
+		((++errors))
 		return # Se não tem suporte, não adianta checar o resto
 	fi
 
@@ -825,8 +822,8 @@ sh_check_zswap_lifecycle() {
 	if grep -q "zswap.enabled=1" /proc/cmdline; then
 		msg_tab "Parâmetro de Boot: ${green}OK ${cyan}(Ativado no Kernel Cmdline)${rst}"
 	else
-		log_warn_tab "Parâmetro de Boot: ${red}Ausente (Verifique seu GRUB/Bootloader)${rst}"
-		((errors++))
+		log_err_tab "Parâmetro de Boot: ${red}Ausente (Verifique seu GRUB/Bootloader)${rst}"
+		((++errors))
 	fi
 
 	# 3. Estado do Módulo
@@ -835,12 +832,12 @@ sh_check_zswap_lifecycle() {
 		if [[ "$active" == "Y" ]]; then
 			msg_tab "Zswap ativo      : ${green}Ativo ${cyan}(${active})${rst}"
 		else
-			log_warn_tab "Zswap ativo : ${yellow}Carregado mas desativado (${active})${rst}"
-			((errors++))
+			log_err_tab "Zswap ativo : ${yellow}Carregado mas desativado (${active})${rst}"
+			((++errors))
 		fi
 	else
-		log_warn_tab "Módulo: ${red}Não carregado no Kernel${rst}"
-		((errors++))
+		log_err_tab "Módulo: ${red}Não carregado no Kernel${rst}"
+		((++errors))
 	fi
 }
 
@@ -1013,12 +1010,10 @@ summary() {
 }
 
 sh_install() {
-	check_root
-	detect_init
-	detect_fs
-  if detect_is_live; then
-    err "Sistema em modo Live. As alterações serão perdidas ao reiniciar. Rodando em modo dry-run"
-  fi
+  sh_system_summary
+#	check_root
+#	detect_init
+#	detect_fs
 	sh_create_checkpoint
 	cleanup_legacy
 	detect_ram
@@ -1034,11 +1029,20 @@ sh_install() {
 	enable_preload
 	ensure_debugfs
 	enable_zswap
+  sh_check_zswap_lifecycle
 #	summary
-  sh_health_check
+# sh_health_check
+
+  replicate '-'
+	if [[ $errors -eq 0 ]]; then
+    log_ok "${rst}Diagnóstico concluído: ${green}Sistema íntegro.${rst}"
+  else
+    log_err "${rst}Diagnóstico concluído: ${red}$errors erro(s) encontrado(s).${rst}"
+  fi
+
   warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
   if detect_is_live; then
-    die "Sistema em modo Live. As alterações serão perdidas ao reiniciar."
+    die "Sistema em modo Live. As alterações serão perdidas ao reiniciar.\n $(replicate '-')"
   fi
 }
 
@@ -1111,7 +1115,29 @@ usage() {
 	echo -e "  ${yellow}-c, --check           ${rst}$(gettext 'Realiza diagnóstico de saúde do sistema')"
 	echo -e "  ${green}-b, --backup${reset}          ${rst}$(gettext 'Cria checkpoint dos arquivos críticos')"
 	echo -e "  ${red}-r, --rollback${reset}        ${rst}$(gettext 'Reverte os arquivos críticos para o último backup')"
+	echo -e "  ${black}-v, --verbose${reset}         ${rst}$(gettext 'Ativa o modo verboso')"
 	echo -e "  ${cyan}-h, --help${reset}            ${rst}$(gettext 'Mostra este ajuda')"
+  exit 0
+}
+
+
+sh_version() {
+  cat <<EOF
+    ${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+    ${APPDESC}
+    ${VERSION}
+    ${bold}${black}Copyright (C) 2019-2025 ChiliLinux Development Team${black}
+    ${bold}${black}Copyright (C) 2019-2025 Vilmar Catafesta${black}
+
+      $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
+      $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
+      $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
+      $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
+      $(gettext 'o código fonte específico usado para criar esta cópia.')
+      ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')
+      ${rst}
+EOF
+  exit 0
 }
 
 sh_backup_file() {
@@ -1191,40 +1217,42 @@ check_system_status() {
 	if [[ $status_count -eq $total_checks ]]; then
 		msg "Status: ${green}OTIMIZADO${rst} (Todos os componentes configurados)"
 	elif [[ $status_count -eq 0 ]]; then
-		msg "Status: ${red}NÃO OTIMIZADO${rst} (Execute --install)"
+		log_err "Status: ${red}NÃO OTIMIZADO${rst} (Execute --install)"
 	else
-		msg "Status: ${yellow}PARCIAL${rst} ($status_count de $total_checks componentes encontrados)"
+		log_warn "Status: ${yellow}PARCIAL${rst} ($status_count de $total_checks componentes encontrados)"
 	fi
 }
 
 sh_check_files_critic() {
 	msg "$(gettext 'Validação de arquivos críticos de configuração')"
-	local files=("/etc/fstab" "/etc/default/grub" "/boot/grub/grub.cfg")
-	for f in "${files[@]}"; do
-    [[ -f "$f" ]] && msg_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
-			log_err_tab "Config: ${red}$f ausente!${rst}"
+
+	for f in "${aCritic_Files[@]}"; do
+    [[ -f "$f" ]] && log_ok_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
+			log_err_tab "Config: ${yellow}$f ${red}Não encontrado!${rst}"
 			((errors++))
 		}
 	done
 }
 
 sh_check_services() {
-	# Validação de Serviços por INIT
 	msg "$(gettext 'Verificando serviços via') ${green}${cyan}${init}${rst}"
 	case "$init" in
 	systemd)
 		for svc in preload chili-thp chili-bfq; do
 			if systemctl list-unit-files "$svc.service" >/dev/null 2>&1; then
-				systemctl is-active --quiet "$svc" && msg_tab "$(gettext 'Serviço') ($svc): ${green}Rodando${rst}" || log_warn_tab "$(gettext 'Serviço') ($svc): ${yellow}Instalado, mas parado${rst}"
+				systemctl is-active \
+				  --quiet "$svc" && \
+				  log_ok_tab "$(gettext 'Serviço') ($svc): ${green}Rodando${rst}" || \
+				  log_err_tab "$(gettext 'Serviço') ($svc): ${yellow}Instalado, mas parado${rst}"
 			fi
 		done
 		;;
 	runit)
 		for svc in preload; do
 			if [[ -d "/var/service/$svc" ]]; then
-				msg_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
+				log_ok_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
 			else
-				log_warn_tab "Serviço ($svc): ${yellow}Não encontrado em /var/service/${rst}"
+				log_err_tab "Serviço ($svc): ${red}Não encontrado em /var/service/${rst}"
 			fi
 		done
 
@@ -1235,9 +1263,9 @@ sh_check_services() {
 			fi
 
 			if [[ -f "$service" ]]; then
-				msg_tab "Config ${green}Ativo em ${service}${rst}"
+				log_ok_tab "Config ${green}Ativo em ${service}${rst}"
 			else
-				log_warn_tab "Config ${yellow}Não encontrado em ${service}${rst}"
+				log_err_tab "Config ${yellow}${service} ${red}Não encontrado${rst}"
 			fi
 		done
 		;;
@@ -1265,7 +1293,7 @@ sh_check_sysctl() {
 			fi
 		done
 	else
-		log_err_tab "Sysctl: ${sysctl_conf} ${red}Arquivo de configuração não encontrado!${rst}"
+		log_err_tab "Sysctl: ${yellow}${sysctl_conf} ${red}Não encontrado!${rst}"
 		((errors++))
 	fi
 }
@@ -1296,12 +1324,26 @@ sh_health_check() {
 	if [[ $errors -eq 0 ]]; then
     log_ok "${rst}Diagnóstico concluído: ${green}Sistema íntegro.${rst}"
   else
-    msg    "${rst}Diagnóstico concluído: ${red}$errors erro(s) encontrado(s).${rst}"
+    log_err "${rst}Diagnóstico concluído: ${red}$errors erro(s) encontrado(s).${rst}"
   fi
-
 }
 
+# configure ambiente
+set_varcolors
+sh_checkroot "$@"
 DISTRO="$(detect_distro)"
+
+# Display usage information if no arguments are passed
+if [[ $# -eq 0 || $1 == @(-h|-H|--help) ]]; then
+  usage
+fi
+if [[ $1 == @(-V|--version) ]]; then
+  sh_version
+fi
+if [[ $1 == @(-v|--verbose) ]]; then
+  quiet=false
+  shift
+fi
 
 case "$1" in
 "")
@@ -1309,15 +1351,17 @@ case "$1" in
 	exit 1
 	;;
 -s | --show)
+  quiet=false
 	summary
 	;;
 -ss | --show-extended)
-	detect_init
-	detect_fs
-	detect_ram
-	detect_disk
-	#calculate_swap
-	ensure_debugfs
+  quiet=false
+#	detect_init
+#	detect_fs
+#	detect_ram
+#	detect_disk
+# calculate_swap
+#	ensure_debugfs
 	summary
 	sh_summary_swap
 	;;
@@ -1333,6 +1377,7 @@ case "$1" in
 	sh_rollback
 	;;
 -c | --check)
+  quiet=false
 	detect_init
 	sh_health_check
 	;;
@@ -1340,12 +1385,17 @@ case "$1" in
 	check_root
 	sh_uninstall
 	;;
+-v | --verbose)
+  quiet=false
+	;;
 -h | --help)
 	usage
 	;;
+-V | --version)
+	sh_version
+	;;
 *)
-	err "Opção inválida: $1"
-	usage
+	err "Opção inválida: $1 - (use -h para obter ajuda)"
 	exit 1
 	;;
 esac
