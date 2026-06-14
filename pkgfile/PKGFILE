@@ -12,10 +12,10 @@ md5sums=('SKIP')
 depends=()
 optdepends=()
 post_install_pkgs=(
-  chili-clonedisk
+	chili-clonedisk
 	chili-datetime
 	chili-iso2usb
-	)
+)
 
 package() {
 	cd "${srcdir}/${pkgname}"
@@ -37,4 +37,20 @@ package() {
 	if [ -f "README.md" ]; then
 		install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
 	fi
+}
+
+pre_install() {
+	log "Iniciando instalação"
+}
+
+post_install() {
+	log "Finalizando instalação"
+}
+
+pre_upgrade() {
+	log "Iniciando upgrade"
+}
+
+post_upgrade() {
+	log "Finalizando upgrade"
 }
