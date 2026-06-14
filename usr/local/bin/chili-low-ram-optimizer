@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: sáb 13 jun 2026 00:54:13 -04
+#  Updated: dom 14 jun 2026 00:35:44 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -45,13 +45,17 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.06.13-20260613"
+declare _VERSION_="0.06.14-20260614"
 declare APPDESC="$APP - Wraper for "
-declare distro="$(uname -n)"
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
 declare -i errors=0
+declare -a aCritic_Files=(
+  "/etc/fstab"
+  "/etc/default/grub"
+  "/boot/grub/grub.cfg"
+  )
 declare -A ASERVICES=(
 	['thp-systemd']='/etc/systemd/system/chili-thp.service'
 	['thp-runit']='/etc/runit/core-services/05-voidbr-thp.sh'
@@ -186,7 +190,7 @@ set_varcolors() {
 		: "${DOTPREFIX="  ${black}::${reset} "}"
 		: "${clrkey=${light_white}}"
 		: "${TICK="${clrkey}[${green} ✓ ${clrkey}]${rst}"}"
-		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red} ✗ ${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
 		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
 		: "${INFO="${clrkey}[${black}➡  ${clrkey}]${rst}"}"
@@ -332,6 +336,15 @@ detect_distro() {
 		return
 	fi
 	echo "$id"
+}
+
+detect_is_live() {
+  local rootfs="$(findmnt -n -o FSTYPE /)"
+
+  case "$rootfs" in
+    squashfs|overlay) return 0;;
+    *) return 1;;
+  esac
 }
 
 sh_checkDependencies() {
@@ -508,12 +521,17 @@ check_disk_space() {
 }
 
 configure_swapfile() {
-	local desired_size=$((swap_gb * 1024 * 1024 * 1024))
 	local needs_recreate=false
+	local desired_size
+
+  if detect_is_live; then
+    swap_gb=1
+  fi
+  desired_size=$((swap_gb * 1024 * 1024 * 1024))
 
 	msg "Verificando integridade do /swapfile..."
 
-	if [ -f /swapfile ]; then
+	if [[ -f /swapfile ]]; then
 		local current_size=$(stat -c%s /swapfile)
 		if [ "$current_size" -ne "$desired_size" ]; then
 			warn "Tamanho atual diverge do recomendado (${swap_gb}G)."
@@ -566,6 +584,7 @@ configure_swapfile() {
 		echo "/swapfile none swap defaults,pri=20 0 0" >>/etc/fstab
 		changed=true
 	fi
+	return 0
 }
 
 configure_sysctl() {
@@ -634,6 +653,46 @@ configure_zswap() {
 	fi
 }
 
+configure_scheduler() {
+	local cfile
+
+	if [[ "$init" == "runit" ]]; then
+		cfile="${ASERVICES['bfq-runit']}"
+		if [[ ! -f "${cfile}" ]]; then
+			cat <<EOF >"${cfile}"
+#!/bin/sh
+for d in /sys/block/*; do
+	[ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null
+done
+EOF
+
+			run_cmd chmod +x "${cfile}"
+			changed=true
+		else
+			msg_tab "${green}Scheduler já configurado.${rst}"
+		fi
+	elif [[ "$init" == "systemd" ]]; then
+		cfile="${ASERVICES['bfq-systemd']}"
+		if [ ! -f "${cfile}" ]; then
+			cat <<EOF >"${cfile}"
+[Unit]
+Description=Set BFQ IO Scheduler (Chili)
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'for d in /sys/block/sd*; do echo bfq > "\$d/queue/scheduler" 2>/dev/null; done'
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target
+EOF
+			run_cmd systemctl daemon-reload
+			run_cmd systemctl enable chili-bfq
+			changed=true
+		else
+			msg_tab "${green}Scheduler já configurado.${rst}"
+		fi
+	fi
+}
+
 configure_thp() {
 	local cfile
 
@@ -676,7 +735,7 @@ EOF
 detect_disk() {
 	# Identifica o disco físico (ex: sda, nvme0n1) que contém a partição raiz
 	# lsblk -no PKNAME pega o nome do dispositivo pai
-	disk=$(lsblk -no PKNAME $(findmnt -n -o SOURCE /) | tail -n1)
+	disk=$(lsblk -no PKNAME "$(findmnt -n -o SOURCE /)" 2>/dev/null | tail -n1)
 
 	# Fallback caso o sistema não use nomes de partição padrão
 	[[ -z "$disk" ]] && disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print $1;exit}')
@@ -690,49 +749,6 @@ detect_disk() {
 	else
 		type="HDD"
 		scheduler="bfq"
-	fi
-}
-
-configure_scheduler() {
-	local cfile
-
-	if [[ "$init" == "runit" ]]; then
-		cfile="${ASERVICES['bfq-runit']}"
-		if [ ! -f "${cfile}" ]; then
-			cat <<EOF >"${cfile}"
-#!/bin/sh
-for d in /sys/block/*; do
-	[ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null
-done
-EOF
-
-			run_cmd chmod +x "${cfile}"
-			changed=true
-
-		else
-			msg_tab "${green}Scheduler já configurado.${rst}"
-
-		fi
-
-	elif [[ "$init" == "systemd" ]]; then
-		cfile="${ASERVICES['bfq-systemd']}"
-		if [ ! -f "${cfile}" ]; then
-			cat <<EOF >"${cfile}"
-[Unit]
-Description=Set BFQ IO Scheduler (Chili)
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c 'for d in /sys/block/sd*; do echo bfq > "\$d/queue/scheduler" 2>/dev/null; done'
-RemainAfterExit=yes
-[Install]
-WantedBy=multi-user.target
-EOF
-			run_cmd systemctl daemon-reload
-			run_cmd systemctl enable chili-bfq
-			changed=true
-		else
-			msg_tab "${green}Scheduler já configurado.${rst}"
-		fi
 	fi
 }
 
@@ -794,11 +810,11 @@ ensure_debugfs() {
 }
 
 sh_check_zswap_lifecycle() {
-	msg "Diagnóstico Zswap:"
+	msg "Diagnóstico Zswap"
 
 	# 1. Suporte no Kernel
 	if detect_zswap_support; then
-		msg_tab "Suporte do Kernel: ${green}OK (Compilado)${rst}"
+		msg_tab "Suporte do Kernel: ${green}OK ${cyan}(Kernel compilado com suporte a zswap)${rst}"
 	else
 		log_warn_tab "Suporte do Kernel: ${red}Ausente!${rst}"
 		((errors++))
@@ -807,7 +823,7 @@ sh_check_zswap_lifecycle() {
 
 	# 2. Intenção no Boot (Grub/Cmdline)
 	if grep -q "zswap.enabled=1" /proc/cmdline; then
-		msg_tab "Parâmetro de Boot: ${green}OK (Ativado no Kernel Cmdline)${rst}"
+		msg_tab "Parâmetro de Boot: ${green}OK ${cyan}(Ativado no Kernel Cmdline)${rst}"
 	else
 		log_warn_tab "Parâmetro de Boot: ${red}Ausente (Verifique seu GRUB/Bootloader)${rst}"
 		((errors++))
@@ -817,9 +833,9 @@ sh_check_zswap_lifecycle() {
 	if [[ -f "/sys/module/zswap/parameters/enabled" ]]; then
 		local active=$(cat /sys/module/zswap/parameters/enabled)
 		if [[ "$active" == "Y" ]]; then
-			msg_tab "Módulo           : ${green}Ativo ${cyan}(${active})${rst}"
+			msg_tab "Zswap ativo      : ${green}Ativo ${cyan}(${active})${rst}"
 		else
-			log_warn_tab "Módulo      : ${yellow}Carregado mas desativado (${active})${rst}"
+			log_warn_tab "Zswap ativo : ${yellow}Carregado mas desativado (${active})${rst}"
 			((errors++))
 		fi
 	else
@@ -946,32 +962,30 @@ sh_summary_swap() {
       Permite ao kernel liberar memória com mais agressividade sob pressão. ${rst}"
 }
 
+sh_system_summary() {
+  detect_init
+  detect_fs
+  detect_ram
+  detect_disk
+  #calculate_swap
+  ensure_debugfs
+	msg "System Summary"
+	msg_tab "Distro detectada: ${cyan}${DISTRO}${rst}"
+	msg_tab "Init detectado  : ${cyan}${init}${rst}"
+	msg_tab "Filesystem raiz : ${cyan}${root_fs}${rst}"
+	msg_tab "Disco detectado : ${cyan}$type ($disk)${rst}"
+	msg_tab "RAM detectada   : ${cyan}${ram_gb} GB${rst}"
+  msg_tab "Modo do sistema : ${cyan}$(if detect_is_live; then echo Live; else echo Instalado; fi)${rst}"
+}
+
 summary() {
 	replicate '-'
 	echo "${blue}Resumo do sistema${rst}"
 	replicate '-'
-	msg "Distro detectada: ${cyan}${DISTRO}${rst}"
-	msg "Init detectado  : ${cyan}${init}${rst}"
-	msg "Filesystem raiz : ${cyan}${root_fs}${rst}"
-	msg "Disco detectado : ${cyan}$type ($disk)${rst}"
-	msg "RAM detectada   : ${cyan}${ram_gb} GB${rst}"
-
+	sh_system_summary
 	calculate_swap
-
-	# zswap básico
 	detect_zswap
-
-	if [[ $changed == true || ${zswap_enabled} = "N" ]]; then
-		warn "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
-	else
-		msg "zswap enabled   : ${cyan}${zswap_enabled}${rst}"
-	fi
-
-	if detect_zswap_support; then
-		log_ok_tab "${green}Kernel compilado com suporte a zswap${rst}"
-	else
-		log_warn_tab "${red}Kernel sem suporte a zswap${rst}"
-	fi
+  sh_check_zswap_lifecycle
 
 	if [ $zswap_enabled = 'Y' ]; then
 		msg_tab "$(sysctl vm.swappiness)"
@@ -1002,7 +1016,10 @@ sh_install() {
 	check_root
 	detect_init
 	detect_fs
-	sh_create_checkpoint #Dispara o checkpoint global de uma vez só antes de mexer em qualquer bit
+  if detect_is_live; then
+    err "Sistema em modo Live. As alterações serão perdidas ao reiniciar. Rodando em modo dry-run"
+  fi
+	sh_create_checkpoint
 	cleanup_legacy
 	detect_ram
 	calculate_swap
@@ -1017,7 +1034,13 @@ sh_install() {
 	enable_preload
 	ensure_debugfs
 	enable_zswap
-	summary
+#	summary
+  sh_health_check
+
+  if detect_is_live; then
+		warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
+    die "Sistema em modo Live. As alterações serão perdidas ao reiniciar."
+  fi
 }
 
 sh_uninstall() {
@@ -1082,14 +1105,14 @@ sh_uninstall() {
 usage() {
 	echo -e "${cyan}Uso:${reset} $APP [opção]"
 	echo -e "${cyan}Opções:${reset}"
-	echo -e "  ${yellow}-s, --show           ${rst} mostra resumo do sistema"
-	echo -e "  ${yellow}-ss, --show-extended ${rst} mostra resumo explicado do sistema"
-	echo -e "  ${green}-i, --install${reset}         ${rst}Aplica configurações"
-	echo -e "  ${red}-u, --uninstall${reset}       ${rst}Remove configurações"
-	echo -e "  ${yellow}-c, --check           ${rst}Realiza diagnóstico de saúde do sistema"
-	echo -e "  ${green}-b, --backup${reset}          ${rst}Cria checkpoint ${cyan}'${bkp_dir}' ${rst}dos arquivos críticos"
-	echo -e "  ${red}-r, --rollback${reset}        ${rst}Reverte os arquivos críticos para o último backup"
-	echo -e "  ${cyan}-h, --help${reset}            ${rst}Mostra este ajuda"
+	echo -e "  ${yellow}-s, --show           ${rst} $(gettext 'mostra resumo do sistema')"
+	echo -e "  ${yellow}-ss, --show-extended ${rst} $(gettext 'mostra resumo explicado do sistema')"
+	echo -e "  ${green}-i, --install${reset}         ${rst}$(gettext 'Aplica configurações')"
+	echo -e "  ${red}-u, --uninstall${reset}       ${rst}$(gettext 'Remove configurações')"
+	echo -e "  ${yellow}-c, --check           ${rst}$(gettext 'Realiza diagnóstico de saúde do sistema')"
+	echo -e "  ${green}-b, --backup${reset}          ${rst}$(gettext 'Cria checkpoint dos arquivos críticos')"
+	echo -e "  ${red}-r, --rollback${reset}        ${rst}$(gettext 'Reverte os arquivos críticos para o último backup')"
+	echo -e "  ${cyan}-h, --help${reset}            ${rst}$(gettext 'Mostra este ajuda')"
 }
 
 sh_backup_file() {
@@ -1117,10 +1140,7 @@ sh_create_checkpoint() {
 	msg "Criando ponto de restauração do sistema..."
 	run_cmd mkdir -p "$bkp_dir"
 
-	# Lista de alvos críticos para backup
-	local targets=("/etc/fstab" "/etc/default/grub" "/boot/grub/grub.cfg")
-
-	for target in "${targets[@]}"; do
+	for target in "${aCritic_Files[@]}"; do
 		if [[ -f "$target" ]]; then
 			if cp -a "$target" "${bkp_dir}/$(basename "$target")-${timestamp}.bak"; then
 				msg_tab "Salvaguardado: ${cyan}$(basename "$target")${rst}"
@@ -1133,24 +1153,26 @@ sh_create_checkpoint() {
 
 sh_rollback() {
 	local bkp_dir="/var/backups/${APP}"
-	local targets=("/etc/fstab" "/etc/default/grub" "/boot/grub/grub.cfg")
 
-	msg "Iniciando processo de rollback para o último estado conhecido..."
+  msg "$(gettext 'Reverte os arquivos críticos para o último backup')"
+  msg_tab "$(gettext 'Arquivos'): ${cyan}${aCritic_Files[*]}${rst}"
+  if readconf "$(gettext "Restaurar arquivos criticos agora?")"; then
+  	msg_tab "$(gettext 'Iniciando processo de rollback para o último estado conhecido...')"
 
-	for target in "${targets[@]}"; do
-		# Encontra o arquivo de backup mais recente para este alvo específico
-		local latest_bkp
-		latest_bkp=$(ls -t "${bkp_dir}/$(basename "$target")"-*.bak 2>/dev/null | head -n 1)
+  	for target in "${aCritic_Files[@]}"; do
+  		# Encontra o arquivo de backup mais recente para este alvo específico
+  		local latest_bkp
+  		latest_bkp=$(ls -t "${bkp_dir}/$(basename "$target")"-*.bak 2>/dev/null | head -n 1)
 
-		if [[ -f "$latest_bkp" ]]; then
-			msg_tab "Restaurando ${cyan}$(basename "$target")${rst} a partir de ${cyan}$(basename "$latest_bkp")${rst}"
-			run_cmd cp -a "$latest_bkp" "$target"
-		else
-			warn_tab "Nenhum backup encontrado para $(basename "$target"). Pulando..."
-		fi
-	done
-
-	msg "Rollback concluído. ${yellow}Recomendado reiniciar o sistema.${rst}"
+  		if [[ -f "$latest_bkp" ]]; then
+  			msg_tab "Restaurando ${cyan}$(basename "$target")${rst} a partir de ${cyan}$(basename "$latest_bkp")${rst}"
+  			run_cmd cp -a "$latest_bkp" "$target"
+  		else
+  			warn_tab "Nenhum backup encontrado para $(basename "$target"). Pulando..."
+  		fi
+  	done
+  	msg "Rollback concluído. ${yellow}Recomendado reiniciar o sistema.${rst}"
+  fi
 }
 
 check_system_status() {
@@ -1176,58 +1198,25 @@ check_system_status() {
 	fi
 }
 
-sh_health_check() {
-	msg "Iniciando diagnóstico profundo do sistema${rst}"
-	msg "Distro detectada: ${green}${cyan}$DISTRO${rst}"
-
-	# 1. Validação de Arquivos de Configuração críticos
+sh_check_files_critic() {
+	msg "$(gettext 'Validação de arquivos críticos de configuração')"
 	local files=("/etc/fstab" "/etc/default/grub" "/boot/grub/grub.cfg")
 	for f in "${files[@]}"; do
-		[[ -f "$f" ]] && msg_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
+    [[ -f "$f" ]] && msg_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
 			log_err_tab "Config: ${red}$f ausente!${rst}"
 			((errors++))
 		}
 	done
+}
 
-	# 2. Validação do Swapfile
-	calculate_swap
-
-	# 3. Validação do Zswap
-	sh_check_zswap_lifecycle
-
-	sh_rename_service_on_runit
-
-	# 4. Validação de Sysctl (Comparação direta com o arquivo)
-	if [[ -f "${sysctl_conf}" ]]; then
-		msg "Sysctl: ${green}Verificando parâmetros no arquivo ${cyan}${sysctl_conf}${rst}"
-
-		for param in "${!ASYSCTL[@]}"; do
-			local expected_val="${ASYSCTL[$param]}"
-			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
-			local file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
-
-			if [[ -z "$file_val" ]]; then
-				log_warn_tab "$param: ${red}Não encontrado no arquivo${rst}"
-				((errors++))
-			elif [[ "$expected_val" == "$file_val" ]]; then
-				msg_tab "$param: ${green}OK ${cyan}($file_val)${rst}"
-			else
-				log_warn_tab "$param: ${yellow}Divergente (recomendado: $expected_val | Arquivo: $file_val)${rst}"
-				((errors++))
-			fi
-		done
-	else
-		log_err_tab "Sysctl: ${sysctl_conf} ${red}Arquivo de configuração não encontrado!${rst}"
-		((errors++))
-	fi
-
-	# 5. Validação de Serviços por INIT
-	msg "Verificando serviços via ${green}${cyan}${init}${rst}"
+sh_check_services() {
+	# Validação de Serviços por INIT
+	msg "$(gettext 'Verificando serviços via') ${green}${cyan}${init}${rst}"
 	case "$init" in
 	systemd)
 		for svc in preload chili-thp chili-bfq; do
 			if systemctl list-unit-files "$svc.service" >/dev/null 2>&1; then
-				systemctl is-active --quiet "$svc" && msg_tab "Serviço ($svc): ${green}Rodando${rst}" || log_warn_tab "Serviço ($svc): ${yellow}Instalado, mas parado${rst}"
+				systemctl is-active --quiet "$svc" && msg_tab "$(gettext 'Serviço') ($svc): ${green}Rodando${rst}" || log_warn_tab "$(gettext 'Serviço') ($svc): ${yellow}Instalado, mas parado${rst}"
 			fi
 		done
 		;;
@@ -1254,6 +1243,54 @@ sh_health_check() {
 		done
 		;;
 	esac
+}
+
+sh_check_sysctl() {
+	# 4. Validação de Sysctl (Comparação direta com o arquivo)
+	if [[ -f "${sysctl_conf}" ]]; then
+		msg "Sysctl: ${green}Verificando parâmetros no arquivo ${cyan}${sysctl_conf}${rst}"
+
+		for param in "${!ASYSCTL[@]}"; do
+			local expected_val="${ASYSCTL[$param]}"
+			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
+			local file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
+
+			if [[ -z "$file_val" ]]; then
+				log_warn_tab "$param: ${red}Não encontrado no arquivo${rst}"
+				((errors++))
+			elif [[ "$expected_val" == "$file_val" ]]; then
+				msg_tab "$param: ${green}OK ${cyan}($file_val)${rst}"
+			else
+				log_warn_tab "$param: ${yellow}Divergente (recomendado: $expected_val | Arquivo: $file_val)${rst}"
+				((errors++))
+			fi
+		done
+	else
+		log_err_tab "Sysctl: ${sysctl_conf} ${red}Arquivo de configuração não encontrado!${rst}"
+		((errors++))
+	fi
+}
+
+sh_health_check() {
+	msg "Iniciando diagnóstico profundo do sistema${rst}"
+	sh_system_summary
+
+	# 2. Validação do Swapfile
+	calculate_swap
+
+	# 3. Validação do Zswap
+	sh_check_zswap_lifecycle
+
+	sh_rename_service_on_runit
+
+	# Validação de Sysctl (Comparação direta com o arquivo)
+  sh_check_sysctl
+
+	# Validação de Arquivos de Configuração críticos
+  sh_check_files_critic
+
+	# Validação de Serviços por INIT
+  sh_check_services
 
 	# Chama a nova verificação de estado
 	check_system_status
@@ -1273,12 +1310,6 @@ case "$1" in
 	exit 1
 	;;
 -s | --show)
-	detect_init
-	detect_fs
-	detect_ram
-	detect_disk
-	#calculate_swap
-	ensure_debugfs
 	summary
 	;;
 -ss | --show-extended)
