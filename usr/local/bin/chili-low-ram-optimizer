@@ -1036,9 +1036,8 @@ sh_install() {
 	enable_zswap
 #	summary
   sh_health_check
-
+  warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
   if detect_is_live; then
-		warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
     die "Sistema em modo Live. As alterações serão perdidas ao reiniciar."
   fi
 }
