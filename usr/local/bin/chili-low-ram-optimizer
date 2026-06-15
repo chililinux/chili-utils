@@ -50,7 +50,7 @@ declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
-declare quiet=true
+declare quiet=false
 declare -i errors=0
 declare -a aCritic_Files=(
   "/etc/fstab"
