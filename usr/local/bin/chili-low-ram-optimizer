@@ -606,7 +606,7 @@ configure_zswap() {
 	msg "Ativando parametros do zswap no GRUB..."
 
 	[[ -f "${cfile}" ]] || {
-		log_err_tab "${red}Arquivo ${cfile} não encontrado.${rst}"
+		log_err_tab "${red}Arquivo ${cfile} ${cmsg_Nao_encontrado} ${rst}"
     ((++errors))
 		return 1
 	}
@@ -807,36 +807,51 @@ ensure_debugfs() {
 }
 
 sh_check_zswap_lifecycle() {
+  local cmsg
+
 	msg "Diagnóstico Zswap"
-
-	# 1. Suporte no Kernel
+  cmsg="$(gettext 'Suporte do Kernel')"
 	if detect_zswap_support; then
-		msg_tab "Suporte do Kernel: ${green}OK ${cyan}(Kernel compilado com suporte a zswap)${rst}"
+		msg_tab "${cmsg} : ${green}OK ${cyan}(Kernel compilado com suporte a zswap)${rst}"
 	else
-		log_err_tab "Suporte do Kernel: ${red}Não encontrado!${rst}"
+		log_err_tab "${cmsg} : ${red}${cmsg_Nao_encontrado}${rst}"
 		((++errors))
-		return # Se não tem suporte, não adianta checar o resto
+    # Se não tem suporte, não adianta checar o resto
+    #return 1
 	fi
 
-	# 2. Intenção no Boot (Grub/Cmdline)
+  cmsg="$(gettext 'Param boot cmdline')"
 	if grep -q "zswap.enabled=1" /proc/cmdline; then
-		msg_tab "Parâmetro de Boot: ${green}OK ${cyan}(Ativado no Kernel Cmdline)${rst}"
+		msg_tab "${cmsg}: ${green}OK ${cyan}(Ativado no Kernel Cmdline)${rst}"
 	else
-		log_err_tab "Parâmetro de Boot: ${red}Ausente (Verifique seu GRUB/Bootloader)${rst}"
+		log_err_tab "${cmsg}: ${red}Ausente (Verifique seu GRUB/Bootloader)${rst}"
 		((++errors))
 	fi
 
-	# 3. Estado do Módulo
+  cmsg="$(gettext 'Param boot grub')"
+	if [[ -f /etc/default/grub ]]; then
+  	if grep -q "zswap.enabled=1" /etc/default/grub; then
+	  	msg_tab "${cmsg}   : ${green}OK ${cyan}(Ativado no /etc/default/grub)${rst}"
+  	else
+	  	log_err_tab "${cmsg}   : ${red}Ausente (Verifique seu /etc/default/grub)${rst}"
+  		((++errors))
+  	fi
+  else
+  	log_err_tab "${cmsg}   : ${cyan}/etc/default/grub ${red}${cmsg_Nao_encontrado}${rst}"
+ 		((++errors))
+  fi
+
+  cmsg="$(gettext 'Param Zswap ativo')"
 	if [[ -f "/sys/module/zswap/parameters/enabled" ]]; then
 		local active=$(cat /sys/module/zswap/parameters/enabled)
 		if [[ "$active" == "Y" ]]; then
-			msg_tab "Zswap ativo      : ${green}Ativo ${cyan}(${active})${rst}"
+			msg_tab "${cmsg} : ${green}Ativo ${cyan}(${active})${rst}"
 		else
-			log_err_tab "Zswap ativo : ${yellow}Carregado mas desativado (${active})${rst}"
+			log_err_tab "${cmsg} : ${yellow}Carregado mas desativado (${active})${rst}"
 			((++errors))
 		fi
 	else
-		log_err_tab "Módulo: ${red}Não carregado no Kernel${rst}"
+		log_err_tab "${cmsg} : ${red}Não carregado no Kernel${rst}"
 		((++errors))
 	fi
 }
@@ -975,16 +990,10 @@ sh_system_summary() {
   msg_tab "Modo do sistema : ${cyan}$(if detect_is_live; then echo Live; else echo Instalado; fi)${rst}"
 }
 
-summary() {
-	replicate '-'
-	echo "${blue}Resumo do sistema${rst}"
-	replicate '-'
-	sh_system_summary
-	calculate_swap
-	detect_zswap
-  sh_check_zswap_lifecycle
-
-	if [ $zswap_enabled = 'Y' ]; then
+sh_zswap_parameters_active() {
+  detect_zswap
+  if [[ $zswap_enabled = 'Y' ]]; then
+  	msg "Diagnóstico dos parametros ativos do zswap ${cyan}'/sys/module/zswap/parameters/*'${rst}"
 		msg_tab "$(sysctl vm.swappiness)"
 		for f in /sys/module/zswap/parameters/*; do
 			msg_tab "$(printf "%-30s : ${cyan}%s\n" "$(basename "$f")" "$(cat "$f")")"
@@ -994,10 +1003,20 @@ summary() {
 		if mountpoint -q /sys/kernel/debug 2>/dev/null && [ -d /sys/kernel/debug/zswap ]; then
 			msg_tab "Dump das métricas do zswap     :" ${cyan}$(cat /sys/kernel/debug/zswap/*)${rst}
 		else
-			msg_tab "zswap stats     : ${cyan}debugfs não montado${rst}"
+			log_err_tab "zswap stats     : ${red}debugfs não montado${rst}"
 		fi
 	fi
-	#replicate '#'
+}
+
+summary() {
+	replicate '-'
+	echo "${blue}Resumo do sistema${rst}"
+	replicate '-'
+	sh_system_summary
+	calculate_swap
+	detect_zswap
+  sh_check_zswap_lifecycle
+  sh_zswap_parameters_active
 
 	if $changed; then
 		echo
@@ -1224,18 +1243,18 @@ check_system_status() {
 }
 
 sh_check_files_critic() {
-	msg "$(gettext 'Validação de arquivos críticos de configuração')"
+	msg "$(gettext 'Validação dos arquivos críticos de configuração')"
 
 	for f in "${aCritic_Files[@]}"; do
     [[ -f "$f" ]] && log_ok_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
-			log_err_tab "Config: ${yellow}$f ${red}Não encontrado!${rst}"
+			log_err_tab "Config: ${yellow}$f ${red}${cmsg_Nao_encontrado}${rst}"
 			((errors++))
 		}
 	done
 }
 
 sh_check_services() {
-	msg "$(gettext 'Verificando serviços via') ${green}${cyan}${init}${rst}"
+	msg "$(gettext 'Verificação dos serviços via') ${green}${cyan}${init}${rst}"
 	case "$init" in
 	systemd)
 		for svc in preload chili-thp chili-bfq; do
@@ -1252,7 +1271,7 @@ sh_check_services() {
 			if [[ -d "/var/service/$svc" ]]; then
 				log_ok_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
 			else
-				log_err_tab "Serviço ($svc): ${red}Não encontrado em /var/service/${rst}"
+				log_err_tab "Serviço ($svc): ${red}${cmsg_Nao_encontrado} em /var/service/${rst}"
 			fi
 		done
 
@@ -1265,7 +1284,7 @@ sh_check_services() {
 			if [[ -f "$service" ]]; then
 				log_ok_tab "Config ${green}Ativo em ${service}${rst}"
 			else
-				log_err_tab "Config ${yellow}${service} ${red}Não encontrado${rst}"
+				log_err_tab "Config ${yellow}${service} ${red}${cmsg_Nao_encontrado}${rst}"
 			fi
 		done
 		;;
@@ -1273,10 +1292,8 @@ sh_check_services() {
 }
 
 sh_check_sysctl() {
-	# 4. Validação de Sysctl (Comparação direta com o arquivo)
+	msg "Diagnóstico do sysctl ${cyan}(${sysctl_conf})${rst}"
 	if [[ -f "${sysctl_conf}" ]]; then
-		msg "Sysctl: ${green}Verificando parâmetros no arquivo ${cyan}${sysctl_conf}${rst}"
-
 		for param in "${!ASYSCTL[@]}"; do
 			local expected_val="${ASYSCTL[$param]}"
 			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
@@ -1293,7 +1310,7 @@ sh_check_sysctl() {
 			fi
 		done
 	else
-		log_err_tab "Sysctl: ${yellow}${sysctl_conf} ${red}Não encontrado!${rst}"
+		log_err_tab "Sysctl: ${yellow}${sysctl_conf} ${red}${cmsg_Nao_encontrado}${rst}"
 		((errors++))
 	fi
 }
@@ -1307,11 +1324,11 @@ sh_health_check() {
 
 	# 3. Validação do Zswap
 	sh_check_zswap_lifecycle
-
 	sh_rename_service_on_runit
 
 	# Validação de Sysctl (Comparação direta com o arquivo)
   sh_check_sysctl
+  sh_zswap_parameters_active
 
 	# Validação de Arquivos de Configuração críticos
   sh_check_files_critic
@@ -1328,9 +1345,15 @@ sh_health_check() {
   fi
 }
 
+sh_Language() {
+  cmsg_Nao_encontrado="$(gettext 'Não encontrado!')"
+  cmsg_Ativado="$(gettext 'Ativado')"
+}
+
 # configure ambiente
 set_varcolors
 sh_checkroot "$@"
+sh_Language
 DISTRO="$(detect_distro)"
 
 # Display usage information if no arguments are passed
@@ -1356,12 +1379,6 @@ case "$1" in
 	;;
 -ss | --show-extended)
   quiet=false
-#	detect_init
-#	detect_fs
-#	detect_ram
-#	detect_disk
-# calculate_swap
-#	ensure_debugfs
 	summary
 	sh_summary_swap
 	;;
