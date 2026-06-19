@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166
+# altered: seg 12 fev 2024 00:05:09 -04 - Vilmar Catafesta <vcatafesta@gmail.com>
+
+# Define o caminho para o arquivo de configuração
+cfile="$HOME/.chili-snow"
+
+# Verifica se o arquivo de configuração existe e não está vazio
+if [ -s "$cfile" ]; then
+	# Se existir, substitui o valor padrão pela última entrada no arquivo
+	value="$(<"$cfile")"
+fi
+
+if [[ ! "$value" =~ ^[01]$ ]]; then
+    # Se o valor não for 0 ou 1, define variável "value" com valor padrão 1
+    value=1
+fi
+
+# Verifica se a data atual é 24 de dezembro
+if [ "$(date +%d%m)" = "2412" ]; then
+	# Verifica se a mensagem já foi exibida alguma vez
+	if ((value)); then
+		# Exibe uma caixa de diálogo perguntando se o usuário quer ver a surpresa de Natal
+		if kdialog --title "Feliz Natal!" --yesno "\nA equipe Chili Linux deseja um feliz Natal!\nGostaria de ver a surpresa que preparamos para você?\n"; then
+			# Se o usuário decidir ver a animação, xsnow é executado com as opções especificadas
+			xsnow -hidemenu -notrees -norudolph -nowind -aurora 0 -showbirds 0 -moon 0 -nometeors -stars 0 -nomenu
+		else
+			# Se o usuário decidir não ver a animação, o valor 0 é atribuído à variável "value"
+			value=0
+		fi
+		# Atualiza o valor no arquivo de configuração
+		echo "$value" >"$cfile"
+	fi
+fi

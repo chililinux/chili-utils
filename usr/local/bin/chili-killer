@@ -148,10 +148,32 @@ sh_setEnvironment() {
 }
 
 # Verifica se há pelo menos um argumento
+#if [[ $# -eq 0 ]]; then
+#  echo "${red}Uso: ${cyan}$0 <padrão_de_busca>${reset}"
+#  exit 1
+#fi
+# Mata os processos que correspondem ao padrão passado
+#sudo pkill -9 -f "$@"
+
+# Verifica se há pelo menos um argumento
 if [[ $# -eq 0 ]]; then
-  echo "${red}Uso: ${cyan}$0 <padrão_de_busca>${reset}"
+  echo "Uso: $0 <padrão_de_busca>"
   exit 1
 fi
 
-# Mata os processos que correspondem ao padrão passado
-sudo pkill -9 -f "$@"
+pattern="$*"
+
+# Mostra o que vai ser morto
+echo "Processos que serão afetados:"
+pgrep -af "$pattern"
+
+# Primeiro tenta matar de forma amigável
+sudo pkill -f "$pattern"
+sleep 1
+
+# Se ainda existir, mata na marra
+if pgrep -f "$pattern" > /dev/null; then
+  echo "Processos ainda vivos, usando SIGKILL..."
+  sudo pkill -9 -f "$pattern"
+fi
+
