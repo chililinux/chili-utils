@@ -950,7 +950,7 @@ remove_real_bridge() {
 	msg_ok "Bridge '$bridge_name' $(gettext 'removida com sucesso e interface') '$iface_phys' $(gettext 'restaurada.')"
 }
 
-create_bridge_virbr() {
+create_virbr_bridge() {
 	local bridge_name="$1"
 
 	if sudo virsh -c qemu:///system net-list --all &>/dev/null; then
