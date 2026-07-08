@@ -569,19 +569,21 @@ sh_check_disk_health() {
 	# --------------------------------------------------------
 	local dev
 	dev=$(basename "$disk")
-	errors=$(dmesg | grep -iE "$dev|I/O error|Buffer I/O|blk_update_request|critical medium error|end_request" | tail -5)
+	errors=$(dmesg | grep -iE "$dev" | tail -5)
 
 	if [[ -n "$errors" ]]; then
-		report+="\nErros recentes:\n"
-		report+="----------------------------------------\n"
+		report+="\n${CYAN}Erros recentes:${RESET}\n"
 		report+="${YELLOW}$errors${RESET}\n"
-		(( status < 2 )) && status=2
+    if grep -iE "I/O error|Buffer I/O|blk_update_request|critical medium error|end_request" <<< "$errors"
+    then
+  		(( status < 2 )) && status=2
+    fi
 	fi
 
 	# --------------------------------------------------------
 	# Status Final
 	# --------------------------------------------------------
-	report+="\n----------------------------------------\n"
+	report+="\n"
 	case "$status" in
 		0) report+="${GREEN}STATUS: DISCO APARENTEMENTE SAUDÁVEL${RESET}" ;;
 		1) report+="${YELLOW}STATUS: AVISOS ENCONTRADOS${RESET}" ;;
