@@ -569,7 +569,7 @@ sh_check_disk_health() {
 	# --------------------------------------------------------
 	local dev
 	dev=$(basename "$disk")
-	errors=$(dmesg | grep -iE "$dev" | tail -5)
+	errors=$(dmesg | grep -iE "$dev" | tail -15)
 
 	if [[ -n "$errors" ]]; then
 		report+="\n${CYAN}Erros recentes:${RESET}\n"
