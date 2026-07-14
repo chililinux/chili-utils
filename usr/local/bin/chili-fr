@@ -84,7 +84,8 @@ declare -a avideodevice=(
 	none ati-vga vmware-svga cirrus cirrus-vga isa-cirrus-vga isa-vga qxl-vga secondary-vga
 	virtio-vga-gl virtio-gpu virtio-vga-gl virtio-gpu-pci virtio-gpu-gl-pci qxl-vga bochs-display
 	ramfb virtio-gpu-gl virtio-gpu qxl VGA)
-declare videodevice='virtio-vga'
+#declare videodevice='virtio-vga'
+declare videodevice='virtio-vga-gl'
 #
 declare lshare=false
 declare spice=false
@@ -1743,8 +1744,9 @@ mainOLD() {
 		exit 0
 	else
 		qemu_options+=(-device "$videodevice")
-		#		qemu_options+=(-display gtk,gl=on)
-		qemu_options+=(-display sdl)
+#		qemu_options+=(-display sdl)
+#		qemu_options+=(-display gtk,gl=on)
+		qemu_options+=(-display sdl,gl=on)
 		if $only_tty; then
 			if $output; then
 				cat <<EOF
@@ -1931,7 +1933,9 @@ main::handle_spice_or_display() {
 		exit 0
 	fi
 
-	qemu_options+=(-device "$videodevice" -display sdl)
+#	qemu_options+=(-device "$videodevice" -display sdl)
+#	qemu_options+=(-device "$videodevice" -display gtk,gl=on)
+	qemu_options+=(-device "$videodevice" -display sdl,gl=on)
 
 	if $only_tty; then
 		if $output; then
