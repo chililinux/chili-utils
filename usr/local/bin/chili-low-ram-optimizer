@@ -578,14 +578,12 @@ configure_swapfile() {
 }
 
 configure_sysctl() {
-	local cfile
-	cfile="${sysctl_conf}"
+	local cfile="${sysctl_conf}"
 
 	msg "Configurando parâmetros de memória..."
 	run_cmd mkdir -p /etc/sysctl.d/
 
-	if [ ! -f "${cfile}" ]; then
-		cat <<EOF >"${cfile}"
+  cat <<EOF >"${cfile}"
 vm.swappiness=180
 vm.vfs_cache_pressure=200
 vm.page-cluster=0
@@ -596,13 +594,9 @@ vm.dirty_writeback_centisecs=500
 vm.min_free_kbytes=65536
 vm.watermark_boost_factor=0
 vm.watermark_scale_factor=125
-
 EOF
 		run_cmd sysctl --system
 		changed=true
-	else
-		msg_tab "${green}Sysctl já configurado.${rst}"
-	fi
 }
 
 configure_zswap() {
