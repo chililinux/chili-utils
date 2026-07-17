@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: qua 17 jun 2026 06:08:43 -04
+#  Updated: sex 17 jul 2026 06:16:09 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -45,7 +45,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.06.17-20260617"
+declare _VERSION_="0.07.17-20260717"
 declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
@@ -593,6 +593,10 @@ vm.dirty_background_ratio=3
 vm.dirty_ratio=10
 vm.dirty_expire_centisecs=3000
 vm.dirty_writeback_centisecs=500
+vm.min_free_kbytes=65536
+vm.watermark_boost_factor=0
+vm.watermark_scale_factor=125
+
 EOF
 		run_cmd sysctl --system
 		changed=true
