@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: sex 22 mai 2026 22:40:04 -04
+#  Updated: dom 19 jul 2026 11:20:55 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -49,7 +49,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.05.22-20260522'
+readonly VERSION='3.07.26-20260726'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
