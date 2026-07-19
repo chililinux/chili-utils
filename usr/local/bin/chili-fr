@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 28 jun 2026 19:32:16 -04
+#  Updated: sex 22 mai 2026 22:40:04 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -49,7 +49,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.06.28-20260628'
+readonly VERSION='3.05.22-20260522'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -80,12 +80,26 @@ declare iface_bridge='br0'
 declare bridge=false
 declare xmem='8G'
 #
+
 declare -a avideodevice=(
-	none ati-vga vmware-svga cirrus cirrus-vga isa-cirrus-vga isa-vga qxl-vga secondary-vga
-	virtio-vga-gl virtio-gpu virtio-vga-gl virtio-gpu-pci virtio-gpu-gl-pci qxl-vga bochs-display
-	ramfb virtio-gpu-gl virtio-gpu qxl VGA)
-#declare videodevice='virtio-vga'
-declare videodevice='virtio-vga-gl'
+  #qemu-system-x86_64 -device help | grep -i virtio
+  ati-vga
+  bochs-display
+  cirrus-vga
+  none
+  qxl
+  qxl-vga
+  ramfb
+  VGA
+  virtio-gpu
+  virtio-gpu-gl
+  virtio-vga
+  virtio-vga-gl
+  virtio-gpu-rutabaga-pci
+  vmware-svga
+)
+
+declare videodevice='virtio-vga'
 #
 declare lshare=false
 declare spice=false
@@ -951,7 +965,7 @@ remove_real_bridge() {
 	msg_ok "Bridge '$bridge_name' $(gettext 'removida com sucesso e interface') '$iface_phys' $(gettext 'restaurada.')"
 }
 
-create_virbr_bridge() {
+create_bridge_virbr() {
 	local bridge_name="$1"
 
 	if sudo virsh -c qemu:///system net-list --all &>/dev/null; then
@@ -1446,13 +1460,8 @@ add_smb_share() {
 
 	# se tiver smbd, cria share e adiciona a opção (OBS: smb só funciona no modo -net user)
 	if command -v smbd &>/dev/null; then
-    # qemu espera que esteja em /usr/sbin
-	  if [[ -r /usr/sbin/smbd ]]; then
-  		mkdir -p "$share_dir" &>/dev/null
-	  	cCmd=",smb=${share_dir}"
-    else
-      msg_info "/usr/bin/smbd existe, mas deveria estar em /usr/sbin/smbd, onde qemu espera"
-    fi
+		mkdir -p "$share_dir" &>/dev/null
+		cCmd=",smb=${share_dir}"
 	fi
 	echo $cCmd
 }
@@ -1744,9 +1753,8 @@ mainOLD() {
 		exit 0
 	else
 		qemu_options+=(-device "$videodevice")
-#		qemu_options+=(-display sdl)
-#		qemu_options+=(-display gtk,gl=on)
-		qemu_options+=(-display sdl,gl=on)
+		#		qemu_options+=(-display gtk,gl=on)
+		qemu_options+=(-display sdl)
 		if $only_tty; then
 			if $output; then
 				cat <<EOF
@@ -1933,9 +1941,7 @@ main::handle_spice_or_display() {
 		exit 0
 	fi
 
-#	qemu_options+=(-device "$videodevice" -display sdl)
-#	qemu_options+=(-device "$videodevice" -display gtk,gl=on)
-	qemu_options+=(-device "$videodevice" -display sdl,gl=on)
+	qemu_options+=(-device "$videodevice" -display sdl)
 
 	if $only_tty; then
 		if $output; then
@@ -2018,11 +2024,11 @@ if [ -z "$DISPLAY" ]; then
 	exit 1
 fi
 
-#OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
-#LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
-#opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
+OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
+LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
+opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 #eval set -- "${opts[*]}"
-#eval set -- "${opts[@]}"
+eval set -- "${opts[@]}"
 
 #while test ${#opts[*]} -gt 0; do
 while [ $# -gt 0 ]; do
@@ -2133,11 +2139,12 @@ while [ $# -gt 0 ]; do
 		only_tty=true
 		;;
 	-g | --video)
-		if [[ $2 =~ ^(virtio-vga|virtio-gpu-pci|qxl-vga|VGA|cirrus-vga|ati-vga|virtio-gpu-pci|bochs-display|ramfb)?$ ]]; then
+#		if [[ $2 =~ ^(virtio-vga|virtio-vga-gl|virtio-gpu-pci|qxl-vga|VGA|cirrus-vga|ati-vga|bochs-display|ramfb)?$ ]]; then
+    if [[ " ${avideodevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
 			videodevice="$2"
 			shift
 		else
-			die "$(gettext 'Argumento inválido para') -v. $(gettext 'Use') VGA,virtio-vga,virtio-gpu-pci,qxl-vga,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display ou ramfb" >&2
+			die "${red}$(gettext 'Argumento inválido para') ${yellow}-g|--video${rst} $(gettext 'Use:') ${cyan}${avideodevice[@]}${rst}" >&2
 		fi
 		;;
 	-l | --list)
@@ -2222,6 +2229,8 @@ if $LPARAM_AUDIO; then
 else
   msg_tick "Servidor audio detectado: ${cyan}${audio}${rst}"
 fi
+
+ msg_tick "Servidor video configurado: ${cyan}${videodevice}${rst}"
 
 if [[ $# > 0 ]]; then
 	# Configurar rede
