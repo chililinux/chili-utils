@@ -458,6 +458,7 @@ sh_checkVdiskFiles() {
 }
 
 sh_checkOVMFFiles() {
+	local DISTRO=$(detect_distro)
 	local aBlock_files=()
 	local d
 	local errorFound=false
@@ -485,7 +486,10 @@ sh_checkOVMFFiles() {
 		echo "${black}Ao decidir não instalar, o UEFI poderá não funcionar corretamente.${rst}"
 		replicate '='
 		if readconf "Deseja instalar o pacote e suprir arquivos necessários ?"; then
-			cmd_sudo pacman -S --quiet --noconfirm edk2-ovmf 1>/dev/null
+      case "${DISTRO}" in
+        arch|chililinux) cmd_sudo pacman -S --quiet --noconfirm edk2-ovmf 1>/dev/null ;;
+        void*) cmd_sudo xbps-install -Syf edk2-ovmf 1>/dev/null ;;
+      esac
 		fi
 	fi
 }
