@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: dom 19 jul 2026 11:20:55 -04
+#  Updated: qua 22 jul 2026 15:13:22 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -49,7 +49,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.07.26-20260726'
+readonly VERSION='3.07.22-20260722'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -a DEPENDENCIES=(
 	'tput'
@@ -1291,10 +1291,10 @@ sh_createVdiskFiles() {
 
 sh_setup() {
 	local DISTRO=$(detect_distro)
-	msg_info "$(gettext 'Instalando necessários pacotes')"
+	msg_info "$(gettext 'Instalando necessários pacotes'): $DISTRO"
 
 	case "$DISTRO" in
-	void)
+	void|voidbr)
 		msg_ex "$(gettext 'Rodando no') VOID"
 		if ! cmd_sudo xbps-install -Sy \
 			qemu \
@@ -2264,9 +2264,9 @@ if [[ $# > 0 ]]; then
 	# 2. Validação individual do CID
 	until port_is_free "$CHECK_CID"; do
 		msg_warn "CID $CHECK_CID ocupado, tentando próximo..."
-		CHECK_CID=$((CHECK_CID + 1))
+    ((CHECK_CID++))
 		# Opcional: resetar se passar do limite
-		[ $CHECK_CID -gt 560 ] && CHECK_CID=555
+    ((CHECK_CID > 560)) && CHECK_CID=555
 	done
 
 	# 3. Validação da dupla de portas (FWD e GOTIFY)
