@@ -1298,7 +1298,7 @@ sh_setup() {
 	msg_info "$(gettext 'Instalando necessários pacotes'): $DISTRO"
 
 	case "$DISTRO" in
-	void|voidbr)
+	void*)
 		msg_ex "$(gettext 'Rodando no') VOID"
 		if ! cmd_sudo xbps-install -Sy \
 			qemu \
@@ -1414,7 +1414,7 @@ sh_start_vdagentd() {
 	if ! pgrep spice-vdagentd; then
 		msg_info "$(gettext 'Ativando serviço') spice-vdaagentd $(gettext 'na distro:') ${cyan}${DISTRO^^}"
 		case "$DISTRO" in
-		void)
+		void*)
 			cmd_sudo ln -sf /etc/sv/spice-vdagentd /var/service/ &>/dev/null
 			;;
 		chililinux | arch)
@@ -1559,241 +1559,6 @@ EOF
 	kill "$qemu_pid" &>/dev/null
 }
 
-mainOLD() {
-	#	local img="$1"
-	local params=("$@")
-	#local img
-	local random_port="$(shuf -i 4444-45000 -n 1)"
-	local random_spice_port="$(shuf -i 5900-5910 -n 1)"
-	local cache_type
-	local bootindex
-	local media_type
-	local count=1
-	local devices=()
-
-	# Anexar discos/imagens
-	for img in "${params[@]}"; do
-		# Verificar se a imagem foi especificada
-		[[ -z "$img" ]] && {
-			sh_list_vdisks
-			die "Erro: vdisk/iso/device #${count} não especificada!"
-		}
-		if [[ ! -e "$img" ]]; then
-			[[ ! -e "$HOME_DIR/vdisk/$img" ]] && {
-				log_msg 1 "Check input ${yellow}#${count}: ${cyan}$img"
-				sh_list_vdisks
-				die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'não localizada, tente os listados acima!')${reset}"
-			}
-			img="$HOME_DIR/vdisk/$img"
-		fi
-		devices+=("$img")
-		#		log_msg true "Check input ${yellow}#${count}: ${cyan}$img"
-
-		if ((count == 1)); then
-			log_msg true "Boot source ${yellow}(#${count}): ${cyan}$img"
-		else
-			log_msg true "Data source ${yellow}(#${count}): ${cyan}$img"
-		fi
-		((++count))
-	done
-
-	# Forçar UEFI, se solicitado
-	if $uefi; then
-		sh_checkOVMFFiles
-		msg_info "$(gettext 'Forçando inicialização UEFI...')"
-		#[[ ! -e $HOME_DIR/OVMF_VARS.4m.fd ]] && cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
-    case $DISTRO in
-    void)
-		cp -f /usr/share/edk2/x64/OVMF_VARS.4m.fd $HOME_DIR/
-    ;;
-    *)
-		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd $HOME_DIR/
-    ;;
-    esac
-		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
-		qemu_options+=(-drive if=pflash,format=raw,file=$HOME_DIR/OVMF_VARS.4m.fd)
-	fi
-
-	# Adicionar opções padrão do QEMU
-	qemu_options+=(-no-fd-bootchk)
-	#	qemu_options+=(-machine accel=kvm)
-	qemu_options+=(-cpu host)
-	qemu_options+=(-smp "$(nproc)")
-	qemu_options+=(-m ${xmem})
-	qemu_options+=(-k pt-br)
-
-	#Modo	            Vantagens	                                              Desvantagens
-	#cache=none	      Seguro, evita inconsistências	                          Pode ser mais lento
-	#cache=writeback	Boa performance, mantém um nível aceitável de segurança	Risco de perda de dados em caso de falha
-	#cache=directsync	Segurança máxima (grava direto no disco)	              Muito mais lento
-	#cache=unsafe	    Máxima performance	                                    Pode corromper dados se houver falha
-
-	cache_type='writeback'
-	bootindex=1 # Índice de boot inicial
-
-	for img in "${devices[@]}"; do
-		media_type=$(file -b --mime-type "${img}")
-		#		qemu_options+=(-boot menu=on)
-		if [[ "$img" == *.iso ]]; then
-			msg_info "$(gettext 'Anexando iso') #${bootindex}: ${yellow}${img}"
-			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
-			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
-			((bootindex++))
-		elif [[ "${img}" == *.qcow2 ]]; then
-			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img}"
-			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-			((bootindex++))
-		elif [[ -b "$img" ]]; then
-			# Disco físico (block device real):
-			# Este bloco trata dispositivos reais em /dev (ex.: /dev/sdX, /dev/nvmeXnY).
-			# Diferente dos discos virtuais (arquivos), aqui forçamos cache=none e aio=native
-			# para evitar qualquer cache duplo no host e reduzir risco de corrupção de dados.
-			#
-			# Essa decisão é intencional e NÃO usa cache_type configurável:
-			# writeback/unsafe em disco físico pode causar perda silenciosa de dados
-			# em caso de crash do host ou queda de energia.
-			#
-			# Em resumo:
-			# - Disco físico → segurança e previsibilidade acima de performance
-			# - Disco virtual → política de cache configurável (ver bloco seguinte)
-			# Disco físico (/dev): usa I/O direto (cache=none,aio=native) para evitar
-			# cache duplo e reduzir risco de corrupção. Política fixa por segurança.
-			msg_info "$(gettext 'Anexando device') #${bootindex}: ${yellow}${img}"
-			qemu_options+=(
-				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
-			)
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-			((bootindex++))
-		else
-			# Fallback para imagem raw genérica:
-			# Este bloco só é alcançado quando o arquivo NÃO é:
-			#  - ISO (cdrom)
-			#  - qcow2 (vdisk gerenciado)
-			#  - block device real (disco físico em /dev)
-			#
-			# Diferente do bloco anterior (disco físico), aqui assumimos que o disco
-			# é um ARQUIVO raw comum. Por isso usamos virtio-blk com cache configurável,
-			# mantendo bom desempenho sem os riscos de I/O direto no hardware.
-			#
-			# IDE/AHCI NÃO é usado aqui de propósito:
-			# virtio-blk é o caminho moderno, mais rápido e esperado para sistemas atuais.
-			# IDE fica restrito a compatibilidade legada explícita.
-			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img} (raw)"
-			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-			((bootindex++))
-		fi
-	done
-
-	if $vdisk; then
-		for vdsk in "${avdisk_names[@]}"; do
-			[[ ! -e "$vdsk" ]] && vdsk="$HOME_DIR/vdisk/$vdsk"
-			[[ ! -e "$vdsk" ]] && continue
-
-			if [[ "${vdsk}" == *.img ]]; then
-				msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${vdsk}"
-				qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-				qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-				((bootindex++))
-			elif [[ "${vdsk}" == *.qcow2 ]]; then
-				msg_info "Anexando vdisk #${bootindex}: ${yellow}${vdsk}"
-				qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
-				qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
-				((bootindex++))
-			fi
-		done
-	else
-		#		msg_warn "Parametro --vdisk não informado, iniciando sem disco virtual..."
-		:
-	fi
-
-	#	qemu_options+=(-name "chili-fr $*",process=archiso_0)
-	qemu_options+=(-name "chili-fr")
-
-	#video
-	# CONFIGURAÇÃO DE DISPLAY (GTK só se GUI existir)
-	if $only_tty; then
-		#/etc/default/grub
-		#GRUB_TERMINAL="console"
-		#GRUB_GFXPAYLOAD_LINUX=text
-		#GRUB_CMDLINE_LINUX="console=tty1 nomodeset"
-
-		# Console interativo no terminal
-		qemu_options+=(
-			-vga std
-			-display curses
-		)
-	else
-		#qemu_options+=(-device virtio-scsi-pci,id=scsi0)
-		#qemu_options+=(-audiodev "$(detect_audio_server)",id=snd0)
-		audio="${audioserver:-$(detect_audio_server)}"
-		qemu_options+=(-audiodev "$audio",id=snd0)
-		qemu_options+=(-rtc base=localtime,clock=host)
-		qemu_options+=(-device ich9-intel-hda)
-		#qemu_options+=(-device hda-output,audiodev=snd0) # só saida de audio
-		qemu_options+=(-device hda-duplex,audiodev=snd0)
-		qemu_options+=(-global ICH9-LPC.disable_s3=1)
-		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0)
-
-		if $lshare; then
-			#compartilhamento
-			qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
-			qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
-		fi
-		#
-		#qemu_options+=(-device intel-iommu)
-		#qemu_options+=(-display gtk,gl=on)
-	fi
-
-	if $spice; then
-		# SPICE video: use QXL. VGA é fallback; virtio-vga é para GTK, não SPICE.
-		#qemu_options+=(-device qxl)
-		#qemu_options+=(-device qxl,heads=1)
-		#qemu_options+=(-device qxl,heads=2)
-		qemu_options+=(-device "$videodevice")
-		qemu_options+=(-device virtio-serial)
-		sh_start_with_spice
-		exit 0
-	else
-		qemu_options+=(-device "$videodevice")
-		#		qemu_options+=(-display gtk,gl=on)
-		qemu_options+=(-display sdl)
-		if $only_tty; then
-			if $output; then
-				cat <<EOF
-${cyan}
-sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
-${reset}
-EOF
-				exit 0
-			fi
-			cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
-			exit 0
-		else
-			cmd=(
-				sudo -E setsid env
-				SDL_VIDEODRIVER=x11
-				XDG_RUNTIME_DIR="/run/user/$(id -u)"
-				qemu-system-x86_64 "${qemu_options[@]}"
-			)
-			if $output; then
-				#sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/\$(id -u) qemu-system-x86_64 ${qemu_options[@]}
-				cat <<EOF
-${cyan}
-${cmd[*]} &
-disown
-${reset}
-EOF
-				exit 0
-			fi
-			#sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
-			run_qemu
-		fi
-	fi
-}
-export -f mainOLD
-
 main::init_main() {
 	params=("$@")
 
@@ -1837,11 +1602,13 @@ main::process_devices() {
 }
 
 main::configure_uefi() {
+  local DISTRO=$(detect_distro)
+
 	if $uefi; then
 		sh_checkOVMFFiles
 		msg_info "$(gettext 'Forçando inicialização UEFI...')"
     case "$DISTRO" in
-    void)
+    void*)
 		cp -f /usr/share/edk2/x64/OVMF_VARS.4m.fd "$HOME_DIR/"
     ;;
     *)
