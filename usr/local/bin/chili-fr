@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: qua 22 jul 2026 15:13:22 -04
+#  Updated: qua 22 jul 2026 23:07:47 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -51,17 +51,6 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 readonly APP="${0##*/}"
 readonly VERSION='3.07.22-20260722'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
-readonly -a DEPENDENCIES=(
-	'tput'
-	'qemu-system-x86_64'
-	'spice-vdagent'
-	'remote-viewer'
-	'python3'
-	'virsh'
-	'find'
-	'awk'
-	'brctl'
-)
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
 	['qemu-system-x86_64']='qemu-full'
@@ -72,6 +61,33 @@ readonly -A PACKAGEDEP=(
 	['find']='findutils'
 	['awk']='gawk'
 	['brctl']='bridge-utils'
+	['gettext']='gettext'
+)
+# Mapa: [distro]="lista de pacotes"
+declare -A DISTRO_PKGS=(
+  ["voidbr"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["void"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["void-live"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["voidlinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["chili"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["chililinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["arch"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["biglinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["manjaro"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+  ["debian"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext-base edk2-ovmf"
+)
+# Mapa: [distro]="comando de instalação"
+declare -A DISTRO_MGR=(
+  ["voidbr"]="xbps-install -Syf"
+  ["void"]="xbps-install -Syf"
+  ["void-live"]="xbps-install -Syf"
+  ["voidlinux"]="xbps-install -Syf"
+  ["chili"]="pacman -Sy --needed --noconfirm"
+  ["chililinux"]="pacman -Sy --needed --noconfirm"
+  ["arch"]="pacman -Sy --needed --noconfirm"
+  ["biglinux"]="pacman -Sy --needed --noconfirm"
+  ["manjaro"]="pacman -Sy --needed --noconfirm"
+  ["debian"]="apt-get install -y"
 )
 
 declare quiet=false
@@ -98,7 +114,6 @@ declare -a avideodevice=(
   virtio-gpu-rutabaga-pci
   vmware-svga
 )
-
 declare videodevice='virtio-vga'
 #
 declare lshare=false
@@ -123,6 +138,26 @@ declare LPARAM_AUDIO=false
 : "${GUEST_CID:=}"
 : "${HOST_FWD:=}"
 : "${HOST_GOTIFY:=}"
+
+has_command() {
+  command -v "$1" >/dev/null && return 0 || return 1
+}
+
+has_file() {
+  [[ -e "$1" ]] && return 0 || return 1
+}
+
+detect_distro() {
+	if [[ -r /etc/os-release ]]; then
+		. /etc/os-release
+	elif [[ -r /usr/lib/os-release ]]; then
+		. /usr/lib/os-release
+	else
+		echo "unknown"
+		return
+	fi
+	echo "${ID:-unknown}"
+}
 
 # Função para limpar sujeira se o script for interrompido ANTES do disown
 cleanup() {
@@ -164,14 +199,23 @@ sh_setvarcolors() {
 		white="${bold}$(tput setaf 7)"
 		black="${bold}$(tput setaf 0)"
 		red=$(tput bold)$(tput setaf 196)
+		bred=$(tput bold)$(tput setaf 196)
 		green=$(tput setaf 2)
+		bgreen=${bold}$(tput setaf 2)
 		yellow=$(tput bold)$(tput setaf 3)
+		byellow=$(tput bold)$(tput setaf 3)
 		blue=$(tput setaf 4)
+		bblue=${bold}$(tput setaf 4)
 		pink=$(tput setaf 5)
+		bpink=${bold}$(tput setaf 5)
 		cyan=$(tput setaf 6)
+		bcyan=${bold}$(tput setaf 6)
 		orange=$(tput setaf 3)
+		borange=${bold}$(tput setaf 3)
 		purple=$(tput setaf 125)
+		bpurple=${bold}$(tput setaf 125)
 		violet=$(tput setaf 61)
+		bviolet=${bold}$(tput setaf 61)
 	else
 		red="\033[01;31m"
 		green="\033[01;32m"
@@ -184,16 +228,13 @@ sh_setvarcolors() {
 	COL_NC='\e[0m' # No Color
 	COL_LIGHT_GREEN='\e[1;32m'
 	COL_LIGHT_RED='\e[1;31m'
-	#  TICK="${white}[${COL_LIGHT_GREEN}✓ OK${COL_NC}${white}]"
-	#	CROSS="${white}[${COL_LIGHT_RED}✗ERR${COL_NC}${white}]"
-	#	INFO="[i]"
-	#	: "${clrkey=${rst}${light_white}}"
 	: "${clrkey=${rst}${black}}"
-	: "${TICK="${clrkey}[${green} ✓ ${clrkey}]${rst}"}"
-	: "${CROSS="${clrkey}[${red} ✗ ${clrkey}]${rst}"}"
-	: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
-	: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
-	: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
+	: "${TICK="${clrkey}[${green}✓${clrkey}]${rst}"}"
+	: "${CROSS="${clrkey}[${red}✗${clrkey}]${rst}"}"
+	: "${MID="${clrkey}[${red}✗${green}✓${clrkey}]${rst}"}"
+	: "${WARN="${clrkey}[${yellow}⚠${clrkey}]${yellow}"}"
+	: "${INFO="${clrkey}[${yellow}➜${clrkey}]${rst}"}"
+
 	# shellcheck disable=SC2034
 	DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
 	OVER="\\r\\033[K"
@@ -406,69 +447,66 @@ readconf() {
 }
 
 sh_checkDependencies() {
-	local aBlock_files=()
-	local d
-	local errorFound=false
-	declare -a missing
+  local DISTRO="$(detect_distro)"
+  local aBlock_files=()
+  local d
+  local pkg
+  local errorFound=false
+  declare -a missing
+  local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+  local cmsgPkg="$(gettext "instalar pacote")"
 
-	for d in "${DEPENDENCIES[@]}"; do
-		if ! command -v "$d" &>/dev/null; then
-			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o comando') ${cyan}'$d'${rst} -> $(gettext 'instalar pacote') ${cyan}${PACKAGEDEP[$d]}${rst}"
-			missing+=("$d")
-			errorFound=true
-		else
-			#log_msg "Check: ${cyan}$d"
-			:
-		fi
-	done
+  for d in "${!PACKAGEDEP[@]}"; do
+    if ! has_command "$d"; then
+      pkg="${PACKAGEDEP[$d]}"
+        log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+        missing+=("${pkg}")
+        errorFound=true
+    else
+      #log_msg "Check: ${cyan}$d"
+      :
+    fi
+  done
 
-	if $errorFound; then
-		replicate '='
-		echo "${yellow}             $(gettext 'IMPOSSÍVEL CONTINUAR')"
-		echo "${black}$(gettext 'Este script precisa dos comandos listados acima')"
-		echo "${black}$(gettext 'Instale-os e/ou verifique se eles estão em seu') ${red}\$PATH${rst}"
-		replicate '='
-		if readconf "$(gettext 'Deseja instalar os pacotes e criar os arquivos necessários?')"; then
-			sh_setup
-		fi
-	fi
-}
-export -f sh_checkDependencies
+  if $errorFound; then
+    replicate '='
+    echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
+    echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
+    echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
+    replicate '='
 
-sh_checkVdiskFiles() {
-	local aBlock_files=()
-	local d
-	local errorFound=false
-	declare -a missing
+    local cmd="${DISTRO_MGR[$DISTRO]}"
+    #local pkgs="${DISTRO_PKGS[$DISTRO]}"
+    local pkgs="${missing[@]}"
 
-	aBlock_files+=($HOME_DIR/vdisk/sda.img)
-	aBlock_files+=($HOME_DIR/vdisk/sdb.img)
-	aBlock_files+=($HOME_DIR/vdisk/sdc.img)
-	aBlock_files+=($HOME_DIR/vdisk/sdd.img)
-	aBlock_files+=($HOME_DIR/vdisk/vda.qcow2)
-	aBlock_files+=($HOME_DIR/vdisk/vdb.qcow2)
-	aBlock_files+=($HOME_DIR/vdisk/vdc.qcow2)
-	aBlock_files+=($HOME_DIR/vdisk/vdd.qcow2)
-	for d in "${aBlock_files[@]}"; do
-		if [[ ! -e "$d" ]]; then
-			sh_createVdiskFiles
-			break
-		fi
-	done
+    msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+    if readconf "$(gettext "Instalar dependências base agora?")"; then
+      echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
+      # Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+      if ! $cmd $pkgs; then
+        echo
+        echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+        exit 1
+      fi
+      echo
+      echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+    else
+      echo -e "${red}$(gettext "Ignorando: instalação de dependências recusada pelo usuário.")"
+      replicate '-'
+    fi
+  fi
 }
 
 sh_checkOVMFFiles() {
 	local DISTRO=$(detect_distro)
-	local aBlock_files=()
 	local d
 	local errorFound=false
-	declare -a missing
+	local missing=()
+	local aBlock_files+=('/usr/share/edk2/x64/OVMF_CODE.4m.fd' '/usr/share/edk2/x64/OVMF_VARS.4m.fd')
 
-	aBlock_files+=('/usr/share/edk2/x64/OVMF_CODE.4m.fd')
-	aBlock_files+=('/usr/share/edk2/x64/OVMF_VARS.4m.fd')
 	for d in "${aBlock_files[@]}"; do
-		if [[ ! -e "$d" ]]; then
-			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o arquivo') ${cyan}'$d'${yellow} -> $(gettext 'instalar pacote') ${cyan}edk2-ovmf${reset}"
+		if ! has_file "$d"; then
+#			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o arquivo') ${cyan}'$d'${yellow} -> $(gettext 'instalar pacote') ${cyan}edk2-ovmf${reset}"
 			errorFound=true
 			break
 		else
@@ -480,18 +518,49 @@ sh_checkOVMFFiles() {
 
 	if $errorFound; then
 		replicate '='
-		echo "${yellow}             FALHA DO CHECK LIST FILE"
+		echo "${yellow}             FALHA DO CHECK LIST OVMF FILES"
+		log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o arquivo') ${cyan}'$d'${yellow} -> $(gettext 'instalar pacote') ${cyan}edk2-ovmf${reset}"
 		echo "${black}Este script precisa dos arquivos para UEFI listados acima"
 		echo "${black}Instale-os e/ou verifique se eles estão em ${yellow}/usr/share/edk2/x64/${rst}"
 		echo "${black}Ao decidir não instalar, o UEFI poderá não funcionar corretamente.${rst}"
 		replicate '='
+
+    msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
 		if readconf "Deseja instalar o pacote e suprir arquivos necessários ?"; then
-      case "${DISTRO}" in
-        arch|chililinux) cmd_sudo pacman -S --quiet --noconfirm edk2-ovmf 1>/dev/null ;;
-        void*) cmd_sudo xbps-install -Syf edk2-ovmf 1>/dev/null ;;
-      esac
+      local cmd="${DISTRO_MGR[$DISTRO]}"
+      local pkgs="edk2-ovmf"
+      if ! cmd_sudo $cmd $pkgs; then
+        echo
+        echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+        exit 1
+      fi
+      echo
+      echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+      sh_checkOVMFFiles
 		fi
 	fi
+}
+
+sh_checkVdiskFiles() {
+	local aBlock_files=()
+	local missing=()
+	local d
+
+	aBlock_files+=($HOME_DIR/vdisk/sda.img)
+	aBlock_files+=($HOME_DIR/vdisk/sdb.img)
+	aBlock_files+=($HOME_DIR/vdisk/sdc.img)
+	aBlock_files+=($HOME_DIR/vdisk/sdd.img)
+	aBlock_files+=($HOME_DIR/vdisk/vda.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vdb.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vdc.qcow2)
+	aBlock_files+=($HOME_DIR/vdisk/vdd.qcow2)
+
+	for d in "${aBlock_files[@]}"; do
+		if ! has_file "$d"; then
+			sh_createVdiskFiles
+			break
+		fi
+	done
 }
 
 # Função para verificar se a interface TAP já existe e retornar o próximo número disponível
@@ -1169,18 +1238,6 @@ supports_uefi() {
 	fdisk -l "$1" 2>/dev/null | grep -q "EFI"
 }
 
-detect_distro() {
-	if [[ -r /etc/os-release ]]; then
-		. /etc/os-release
-	elif [[ -r /usr/lib/os-release ]]; then
-		. /usr/lib/os-release
-	else
-		echo "unknown"
-		return
-	fi
-	echo "${ID:-unknown}"
-}
-
 detect_audio_server() {
 	if pgrep -x pipewire >/dev/null; then
 		echo "pipewire"
@@ -1258,7 +1315,7 @@ ${cyan}$(gettext 'Exemplos:')${rst}
   $ ${orange}$APP${reset} file.iso                    ${cyan}#$(gettext 'Execute uma imagem usando BIOS')${rst}
   $ ${orange}$APP${reset} -b file.img                 ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando BIOS')${rst}
   $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#$(gettext 'Execute uma device, 16GB memória, usando BIOS') ${rst}
-${cyan}$(gettext 'Forma de uso mais comum:')${rst}
+${cyan}$(gettext 'Uso mais comum:')${rst}
   $ ${orange}$APP${reset} [-u] /dev/sdX ${rst}
   $ ${orange}$APP${reset} [-u] filename.iso sda.img ${rst}
   $ ${orange}$APP${reset} $HOME_DIR/vdisk/vdisk_name.img ${rst}
@@ -1280,13 +1337,13 @@ sh_createVdiskFiles() {
 	sudo chmod 1777 "$HOME_DIR/" &>/dev/null
 
 	for file in "${aBlockDisk[@]}"; do
-		if [[ ! -e $HOME_DIR/vdisk/$file ]]; then
+		if ! has_file "$HOME_DIR/vdisk/$file"; then
 			msg_info "$(gettext 'Criando disco virtual') '$file' $(gettext 'no diretórios de trabalho')"
 			qemu-img create $HOME_DIR/vdisk/$file -f raw 32G &>/dev/null
 		fi
 	done
 	for file in "${aBlockDiskQcow2[@]}"; do
-		if [[ ! -e $HOME_DIR/vdisk/$file ]]; then
+		if ! has_file "$HOME_DIR/vdisk/$file"; then
 			msg_info "$(gettext 'Criando disco virtual') '$file' $(gettext 'no diretórios de trabalho')"
 			qemu-img create -f qcow2 $HOME_DIR/vdisk/$file 32G &>/dev/null
 		fi
@@ -1477,7 +1534,7 @@ print_summary_access_vm() {
 		msg_warn "$(gettext 'Parametro') ${cyan}--bridge${rst} $(gettext 'não informado. Iniciando VM em modo') ${yellow}NAT${rst} (hostfwd ativo)"
 	fi
 
-	msg_info "$(gettext 'acesso a VM via') ${cyan}ssh:"
+	msg_info "$(gettext 'Acesso a VM via') ${yellow}ssh:"
 	msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh root@vsock/$GUEST_CID" "# $(gettext 'via vsock (se habilitado no guest)')")"
 	msg_info_tab "$(printf "%-45s ${cyan}%s\n" "\$ ssh $USER@vsock/$GUEST_CID" "# $(gettext 'via vsock (se habilitado no guest)')")"
 
@@ -1580,21 +1637,21 @@ main::process_devices() {
 			die "Erro: vdisk/iso/device #${count} não especificada!"
 		}
 
-		if [[ ! -e "$img" ]]; then
-			[[ ! -e "$HOME_DIR/vdisk/$img" ]] && {
+		if ! has_file "$img"; then
+			if ! has_file "$HOME_DIR/vdisk/$img" ; then
 				log_msg 1 "Check input ${yellow}#${count}: ${cyan}$img"
 				sh_list_vdisks
 				die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'não localizada, tente os listados acima!')${reset}"
-			}
+			fi
 			img="$HOME_DIR/vdisk/$img"
 		fi
 
 		devices+=("$img")
 
 		if ((count == 1)); then
-			log_msg true "Boot source ${yellow}(#${count}): ${cyan}$img"
+			log_msg true "Boot source ${yellow}#${count}: ${cyan}$img"
 		else
-			log_msg true "Data source ${yellow}(#${count}): ${cyan}$img"
+			log_msg true "Data source ${yellow}#${count}: ${cyan}$img"
 		fi
 
 		((++count))
@@ -1633,24 +1690,24 @@ main::attach_primary_devices() {
 		media_type=$(file -b --mime-type "${img}")
 
 		if [[ "$img" == *.iso ]]; then
-			msg_info "$(gettext 'Anexando iso') #${bootindex}: ${yellow}${img}"
+			msg_info "$(gettext 'Anexando iso') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=cdrom${bootindex},media=cdrom)
 			qemu_options+=(-device ide-cd,drive=cdrom${bootindex},bootindex=${bootindex})
 
 		elif [[ "$img" == *.qcow2 ]]; then
-			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img}"
+			msg_info "$(gettext 'Anexando vdisk') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 
 		elif [[ -b "$img" ]]; then
-			msg_info "$(gettext 'Anexando device') #${bootindex}: ${yellow}${img}"
+			msg_info "$(gettext 'Anexando device') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
 			qemu_options+=(
 				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
 			)
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 
 		else
-			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${img} (raw)"
+			msg_info "$(gettext 'Anexando vdisk') ${yellow}#${bootindex}: ${bold}${cyan}${img} (raw)"
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 		fi
@@ -1663,8 +1720,8 @@ main::attach_extra_vdisks() {
 	$vdisk || return
 
 	for vdsk in "${avdisk_names[@]}"; do
-		[[ ! -e "$vdsk" ]] && vdsk="$HOME_DIR/vdisk/$vdsk"
-		[[ ! -e "$vdsk" ]] && continue
+		! has_file "$vdsk" && vdsk="$HOME_DIR/vdisk/$vdsk"
+		! has_file "$vdsk" && continue
 
 		if [[ "$vdsk" == *.img ]]; then
 			msg_info "$(gettext 'Anexando vdisk') #${bootindex}: ${yellow}${vdsk}"
@@ -1902,15 +1959,14 @@ while [ $# -gt 0 ]; do
 		;;
 	-s | --spice)
 		spice=true
-		log_msg "$(gettext 'Parametro') ${yellow}--spice ${rst}$(gettext 'detectado: usando spice...')"
+		log_msg "$(gettext 'Parametro') ${bcyan}--spice${rst} $(gettext 'detectado, usando spice')"
 		;;
 	-t | --tty)
 		spice=false
-		log_msg "$(gettext 'Parametro') --tty $(gettext 'detectado: ativando') tty only..."
+		log_msg "$(gettext 'Parametro') ${bcyan}--tty${rst} $(gettext 'detectado: ativando') tty only"
 		only_tty=true
 		;;
 	-g | --video)
-#		if [[ $2 =~ ^(virtio-vga|virtio-vga-gl|virtio-gpu-pci|qxl-vga|VGA|cirrus-vga|ati-vga|bochs-display|ramfb)?$ ]]; then
     if [[ " ${avideodevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
 			videodevice="$2"
 			shift
@@ -1996,12 +2052,12 @@ done
 
 audio="${audioserver:-$(detect_audio_server)}"
 if $LPARAM_AUDIO; then
-  msg_tick "Servidor audio informado: ${cyan}${audio}${rst}"
+  msg_tick "Servidor audio informado: ${bcyan}${audio}${rst}"
 else
-  msg_tick "Servidor audio detectado: ${cyan}${audio}${rst}"
+  msg_tick "Servidor audio detectado: ${bcyan}${audio}${rst}"
 fi
 
- msg_tick "Servidor video configurado: ${cyan}${videodevice}${rst}"
+ msg_tick "Servidor video configurado: ${bcyan}${videodevice}${rst}"
 
 if [[ $# > 0 ]]; then
 	# Configurar rede
@@ -2048,7 +2104,7 @@ if [[ $# > 0 ]]; then
 		if port_is_free "$CHECK_FWD" && port_is_free "$CHECK_GOTIFY"; then
 			break
 		fi
-		msg_warn "Portas $CHECK_FWD ou $CHECK_GOTIFY ocupadas, tentando próxima..."
+#		msg_warn "${rst}Portas ${yellow}${CHECK_FWD}/${CHECK_GOTIFY}${rst} ocupadas, tentando próxima..."
 		CHECK_FWD=$((CHECK_FWD + 1))
 
 		# Opcional: resetar se passar do limite de segurança
@@ -2061,7 +2117,7 @@ if [[ $# > 0 ]]; then
 	#msg "Portas selecionadas: SSH -> $HOST_FWD | Gotify -> $HOST_GOTIFY | CID -> $GUEST_CID"
 
 	if ! $uefi; then
-		msg_warn "$(gettext 'Parametro') ${cyan}--uefi${rst} $(gettext 'não informado, usando BIOS legacy (padrão)...')"
+		msg_warn "$(gettext 'Parametro') ${cyan}--uefi${rst} $(gettext 'não informado, usando BIOS legacy')"
 	fi
 
 	if ! is_graphical; then
