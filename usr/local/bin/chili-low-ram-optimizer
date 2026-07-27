@@ -46,11 +46,12 @@ shopt -s extglob
 #system
 declare APP="${0##*/}"
 declare _VERSION_="0.07.27-20260727"
-declare APPDESC="$APP - Wraper for "
+declare APPDESC="Otimização automática para máquinas com pouca RAM"
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
 declare quiet=false
+declare use_color=true
 declare -i errors=0
 declare -a aCritic_Files=(
 	"/etc/fstab"
@@ -122,12 +123,16 @@ MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => r
 # Sugestão de alteração no seu trap atual:
 trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; if readconf "Erro detectado. Deseja tentar restaurar o backup anterior?"; then sh_rollback; fi; exit 1' ERR
 
+has_command() {
+  command -v "$1" >/dev/null && return 0 || return 1
+}
+
 sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
 
 set_varcolors() {
 	sh_check_terminal
 	# does the terminal support true-color?
-	if [[ -n "$(command -v "tput")" ]]; then
+  if $use_color && has_command tput; then
 		#tput setaf 127 | cat -v  #capturar saida
 		: "${RED=$(tput bold)$(tput setaf 196)}"
 		: "${GREEN=$(tput bold)$(tput setaf 2)}"
@@ -222,15 +227,15 @@ elevate_to_root() {
 	ccabec+='root [elevated]'
 	# Tenta usar sudo primeiro (caso esteja configurado)
 
-	if command -v sudo >/dev/null 2>&1; then
+	if has_command sudo; then
 		#		exec sudo bash "$0" "$@"
 		#   exec sudo -E bash "$0" "$@"
 		exec sudo --preserve-env=quiet bash "$0" "$@"
 	fi
 	# Se sudo falhar, tenta su
-	if command -v su >/dev/null 2>&1; then
-		exec su -c "$0 $*"
-	fi
+  if has_command su; then
+    exec su -c "$(printf '%q ' "$0" "$@")"
+  fi
 	die "Error: Unable to elevate privileges. Run manually as root."
 }
 
@@ -239,6 +244,22 @@ replicate() {
 	local nsize="${2:-$(tput cols)}"
 	# Gera linha com substituição direta sem forks extras
 	printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
+}
+
+detect_language() {
+	# Detecta o idioma do sistema para escolher o formato do prompt de confirmação
+	# em readconf(): LC_DEFAULT=0 -> pt_BR/pt_PT (estilo [N/s]), LC_DEFAULT=1 -> demais idiomas (estilo [N/y])
+	declare -g LC_DEFAULT
+	local lang="${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-$LANG}}}"
+
+	case "$lang" in
+	pt_BR* | pt_PT* | pt*)
+		LC_DEFAULT=0
+		;;
+	*)
+		LC_DEFAULT=1
+		;;
+	esac
 }
 
 readconf() {
@@ -274,6 +295,9 @@ debug() {
 
 run_cmd() {
 	local cmd="$*"
+	# LIMITAÇÃO: comandos com pipes de sed ('|' como delimitador), chaves multi-linha
+	# ou aspas complexas NÃO sobrevivem à reconstrução "$*" + eval. Por isso os `sed -i`
+	# usados em configure_zswap()/sh_uninstall() rodam diretos, fora do run_cmd.
 
 	if [[ $DRYRUN -eq 1 ]]; then
 		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
@@ -376,7 +400,7 @@ sh_checkDependencies() {
 	cmsgPkg="$(gettext "instalar pacote")"
 
 	for d in "${!PACKAGEDEP[@]}"; do
-		if ! command -v "$d" &>/dev/null; then
+		if ! has_command "$d"; then
 			pkg="${PACKAGEDEP[$d]}"
 			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
 			missing+=("${pkg}")
@@ -494,7 +518,7 @@ supports_hibernation() {
 remove_zram() {
 	if grep -q "^zram" /proc/modules; then
 		msg "Removendo zram..."
-		if command -v zramctl >/dev/null; then
+		if has_command zramctl; then
 			for dev in $(zramctl -n -o NAME 2>/dev/null); do
 				run_cmd swapoff "$dev"
 			done
@@ -554,7 +578,7 @@ configure_swapfile() {
 		msg "Criando swapfile de ${swap_gb}G no $root_fs..."
 		case "$root_fs" in
 		btrfs)
-			if command -v btrfs >/dev/null && btrfs filesystem --help 2>&1 | grep -q "mkswapfile"; then
+			if has_command btrfs && btrfs filesystem --help 2>&1 | grep -q "mkswapfile"; then
 				run_cmd btrfs filesystem mkswapfile --size ${swap_gb}g /swapfile
 			else
 				run_cmd truncate -s 0 /swapfile
@@ -632,7 +656,7 @@ configure_zswap() {
 	# só altera se mudou
 	if ! grep -q "GRUB_CMDLINE_LINUX=\"$new\"" "${cfile}"; then
 		sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"$new\"|" "${cfile}"
-		if command -v update-grub >/dev/null; then
+		if has_command update-grub; then
 			run_cmd update-grub
 		else
 			run_cmd grub-mkconfig -o /boot/grub/grub.cfg
@@ -740,10 +764,10 @@ detect_disk() {
 	is_rotational=$(cat /sys/block/"$disk"/queue/rotational 2>/dev/null)
 
 	if [[ "$is_rotational" == "0" ]]; then
-		type="SSD"
+    disk_type="SSD"
 		scheduler="mq-deadline"
 	else
-		type="HDD"
+    disk_type="HDD"
 		scheduler="bfq"
 	fi
 }
@@ -767,7 +791,7 @@ enable_swap() {
 
 enable_preload() {
 	# 1. Instalação (apenas se não existir)
-	if ! command -v preload >/dev/null 2>&1; then
+	if ! has_command preload; then
 		msg "Instalando preload..."
 		if ! run_cmd sh_install_packages preload; then
 			warn "A instalação dos pacotes básicos falhou."
@@ -796,12 +820,12 @@ enable_preload() {
 }
 
 disable_preload() {
-	if command -v sv >/dev/null 2>&1; then
+	if has_command sv; then
 		msg "Desativando preload (runit)..."
-		run_cmd sudo rm -f /var/service/preload
-	elif command -v systemctl >/dev/null 2>&1; then
+		run_cmd rm -f /var/service/preload
+	elif has_command systemctl; then
 		msg "Desativando preload (systemd)..."
-		run_cmd sudo systemctl disable --now preload
+		run_cmd systemctl disable --now preload
 	fi
 }
 
@@ -991,7 +1015,7 @@ sh_system_summary() {
 	msg_tab "Distro detectada: ${cyan}${DISTRO}${rst}"
 	msg_tab "Init detectado  : ${cyan}${init}${rst}"
 	msg_tab "Filesystem raiz : ${cyan}${root_fs}${rst}"
-	msg_tab "Disco detectado : ${cyan}$type ($disk)${rst}"
+	msg_tab "Disco detectado : ${cyan}$disk_type ($disk)${rst}"
 	msg_tab "RAM detectada   : ${cyan}${ram_gb} GB${rst}"
 	msg_tab "Modo do sistema : ${cyan}$(if detect_is_live; then echo Live; else echo Instalado; fi)${rst}"
 }
@@ -1099,7 +1123,7 @@ sh_uninstall() {
       s/ *"$/"/
     }' /etc/default/grub
 
-		if command -v update-grub >/dev/null; then
+		if has_command update-grub; then
 			run_cmd update-grub
 		else
 			run_cmd grub-mkconfig -o /boot/grub/grub.cfg
@@ -1151,17 +1175,17 @@ sh_version() {
 	cat <<EOF
     ${bold}${cyan}${0##*/} v${_VERSION_}${rst}
     ${APPDESC}
-    ${VERSION}
-    ${bold}${black}Copyright (C) 2019-2025 ChiliLinux Development Team${black}
-    ${bold}${black}Copyright (C) 2019-2025 Vilmar Catafesta${black}
 
-      $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
-      $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
-      $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
-      $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
-      $(gettext 'o código fonte específico usado para criar esta cópia.')
-      ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')
-      ${rst}
+    ${bold}${black}Copyright (C) 2019-2026 ChiliLinux Development Team${black}
+    ${bold}${black}Copyright (C) 2019-2026 Vilmar Catafesta${black}
+
+    $(gettext "Este é um software livre: você é livre para alterá-lo e redistribuí-lo.")
+    $(gettext "O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e")
+    $(gettext "inclui software de código aberto sob uma variedade de outras licenças.")
+    $(gettext "Você pode ler instruções sobre como baixar e criar para você mesmo")
+    $(gettext "o código fonte específico usado para criar esta cópia.")
+    ${red}$(gettext "Este programa vem com absolutamente NENHUMA garantia.")
+    ${rst}
 EOF
 	exit 0
 }
@@ -1357,6 +1381,7 @@ sh_Language() {
 
 # configure ambiente
 set_varcolors
+detect_language
 sh_Language
 DISTRO="$(detect_distro)"
 
