@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: sex 17 jul 2026 06:16:09 -04
+#  Updated: seg 27 jul 2026 09:31:03 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -45,7 +45,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.07.17-20260717"
+declare _VERSION_="0.07.27-20260727"
 declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
@@ -81,8 +81,10 @@ declare -A ASYSCTL=(
 	['vm.dirty_ratio']=10
 	['vm.dirty_expire_centisecs']=3000
 	['vm.dirty_writeback_centisecs']=500
+	['vm.min_free_kbytes']=65536
+	['vm.watermark_boost_factor']=0
+	['vm.watermark_scale_factor']=125
 )
-
 declare -A PACKAGEDEP=(
 	[gettext]=gettext
 	[dd]=coreutils
@@ -119,7 +121,6 @@ declare -A DISTRO_MGR=(
 MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
 # Sugestão de alteração no seu trap atual:
 trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; if readconf "Erro detectado. Deseja tentar restaurar o backup anterior?"; then sh_rollback; fi; exit 1' ERR
-trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
 
 sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
 
@@ -190,11 +191,12 @@ set_varcolors() {
 		: "${OVER="\\r\\033[K"}"
 		: "${DOTPREFIX="  ${black}::${reset} "}"
 		: "${clrkey=${light_white}}"
-		: "${TICK="${clrkey}[${green} ✓ ${clrkey}]${rst}"}"
-		: "${CROSS="${clrkey}[${red} ✗ ${clrkey}]${rst}"}"
-		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
-		: "${WARN="${clrkey}[${yellow} ⚠ ${clrkey}]${yellow}"}"
-		: "${INFO="${clrkey}[${black}➡  ${clrkey}]${rst}"}"
+		: "${TICK="${clrkey}[${green}✓${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red}✗${clrkey}]${rst}"}"
+		: "${MID="${clrkey}[${red}✗${green}✓${clrkey}]${rst}"}"
+		: "${WARN="${clrkey}[${yellow}⚠${clrkey}]${yellow}"}"
+		#		: "${INFO="${clrkey}[${bold}${blue}⛭${clrkey}]${rst}"}"
+		: "${INFO="${clrkey}[${bold}${blue}➜${clrkey}]${rst}"}"
 	else
 		unset_varcolors
 	fi
@@ -275,17 +277,22 @@ run_cmd() {
 
 	if [[ $DRYRUN -eq 1 ]]; then
 		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
+		return 0
+	fi
+
+	! $quiet && echo -e "  [⚙ ] ${cyan}${cmd}${rst}"
+
+	# Redireciona stderr para /dev/null apenas para mkdir -p e umount -R
+	if [[ "$cmd" == *"mkdir -p"* ]] || [[ "$cmd" == *"umount -R"* ]]; then
+		eval "$cmd" &>/dev/null || true
+		return 0
+	fi
+
+	if eval "$cmd" &>/dev/null; then
+		return 0
 	else
-		! $quiet && echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
-		# Executa o comando de forma segura
-		# Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
-		if [[ "$cmd" == *"mkdir -p"* ]] || [[ "$cmd" == *"umount -R"* ]]; then
-			eval "$cmd" &>/dev/null || true
-			return 0
-		else
-			eval "$cmd" &>/dev/null || log_warn_tab "Falha ao executar: $cmd"
-			return 1
-		fi
+		log_warn_tab "Falha ao executar: $cmd"
+		return 1
 	fi
 }
 
@@ -302,17 +309,19 @@ sh_copyright() {
 msg() { ! $quiet && echo -e "${INFO} ${*}${reset}"; }
 log_ok() { ! $quiet && echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
+err() { log_err "$@"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
-log_warn() { echo -e "${WARN} ${*}${reset}"; }
-warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
-msg_warn() { echo -e "${WARN} ${*}${reset}"; }
-warn() { echo -e "${WARN} ${*}${reset}"; }
 msg_tab() { ! $quiet && echo -e "  ${INFO} ${*}${reset}"; }
 log_ok_tab() { ! $quiet && echo -e "  ${TICK} ${*}${reset}"; }
 log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
 log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
+log_warn() { echo -e "${WARN} ${*}${reset}"; }
+msg_warn() { log_warn "$@"; }
+warn() { log_warn "$@"; }
 log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
-msg_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
+warn_tab() { log_warn_tab "$@"; }
+msg_warn_tab() { log_warn_tab "$@"; }
+
 die() {
 	echo -e "${CROSS} ${red}${*}${reset}"
 	exit 1
@@ -339,6 +348,18 @@ detect_is_live() {
 	squashfs | overlay) return 0 ;;
 	*) return 1 ;;
 	esac
+}
+
+sh_install_packages() {
+	local cmd="${DISTRO_MGR[$DISTRO]}"
+
+	if [[ -z "$cmd" ]]; then
+		log_err "Distro '${DISTRO}' sem gerenciador de pacotes definido."
+		return 1
+	fi
+
+	# Execução dinâmica: $cmd (gerenciador) + "$@" (pacotes, um por argumento)
+	$cmd "$@"
 }
 
 sh_checkDependencies() {
@@ -373,15 +394,10 @@ sh_checkDependencies() {
 		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
 		replicate '='
 
-		local cmd="${DISTRO_MGR[$DISTRO]}"
-		#local pkgs="${DISTRO_PKGS[$DISTRO]}"
-		local pkgs="${missing[@]}"
-
-		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		msg "Distro detectada: ${cyan}$DISTRO${rst}"
 		if readconf "$(gettext "Instalar dependências base agora?")"; then
 			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
-			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
-			if ! $cmd "$pkgs"; then
+			if ! sh_install_packages "${missing[@]}"; then
 				echo
 				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
 				exit 1
@@ -394,8 +410,6 @@ sh_checkDependencies() {
 
 ##########################################################################################################
 
-#warn() { printf "${yellow}==> AVISO:${reset} %s\n" "$1"; }
-err() { printf "${red}==> ERRO:${reset} %s\n" "$1"; }
 changed=false
 
 detect_init() {
@@ -496,18 +510,8 @@ remove_zram() {
 	fi
 }
 
-check_disk_space() {
-	local required_mb=$((swap_gb * 1024))
-
-	# espaço disponível em MB
-	local avail_mb
-	avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
-
-	if ((avail_mb < required_mb)); then
-		msg "Erro: espaço insuficiente em disco!"
-		msg "Necessário: ${swap_gb}G | Disponível: $((avail_mb / 1024))G"
-		return 1
-	fi
+get_available_disk_mb() {
+	df -Pm / | awk 'NR==2 {print $4}'
 }
 
 configure_swapfile() {
@@ -535,7 +539,7 @@ configure_swapfile() {
 
 	if $needs_recreate; then
 		# 1. Verifica espaço em disco antes de começar
-		local avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
+		local avail_mb=$(get_available_disk_mb)
 		if ((avail_mb < (swap_gb * 1024))); then
 			err "Espaço insuficiente! Necessário: ${swap_gb}G | Disponível: $((avail_mb / 1024))G"
 			return 1
@@ -579,24 +583,21 @@ configure_swapfile() {
 
 configure_sysctl() {
 	local cfile="${sysctl_conf}"
+	local param
 
 	msg "Configurando parâmetros de memória..."
 	run_cmd mkdir -p /etc/sysctl.d/
 
-  cat <<EOF >"${cfile}"
-vm.swappiness=180
-vm.vfs_cache_pressure=200
-vm.page-cluster=0
-vm.dirty_background_ratio=3
-vm.dirty_ratio=10
-vm.dirty_expire_centisecs=3000
-vm.dirty_writeback_centisecs=500
-vm.min_free_kbytes=65536
-vm.watermark_boost_factor=0
-vm.watermark_scale_factor=125
-EOF
-		run_cmd sysctl --system
-		changed=true
+	{
+		# Gera a partir do array ASYSCTL (única fonte de verdade),
+		# em ordem alfabética para saída estável e reprodutível.
+		for param in $(printf '%s\n' "${!ASYSCTL[@]}" | sort); do
+			echo "${param}=${ASYSCTL[$param]}"
+		done
+	} >"${cfile}"
+
+	run_cmd sysctl --system
+	changed=true
 }
 
 configure_zswap() {
@@ -642,67 +643,77 @@ configure_zswap() {
 	fi
 }
 
+sh_create_service() {
+	local cfile="$1"    # caminho do arquivo de serviço/script
+	local content="$2"  # conteúdo já renderizado a ser escrito
+	local label="$3"    # nome amigável para mensagens ("THP", "Scheduler")
+	local svc_name="$4" # nome do serviço systemd (vazio no runit)
+
+	if [[ -f "$cfile" ]]; then
+		msg_tab "${green}${label} já configurado.${rst}"
+		return 0
+	fi
+
+	printf '%s\n' "$content" >"$cfile"
+
+	if [[ "$init" == "runit" ]]; then
+		run_cmd chmod +x "$cfile"
+	elif [[ "$init" == "systemd" ]]; then
+		run_cmd systemctl daemon-reload
+		run_cmd systemctl enable "$svc_name"
+	fi
+	changed=true
+}
+
 configure_scheduler() {
-	local cfile
+	local cfile content
 
 	if [[ "$init" == "runit" ]]; then
 		cfile="${ASERVICES['bfq-runit']}"
-		if [[ ! -f "${cfile}" ]]; then
-			cat <<EOF >"${cfile}"
+		content=$(
+			cat <<INNEREOF
 #!/bin/sh
 for d in /sys/block/*; do
 	[ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null
 done
-EOF
-
-			run_cmd chmod +x "${cfile}"
-			changed=true
-		else
-			msg_tab "${green}Scheduler já configurado.${rst}"
-		fi
+INNEREOF
+		)
+		sh_create_service "$cfile" "$content" "Scheduler" ""
 	elif [[ "$init" == "systemd" ]]; then
 		cfile="${ASERVICES['bfq-systemd']}"
-		if [ ! -f "${cfile}" ]; then
-			cat <<EOF >"${cfile}"
+		content=$(
+			cat <<INNEREOF
 [Unit]
-Description=Set BFQ IO Scheduler (Chili)
+Description=Set ${scheduler} IO Scheduler (Chili)
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'for d in /sys/block/sd*; do echo bfq > "\$d/queue/scheduler" 2>/dev/null; done'
+ExecStart=/bin/sh -c 'for d in /sys/block/*; do [ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null; done'
 RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
-EOF
-			run_cmd systemctl daemon-reload
-			run_cmd systemctl enable chili-bfq
-			changed=true
-		else
-			msg_tab "${green}Scheduler já configurado.${rst}"
-		fi
+INNEREOF
+		)
+		sh_create_service "$cfile" "$content" "Scheduler" "chili-bfq"
 	fi
 }
 
 configure_thp() {
-	local cfile
+	local cfile content
 
 	msg "Configurando THP/BFQ/SCHEDULER"
 	if [[ "$init" == "runit" ]]; then
 		cfile="${ASERVICES['thp-runit']}"
-		if [ ! -f "${cfile}" ]; then
-			cat <<'EOF' >"${cfile}"
+		content=$(
+			cat <<'INNEREOF'
 #!/bin/sh
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
-EOF
-			run_cmd chmod +x "${cfile}"
-			changed=true
-		else
-			msg_tab "${green}THP já configurado.${rst}"
-		fi
-
+INNEREOF
+		)
+		sh_create_service "$cfile" "$content" "THP" ""
 	elif [[ "$init" == "systemd" ]]; then
 		cfile="${ASERVICES['thp-systemd']}"
-		if [ ! -f "${cfile}" ]; then
-			cat <<'EOF' >"${cfile}"
+		content=$(
+			cat <<'INNEREOF'
 [Unit]
 Description=Disable Transparent Huge Pages (Chili)
 [Service]
@@ -711,13 +722,9 @@ ExecStart=/bin/sh -c 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
 RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
-EOF
-			run_cmd systemctl daemon-reload
-			run_cmd systemctl enable chili-thp
-			changed=true
-		else
-			msg_tab "${green}THP já configurado.${rst}"
-		fi
+INNEREOF
+		)
+		sh_create_service "$cfile" "$content" "THP" "chili-thp"
 	fi
 }
 
@@ -741,6 +748,10 @@ detect_disk() {
 	fi
 }
 
+is_swapfile_active() {
+	swapon --show=NAME | grep -q '^/swapfile$'
+}
+
 enable_swap() {
 	msg "Ativando swap"
 
@@ -748,21 +759,17 @@ enable_swap() {
 		log_err_tab "${red}Sistema está rodando em live. Impossivel ativar swap em ${cyan}'overlayfs'!${rst}"
 	fi
 
-	if ! swapon --show=NAME | grep -q "^/swapfile$"; then
+	if ! is_swapfile_active; then
 		run_cmd swapon /swapfile || ((++errors))
 	fi
 	return $?
 }
 
 enable_preload() {
-	local cmd="${DISTRO_MGR[$DISTRO]}"
-	local pkgs="preload"
-
 	# 1. Instalação (apenas se não existir)
 	if ! command -v preload >/dev/null 2>&1; then
 		msg "Instalando preload..."
-		# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
-		if ! run_cmd $cmd "$pkgs"; then
+		if ! run_cmd sh_install_packages preload; then
 			warn "A instalação dos pacotes básicos falhou."
 			return 1
 		fi
@@ -1016,7 +1023,7 @@ summary() {
 	detect_zswap
 	sh_check_zswap_lifecycle
 	sh_zswap_parameters_active
-    show_io_schedulers
+	show_io_schedulers
 
 	if $changed; then
 		echo
@@ -1070,7 +1077,7 @@ sh_uninstall() {
 	detect_init
 
 	# swapfile
-	if swapon --show=NAME | grep -q '^/swapfile$'; then
+	if is_swapfile_active; then
 		run_cmd swapoff /swapfile
 	fi
 	run_cmd rm -f /swapfile
@@ -1134,8 +1141,9 @@ usage() {
 	echo -e "  ${yellow}-c, --check           ${rst}$(gettext 'Realiza diagnóstico de saúde do sistema')"
 	echo -e "  ${green}-b, --backup${reset}          ${rst}$(gettext 'Cria checkpoint dos arquivos críticos')"
 	echo -e "  ${red}-r, --rollback${reset}        ${rst}$(gettext 'Reverte os arquivos críticos para o último backup')"
-	echo -e "  ${black}-v, --verbose${reset}         ${rst}$(gettext 'Ativa o modo verboso')"
+	echo -e "  ${black}-q, --quiet${reset}           ${rst}$(gettext 'Ativa o modo silencioso')"
 	echo -e "  ${cyan}-h, --help${reset}            ${rst}$(gettext 'Mostra este ajuda')"
+	echo -e "  ${cyan}-V, --version${reset}         ${rst}$(gettext 'Mostra a versão do script')"
 	exit 0
 }
 
@@ -1156,24 +1164,6 @@ sh_version() {
       ${rst}
 EOF
 	exit 0
-}
-
-sh_backup_file() {
-	local target="$1"
-	local timestamp
-
-	# Se o arquivo não existe, não há o que backupear
-	[[ ! -f "$target" ]] && return 0
-
-	timestamp=$(date +%Y%m%d-%H%M%S)
-	run_cmd mkdir -p "$bkp_dir"
-
-	# O 'cp -a' garante que permissões e donos originais fiquem intactos
-	if cp -a "$target" "${bkp_dir}/$(basename "$target")-${timestamp}.bak"; then
-		msg_tab "Backup de segurança criado: ${cyan}$(basename "$target")${rst}"
-	else
-		warn_tab "Atenção: Falha ao realizar backup de ${target}"
-	fi
 }
 
 sh_create_checkpoint() {
@@ -1315,17 +1305,17 @@ sh_check_sysctl() {
 }
 
 show_io_schedulers() {
-    msg "Verificando o escalonador de E/S dos discos BFQ (Budget Fair Queueing)."
-    if ! $quiet; then
-        msg_warn_tab "Ele influencia o desempenho e a responsividade do sistema."
-        msg_warn_tab "A lista mostra os modos de acesso ao disco disponíveis."
-        msg_warn_tab "O modo atualmente em uso aparece entre colchetes [ ]."
-    fi
+	msg "Verificando o escalonador de E/S dos discos BFQ (Budget Fair Queueing)."
+	if ! $quiet; then
+		msg_warn_tab "Ele influencia o desempenho e a responsividade do sistema."
+		msg_warn_tab "A lista mostra os modos de acesso ao disco disponíveis."
+		msg_warn_tab "O modo atualmente em uso aparece entre colchetes [ ]."
+	fi
 
-    for d in /sys/block/*; do
-        [[ -r "$d/queue/scheduler" ]] || continue
-        log_ok_tab "/dev/${d##*/}\t: ${cyan}$(cat "$d/queue/scheduler")${rst}"
-    done
+	for d in /sys/block/*; do
+		[[ -r "$d/queue/scheduler" ]] || continue
+		log_ok_tab "/dev/${d##*/}\t: ${cyan}$(cat "$d/queue/scheduler")${rst}"
+	done
 }
 
 sh_health_check() {
@@ -1349,7 +1339,7 @@ sh_health_check() {
 	# Validação de Serviços por INIT
 	sh_check_services
 
-    show_io_schedulers
+	show_io_schedulers
 
 	# Chama a nova verificação de estado
 	check_system_status
@@ -1367,21 +1357,34 @@ sh_Language() {
 
 # configure ambiente
 set_varcolors
-sh_checkroot "$@"
 sh_Language
 DISTRO="$(detect_distro)"
+
+# Preserva os argumentos originais (antes de qualquer filtragem), para que a
+# elevação de privilégios (sudo) preserve corretamente flags como -q/--quiet
+original_args=("$@")
+
+# Extrai -q/--quiet de qualquer posição dos argumentos, sem afetar a ordem das demais opções
+args=()
+for arg in "$@"; do
+	if [[ "$arg" == "-q" || "$arg" == "--quiet" ]]; then
+		quiet=true
+	else
+		args+=("$arg")
+	fi
+done
+set -- "${args[@]}"
 
 # Display usage information if no arguments are passed
 if [[ $# -eq 0 || $1 == @(-h|-H|--help) ]]; then
 	usage
 fi
+
 if [[ $1 == @(-V|--version) ]]; then
 	sh_version
 fi
-if [[ $1 == @(-v|--verbose) ]]; then
-	quiet=false
-	shift
-fi
+
+sh_checkroot "${original_args[@]}"
 
 case "$1" in
 "")
@@ -1416,15 +1419,6 @@ case "$1" in
 -u | --uninstall)
 	check_root
 	sh_uninstall
-	;;
--v | --verbose)
-	quiet=false
-	;;
--h | --help)
-	usage
-	;;
--V | --version)
-	sh_version
 	;;
 *)
 	err "Opção inválida: $1 - (use -h para obter ajuda)"
