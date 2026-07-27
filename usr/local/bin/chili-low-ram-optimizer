@@ -95,6 +95,7 @@ declare -A PACKAGEDEP=(
 )
 # Mapa: [distro]="lista de pacotes"
 declare -A DISTRO_PKGS=(
+	["voidbr"]="gettext rsync parted curl xz lvm2"
 	["void"]="gettext rsync parted curl xz lvm2"
 	["void-live"]="gettext rsync parted curl xz lvm2"
 	["voidlinux"]="gettext rsync parted curl xz lvm2"
@@ -108,6 +109,7 @@ declare -A DISTRO_PKGS=(
 
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
+	["voidbr"]="xbps-install -y --ignore-file-conflicts"
 	["void"]="xbps-install -y --ignore-file-conflicts"
 	["void-live"]="xbps-install -y --ignore-file-conflicts"
 	["voidlinux"]="xbps-install -y --ignore-file-conflicts"
