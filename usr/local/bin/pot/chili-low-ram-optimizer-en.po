@@ -1,0 +1,178 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-07-27 22:14-0400\n"
+"PO-Revision-Date: 2026-07-27 22:14-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-low-ram-optimizer:274
+msgid "Este script precisa ser executado como root. Elevando privilégios..."
+msgstr "This script needs to be run as root. Elevating privileges..."
+
+#: chili-low-ram-optimizer:287
+msgid ""
+"Erro: não foi possível elevar privilégios. Execute manualmente como root."
+msgstr ""
+"Erro: não foi possível elevar privilégios. Execute manualmente como root."
+
+#: chili-low-ram-optimizer:432
+msgid "Não foi possível encontrar o comando"
+msgstr "Unable to find command"
+
+#: chili-low-ram-optimizer:433
+msgid "instalar pacote"
+msgstr "install package"
+
+#: chili-low-ram-optimizer:449
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "IMPOSSIBLE TO CONTINUE"
+
+#: chili-low-ram-optimizer:450
+msgid "Este script precisa dos comandos listados acima"
+msgstr "This script needs the commands listed above"
+
+#: chili-low-ram-optimizer:451
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "Install them and/or make sure they are on your"
+
+#: chili-low-ram-optimizer:457
+msgid "Instalar dependências base agora?"
+msgstr "Install base dependencies now?"
+
+#: chili-low-ram-optimizer:458
+msgid "Preparando ambiente para"
+msgstr "Preparing environment for"
+
+#: chili-low-ram-optimizer:461
+msgid "Erro Crítico:"
+msgstr "Critical Error:"
+
+#: chili-low-ram-optimizer:461
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "Installation of base packages failed."
+
+#: chili-low-ram-optimizer:465
+msgid "Sucesso:"
+msgstr "Success:"
+
+#: chili-low-ram-optimizer:465
+msgid "Dependências instaladas."
+msgstr "Installed dependencies."
+
+#: chili-low-ram-optimizer:882
+msgid "Suporte do Kernel"
+msgstr "Kernel Support"
+
+#: chili-low-ram-optimizer:892
+msgid "Param boot cmdline"
+msgstr "Param boot cmdline"
+
+#: chili-low-ram-optimizer:900
+msgid "Param boot grub"
+msgstr "Param boot grub"
+
+#: chili-low-ram-optimizer:913
+msgid "Param Zswap ativo"
+msgstr "Stop active Zswap"
+
+#: chili-low-ram-optimizer:1199
+msgid "mostra resumo do sistema"
+msgstr "shows system summary"
+
+#: chili-low-ram-optimizer:1200
+msgid "mostra resumo explicado do sistema"
+msgstr "shows explained summary of the system"
+
+#: chili-low-ram-optimizer:1201
+msgid "Aplica configurações"
+msgstr "Apply settings"
+
+#: chili-low-ram-optimizer:1202
+msgid "Remove configurações"
+msgstr "Remove settings"
+
+#: chili-low-ram-optimizer:1203
+msgid "Realiza diagnóstico de saúde do sistema"
+msgstr "Performs system health diagnosis"
+
+#: chili-low-ram-optimizer:1204
+msgid "Cria checkpoint dos arquivos críticos"
+msgstr "Create checkpoint for critical files"
+
+#: chili-low-ram-optimizer:1205 chili-low-ram-optimizer:1251
+msgid "Reverte os arquivos críticos para o último backup"
+msgstr "Reverts critical files to the last backup"
+
+#: chili-low-ram-optimizer:1206
+msgid "Ativa o modo silencioso"
+msgstr "Activate silent mode"
+
+#: chili-low-ram-optimizer:1207
+msgid "Mostra este ajuda"
+msgstr "Show this help"
+
+#: chili-low-ram-optimizer:1208
+msgid "Mostra a versão do script"
+msgstr "Shows the script version"
+
+#: chili-low-ram-optimizer:1219
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "This is free software: you are free to change and redistribute it."
+"Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+
+#: chili-low-ram-optimizer:1221
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "includes open source software under a variety of other licenses."
+
+#: chili-low-ram-optimizer:1222
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "You can read instructions on how to download and create for yourself"
+
+#: chili-low-ram-optimizer:1223
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "the specific source code used to create this copy."
+
+#: chili-low-ram-optimizer:1224
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "This program comes with absolutely NO guarantees."
+
+#: chili-low-ram-optimizer:1252
+msgid "Arquivos"
+msgstr "Files"
+
+#: chili-low-ram-optimizer:1253
+msgid "Restaurar arquivos criticos agora?"
+msgstr "Restore critical files now?"
+
+#: chili-low-ram-optimizer:1254
+msgid "Iniciando processo de rollback para o último estado conhecido..."
+msgstr "Starting rollback process to last known state..."
+
+#: chili-low-ram-optimizer:1296
+msgid "Validação dos arquivos críticos de configuração"
+msgstr "Validation of critical configuration files"
+
+#: chili-low-ram-optimizer:1309
+msgid "Verificação dos serviços via"
+msgstr "Verification of services via"
+
+#: chili-low-ram-optimizer:1315 chili-low-ram-optimizer:1317
+msgid "Serviço"
+msgstr "Service"
+
+#: chili-low-ram-optimizer:1436
+msgid "Não encontrado!"
+msgstr "Not found!"
+
+#: chili-low-ram-optimizer:1437
+msgid "Ativado"
+msgstr "Activated"

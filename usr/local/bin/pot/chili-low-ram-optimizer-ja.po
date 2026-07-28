@@ -1,0 +1,176 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-07-27 22:15-0400\n"
+"PO-Revision-Date: 2026-07-27 22:15-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-low-ram-optimizer:274
+msgid "Este script precisa ser executado como root. Elevando privilégios..."
+msgstr "このスクリプトは root として実行する必要があります。権限を昇格しています..."
+
+#: chili-low-ram-optimizer:287
+msgid ""
+"Erro: não foi possível elevar privilégios. Execute manualmente como root."
+msgstr ""
+
+#: chili-low-ram-optimizer:432
+msgid "Não foi possível encontrar o comando"
+msgstr "コマンドが見つかりません"
+
+#: chili-low-ram-optimizer:433
+msgid "instalar pacote"
+msgstr "パッケージをインストールする"
+
+#: chili-low-ram-optimizer:449
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "続行不可能"
+
+#: chili-low-ram-optimizer:450
+msgid "Este script precisa dos comandos listados acima"
+msgstr "このスクリプトには上記のコマンドが必要です"
+
+#: chili-low-ram-optimizer:451
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "それらをインストールするか、それらがあなたのコンピュータにあることを確認してください。"
+
+#: chili-low-ram-optimizer:457
+msgid "Instalar dependências base agora?"
+msgstr "基本の依存関係を今すぐインストールしますか?"
+
+#: chili-low-ram-optimizer:458
+msgid "Preparando ambiente para"
+msgstr "環境の準備"
+
+#: chili-low-ram-optimizer:461
+msgid "Erro Crítico:"
+msgstr "重大なエラー:"
+
+#: chili-low-ram-optimizer:461
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "基本パッケージのインストールに失敗しました。"
+
+#: chili-low-ram-optimizer:465
+msgid "Sucesso:"
+msgstr "成功："
+
+#: chili-low-ram-optimizer:465
+msgid "Dependências instaladas."
+msgstr "インストールされた依存関係。"
+
+#: chili-low-ram-optimizer:882
+msgid "Suporte do Kernel"
+msgstr "カーネルのサポート"
+
+#: chili-low-ram-optimizer:892
+msgid "Param boot cmdline"
+msgstr "パラメータブートコマンドライン"
+
+#: chili-low-ram-optimizer:900
+msgid "Param boot grub"
+msgstr "パラメータブート GRUB"
+
+#: chili-low-ram-optimizer:913
+msgid "Param Zswap ativo"
+msgstr "アクティブな Zswap を停止する"
+
+#: chili-low-ram-optimizer:1199
+msgid "mostra resumo do sistema"
+msgstr "システムの概要を示します"
+
+#: chili-low-ram-optimizer:1200
+msgid "mostra resumo explicado do sistema"
+msgstr "システムの概要を説明したものを示します"
+
+#: chili-low-ram-optimizer:1201
+msgid "Aplica configurações"
+msgstr "設定を適用する"
+
+#: chili-low-ram-optimizer:1202
+msgid "Remove configurações"
+msgstr "設定を削除する"
+
+#: chili-low-ram-optimizer:1203
+msgid "Realiza diagnóstico de saúde do sistema"
+msgstr "システムの健全性診断を実行します"
+
+#: chili-low-ram-optimizer:1204
+msgid "Cria checkpoint dos arquivos críticos"
+msgstr "重要なファイルのチェックポイントを作成する"
+
+#: chili-low-ram-optimizer:1205 chili-low-ram-optimizer:1251
+msgid "Reverte os arquivos críticos para o último backup"
+msgstr "重要なファイルを最後のバックアップに戻します"
+
+#: chili-low-ram-optimizer:1206
+msgid "Ativa o modo silencioso"
+msgstr "サイレントモードを有効にする"
+
+#: chili-low-ram-optimizer:1207
+msgid "Mostra este ajuda"
+msgstr "このヘルプを表示する"
+
+#: chili-low-ram-optimizer:1208
+msgid "Mostra a versão do script"
+msgstr "スクリプトのバージョンを表示します"
+
+#: chili-low-ram-optimizer:1219
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "これはフリー ソフトウェアです。自由に変更したり再配布したりできます。"
+
+#: chili-low-ram-optimizer:1221
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "他のさまざまなライセンスに基づくオープンソース ソフトウェアが含まれます。"
+
+#: chili-low-ram-optimizer:1222
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "ダウンロードして自分で作成する方法についての説明を読むことができます"
+
+#: chili-low-ram-optimizer:1223
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "このコピーの作成に使用された特定のソース コード。"
+
+#: chili-low-ram-optimizer:1224
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "このプログラムには一切の保証がありません。"
+
+#: chili-low-ram-optimizer:1252
+msgid "Arquivos"
+msgstr "ファイル"
+
+#: chili-low-ram-optimizer:1253
+msgid "Restaurar arquivos criticos agora?"
+msgstr "重要なファイルを今すぐ復元しますか?"
+
+#: chili-low-ram-optimizer:1254
+msgid "Iniciando processo de rollback para o último estado conhecido..."
+msgstr "最後の既知の状態へのロールバック プロセスを開始しています..."
+
+#: chili-low-ram-optimizer:1296
+msgid "Validação dos arquivos críticos de configuração"
+msgstr "重要な構成ファイルの検証"
+
+#: chili-low-ram-optimizer:1309
+msgid "Verificação dos serviços via"
+msgstr "によるサービスの検証"
+
+#: chili-low-ram-optimizer:1315 chili-low-ram-optimizer:1317
+msgid "Serviço"
+msgstr "サービス"
+
+#: chili-low-ram-optimizer:1436
+msgid "Não encontrado!"
+msgstr "見つかりません！"
+
+#: chili-low-ram-optimizer:1437
+msgid "Ativado"
+msgstr "アクティブ化された"

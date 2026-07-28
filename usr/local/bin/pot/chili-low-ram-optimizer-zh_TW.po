@@ -1,0 +1,176 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-07-27 22:14-0400\n"
+"PO-Revision-Date: 2026-07-27 22:14-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_TW\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-low-ram-optimizer:274
+msgid "Este script precisa ser executado como root. Elevando privilégios..."
+msgstr "該腳本需要以 root 身分執行。提升權限..."
+
+#: chili-low-ram-optimizer:287
+msgid ""
+"Erro: não foi possível elevar privilégios. Execute manualmente como root."
+msgstr ""
+
+#: chili-low-ram-optimizer:432
+msgid "Não foi possível encontrar o comando"
+msgstr "找不到命令"
+
+#: chili-low-ram-optimizer:433
+msgid "instalar pacote"
+msgstr "安裝包"
+
+#: chili-low-ram-optimizer:449
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "無法繼續"
+
+#: chili-low-ram-optimizer:450
+msgid "Este script precisa dos comandos listados acima"
+msgstr "該腳本需要上面列出的命令"
+
+#: chili-low-ram-optimizer:451
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "安裝它們和/或確保它們在您的"
+
+#: chili-low-ram-optimizer:457
+msgid "Instalar dependências base agora?"
+msgstr "現在安裝基本依賴項嗎？"
+
+#: chili-low-ram-optimizer:458
+msgid "Preparando ambiente para"
+msgstr "準備環境"
+
+#: chili-low-ram-optimizer:461
+msgid "Erro Crítico:"
+msgstr "嚴重錯誤："
+
+#: chili-low-ram-optimizer:461
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "基礎包安裝失敗。"
+
+#: chili-low-ram-optimizer:465
+msgid "Sucesso:"
+msgstr "成功："
+
+#: chili-low-ram-optimizer:465
+msgid "Dependências instaladas."
+msgstr "安裝的依賴項。"
+
+#: chili-low-ram-optimizer:882
+msgid "Suporte do Kernel"
+msgstr "核心支援"
+
+#: chili-low-ram-optimizer:892
+msgid "Param boot cmdline"
+msgstr "參數啟動命令列"
+
+#: chili-low-ram-optimizer:900
+msgid "Param boot grub"
+msgstr "引導 grub 參數"
+
+#: chili-low-ram-optimizer:913
+msgid "Param Zswap ativo"
+msgstr "停止活躍的 Zswap"
+
+#: chili-low-ram-optimizer:1199
+msgid "mostra resumo do sistema"
+msgstr "顯示系統摘要"
+
+#: chili-low-ram-optimizer:1200
+msgid "mostra resumo explicado do sistema"
+msgstr "顯示系統的解釋摘要"
+
+#: chili-low-ram-optimizer:1201
+msgid "Aplica configurações"
+msgstr "應用程式設定"
+
+#: chili-low-ram-optimizer:1202
+msgid "Remove configurações"
+msgstr "刪除設定"
+
+#: chili-low-ram-optimizer:1203
+msgid "Realiza diagnóstico de saúde do sistema"
+msgstr "執行系統健康診斷"
+
+#: chili-low-ram-optimizer:1204
+msgid "Cria checkpoint dos arquivos críticos"
+msgstr "為關鍵文件建立檢查點"
+
+#: chili-low-ram-optimizer:1205 chili-low-ram-optimizer:1251
+msgid "Reverte os arquivos críticos para o último backup"
+msgstr "將關鍵檔案還原到上次備份"
+
+#: chili-low-ram-optimizer:1206
+msgid "Ativa o modo silencioso"
+msgstr "啟動靜音模式"
+
+#: chili-low-ram-optimizer:1207
+msgid "Mostra este ajuda"
+msgstr "顯示此幫助"
+
+#: chili-low-ram-optimizer:1208
+msgid "Mostra a versão do script"
+msgstr "顯示腳本版本"
+
+#: chili-low-ram-optimizer:1219
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "這是免費軟件：您可以自由更改和重新分發它。"
+
+#: chili-low-ram-optimizer:1221
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "包括各種其他許可證下的開源軟件。"
+
+#: chili-low-ram-optimizer:1222
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "您可以閱讀有關如何下載和自行創建的說明"
+
+#: chili-low-ram-optimizer:1223
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "用於創建此副本的特定源代碼。"
+
+#: chili-low-ram-optimizer:1224
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "該計劃絕對不提供任何保證。"
+
+#: chili-low-ram-optimizer:1252
+msgid "Arquivos"
+msgstr "文件"
+
+#: chili-low-ram-optimizer:1253
+msgid "Restaurar arquivos criticos agora?"
+msgstr "現在恢復關鍵檔案？"
+
+#: chili-low-ram-optimizer:1254
+msgid "Iniciando processo de rollback para o último estado conhecido..."
+msgstr "開始回滾過程到最後已知狀態..."
+
+#: chili-low-ram-optimizer:1296
+msgid "Validação dos arquivos críticos de configuração"
+msgstr "驗證關鍵設定檔"
+
+#: chili-low-ram-optimizer:1309
+msgid "Verificação dos serviços via"
+msgstr "服務驗證透過"
+
+#: chili-low-ram-optimizer:1315 chili-low-ram-optimizer:1317
+msgid "Serviço"
+msgstr "服務"
+
+#: chili-low-ram-optimizer:1436
+msgid "Não encontrado!"
+msgstr "未找到！"
+
+#: chili-low-ram-optimizer:1437
+msgid "Ativado"
+msgstr "活性"
