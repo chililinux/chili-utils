@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: seg 27 jul 2026 09:31:03 -04
+#  Updated: seg 27 jul 2026 00:00:00 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -32,6 +32,53 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
+#  CHANGELOG:
+#
+#  v0.08.00 - 2026-07-27
+#    - Corrigido: trap ERR duplicado que anulava o rollback interativo
+#    - Corrigido: bug de aspas em sh_checkDependencies (instalação de múltiplos pacotes
+#                 era passada como um único argumento literal)
+#    - Refatorado: funções de log duplicadas (log_warn/msg_warn/warn, etc.) viraram aliases
+#    - Refatorado: configure_sysctl() unificado com o array ASYSCTL (fonte única de verdade)
+#    - Adicionado: helpers is_swapfile_active() e sh_install_packages()
+#    - Removido: sh_backup_file() (código morto, substituído por sh_create_checkpoint)
+#    - Refatorado: configure_scheduler()/configure_thp() unificados em sh_create_service()
+#    - Corrigido: bug do scheduler systemd que ignorava $scheduler (sempre usava bfq/sd*
+#                 mesmo em SSD/NVMe com mq-deadline)
+#    - Removido: check_disk_space() (código morto); adicionado get_available_disk_mb()
+#    - Refatorado: err() unificado visualmente com log_err()
+#    - Corrigido: run_cmd() sempre retornava 1 mesmo em sucesso, mascarando o resultado real
+#                 (causava: errors inflado em enable_swap(), preload não habilitado na
+#                 1a instalação, dd executado à toa após fallocate já ter tido sucesso)
+#    - Removido: -v/--verbose; Adicionado: -q/--quiet (funciona em qualquer posição dos args)
+#    - Adicionado: documentação de -V/--version em usage()
+#    - Reposicionado: sh_checkroot para não solicitar sudo em -h/-V/sem argumentos,
+#                 preservando --quiet corretamente na re-execução
+#    - Corrigido: bug de aspas em sh_zswap_parameters_active() (dump de métricas zswap);
+#                 valores unidos numa única linha com tr '\n' ' '
+#    - Corrigido: sudo desnecessário em disable_preload() (script já é root nesse ponto)
+#    - Adicionado: helper has_command(), usado em todas as checagens de comando
+#    - Corrigido: fragilidade do fallback via su (printf %q preserva argumentos com espaço)
+#    - Conectado: use_color (desativa cores corretamente quando a saída não é terminal)
+#    - Removido: --preserve-env=quiet do sudo (era um no-op, quiet nunca foi exportada)
+#    - Adicionado: detect_language() para conectar LC_DEFAULT (prompt s/n vs y/n)
+#    - Renomeado: variável type -> disk_type (evita sombrear builtin do bash)
+#    - Corrigido: sh_version() (${VERSION} indefinida, ano do copyright, variáveis do
+#                 gettext que não expandiam)
+#    - Corrigido: bug "A && B || C" em sh_check_files_critic()/sh_check_services()
+#                 (causava falsos erros de diagnóstico quando usado com --quiet)
+#    - Corrigido: log_warn()/log_warn_tab() agora respeitam --quiet corretamente
+#    - Corrigido: SC2155/SC2086/SC2012 (shellcheck) em diversos pontos do script
+#    - Eliminadas chamadas redundantes: sh_install() (detect_ram/detect_disk/ensure_debugfs
+#                 duplicados), summary() (detect_zswap duplicado), --check (detect_init
+#                 duplicado) - todos já cobertos por sh_system_summary()
+#    - Simplificados os ícones TICK/CROSS/MID/WARN (sem espaço extra ao redor do símbolo)
+#    - Adicionado: msg_info() (mensagem sempre visível, independente de --quiet), usada na
+#                 mensagem final "Alterações efetuadas..." de summary() e sh_install()
+#
+#  v0.07.17 - 2026-07-17
+#    - Versão anterior a esta sessão de revisão (linha de base)
+##############################################################################
 export LANGUAGE="${LANGUAGE:-pt_BR}"
 export TEXTDOMAINDIR=/usr/share/locale
 export TEXTDOMAIN=chili-low-ram-optimizer
@@ -45,8 +92,8 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.07.27-20260727"
-declare APPDESC="Otimização automática para máquinas com pouca RAM"
+declare _VERSION_="0.08.00-20260727"
+declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
@@ -86,6 +133,7 @@ declare -A ASYSCTL=(
 	['vm.watermark_boost_factor']=0
 	['vm.watermark_scale_factor']=125
 )
+
 declare -A PACKAGEDEP=(
 	[gettext]=gettext
 	[dd]=coreutils
@@ -95,7 +143,6 @@ declare -A PACKAGEDEP=(
 )
 # Mapa: [distro]="lista de pacotes"
 declare -A DISTRO_PKGS=(
-	["voidbr"]="gettext rsync parted curl xz lvm2"
 	["void"]="gettext rsync parted curl xz lvm2"
 	["void-live"]="gettext rsync parted curl xz lvm2"
 	["voidlinux"]="gettext rsync parted curl xz lvm2"
@@ -109,7 +156,6 @@ declare -A DISTRO_PKGS=(
 
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
-	["voidbr"]="xbps-install -y --ignore-file-conflicts"
 	["void"]="xbps-install -y --ignore-file-conflicts"
 	["void-live"]="xbps-install -y --ignore-file-conflicts"
 	["voidlinux"]="xbps-install -y --ignore-file-conflicts"
@@ -123,18 +169,19 @@ declare -A DISTRO_MGR=(
 
 MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
 # Sugestão de alteração no seu trap atual:
+# shellcheck disable=SC1087  # colchetes literais na mensagem de erro, não é acesso a array
 trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; if readconf "Erro detectado. Deseja tentar restaurar o backup anterior?"; then sh_rollback; fi; exit 1' ERR
 
-has_command() {
-  command -v "$1" >/dev/null && return 0 || return 1
-}
-
 sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
+
+has_command() {
+	command -v "$1" >/dev/null && return 0 || return 1
+}
 
 set_varcolors() {
 	sh_check_terminal
 	# does the terminal support true-color?
-  if $use_color && has_command tput; then
+	if $use_color && has_command tput; then
 		#tput setaf 127 | cat -v  #capturar saida
 		: "${RED=$(tput bold)$(tput setaf 196)}"
 		: "${GREEN=$(tput bold)$(tput setaf 2)}"
@@ -202,7 +249,6 @@ set_varcolors() {
 		: "${CROSS="${clrkey}[${red}✗${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗${green}✓${clrkey}]${rst}"}"
 		: "${WARN="${clrkey}[${yellow}⚠${clrkey}]${yellow}"}"
-		#		: "${INFO="${clrkey}[${bold}${blue}⛭${clrkey}]${rst}"}"
 		: "${INFO="${clrkey}[${bold}${blue}➜${clrkey}]${rst}"}"
 	else
 		unset_varcolors
@@ -225,43 +271,28 @@ sh_checkroot() {
 }
 
 elevate_to_root() {
-	msg "This script must be run as root. Elevating privileges..."
+	msg "$(gettext 'Este script precisa ser executado como root. Elevando privilégios...')"
 	ccabec+='root [elevated]'
 	# Tenta usar sudo primeiro (caso esteja configurado)
 
 	if has_command sudo; then
 		#		exec sudo bash "$0" "$@"
 		#   exec sudo -E bash "$0" "$@"
-		exec sudo --preserve-env=quiet bash "$0" "$@"
+		exec sudo bash "$0" "$@"
 	fi
 	# Se sudo falhar, tenta su
-  if has_command su; then
-    exec su -c "$(printf '%q ' "$0" "$@")"
-  fi
-	die "Error: Unable to elevate privileges. Run manually as root."
+	if has_command su; then
+		exec su -c "$(printf '%q ' "$0" "$@")"
+	fi
+	die "$(gettext 'Erro: não foi possível elevar privilégios. Execute manualmente como root.')"
 }
 
 replicate() {
 	local char="${1:-#}"
 	local nsize="${2:-$(tput cols)}"
 	# Gera linha com substituição direta sem forks extras
+	# shellcheck disable=SC2183  # idiom intencional: %*s sem string gera N espaços
 	printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
-}
-
-detect_language() {
-	# Detecta o idioma do sistema para escolher o formato do prompt de confirmação
-	# em readconf(): LC_DEFAULT=0 -> pt_BR/pt_PT (estilo [N/s]), LC_DEFAULT=1 -> demais idiomas (estilo [N/y])
-	declare -g LC_DEFAULT
-	local lang="${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-$LANG}}}"
-
-	case "$lang" in
-	pt_BR* | pt_PT* | pt*)
-		LC_DEFAULT=0
-		;;
-	*)
-		LC_DEFAULT=1
-		;;
-	esac
 }
 
 readconf() {
@@ -296,10 +327,10 @@ debug() {
 }
 
 run_cmd() {
-	local cmd="$*"
 	# LIMITAÇÃO: comandos com pipes de sed ('|' como delimitador), chaves multi-linha
-	# ou aspas complexas NÃO sobrevivem à reconstrução "$*" + eval. Por isso os `sed -i`
-	# usados em configure_zswap()/sh_uninstall() rodam diretos, fora do run_cmd.
+	# ou aspas complexas NÃO sobrevivem à reconstrução "$*" + eval abaixo. Por isso os
+	# `sed -i` usados em configure_zswap()/sh_uninstall() rodam diretos, fora do run_cmd.
+	local cmd="$*"
 
 	if [[ $DRYRUN -eq 1 ]]; then
 		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
@@ -333,21 +364,20 @@ sh_copyright() {
 }
 
 msg() { ! $quiet && echo -e "${INFO} ${*}${reset}"; }
+msg_info() { echo -e "  ${INFO} ${*}${reset}"; }
 log_ok() { ! $quiet && echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
-err() { log_err "$@"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
+log_warn() { ! $quiet && echo -e "${WARN} ${*}${reset}"; }
+msg_warn() { log_warn "$@"; }
+warn() { log_warn "$@"; }
 msg_tab() { ! $quiet && echo -e "  ${INFO} ${*}${reset}"; }
 log_ok_tab() { ! $quiet && echo -e "  ${TICK} ${*}${reset}"; }
 log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
 log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
-log_warn() { echo -e "${WARN} ${*}${reset}"; }
-msg_warn() { log_warn "$@"; }
-warn() { log_warn "$@"; }
-log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
+log_warn_tab() { ! $quiet && echo -e "  ${WARN} ${*}${reset}"; }
 warn_tab() { log_warn_tab "$@"; }
 msg_warn_tab() { log_warn_tab "$@"; }
-
 die() {
 	echo -e "${CROSS} ${red}${*}${reset}"
 	exit 1
@@ -368,7 +398,8 @@ detect_distro() {
 }
 
 detect_is_live() {
-	local rootfs="$(findmnt -n -o FSTYPE /)"
+	local rootfs
+	rootfs="$(findmnt -n -o FSTYPE /)"
 
 	case "$rootfs" in
 	squashfs | overlay) return 0 ;;
@@ -420,6 +451,8 @@ sh_checkDependencies() {
 		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
 		replicate '='
 
+		#local pkgs="${DISTRO_PKGS[$DISTRO]}"
+
 		msg "Distro detectada: ${cyan}$DISTRO${rst}"
 		if readconf "$(gettext "Instalar dependências base agora?")"; then
 			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
@@ -436,10 +469,12 @@ sh_checkDependencies() {
 
 ##########################################################################################################
 
+err() { log_err "$@"; }
 changed=false
 
 detect_init() {
-	local init_system=$(ps -p 1 -o comm=)
+	local init_system
+	init_system=$(ps -p 1 -o comm=)
 	case "$init_system" in
 	systemd) init="systemd" ;;
 	runit) init="runit" ;;
@@ -552,7 +587,8 @@ configure_swapfile() {
 	msg "Verificando integridade do /swapfile..."
 
 	if [[ -f /swapfile ]]; then
-		local current_size=$(stat -c%s /swapfile)
+		local current_size
+		current_size=$(stat -c%s /swapfile)
 		if [ "$current_size" -ne "$desired_size" ]; then
 			warn "Tamanho atual diverge do recomendado (${swap_gb}G)."
 			needs_recreate=true
@@ -565,7 +601,8 @@ configure_swapfile() {
 
 	if $needs_recreate; then
 		# 1. Verifica espaço em disco antes de começar
-		local avail_mb=$(get_available_disk_mb)
+		local avail_mb
+		avail_mb=$(get_available_disk_mb)
 		if ((avail_mb < (swap_gb * 1024))); then
 			err "Espaço insuficiente! Necessário: ${swap_gb}G | Disponível: $((avail_mb / 1024))G"
 			return 1
@@ -581,16 +618,16 @@ configure_swapfile() {
 		case "$root_fs" in
 		btrfs)
 			if has_command btrfs && btrfs filesystem --help 2>&1 | grep -q "mkswapfile"; then
-				run_cmd btrfs filesystem mkswapfile --size ${swap_gb}g /swapfile
+				run_cmd btrfs filesystem mkswapfile --size "${swap_gb}"g /swapfile
 			else
 				run_cmd truncate -s 0 /swapfile
 				run_cmd chattr +C /swapfile
 				run_cmd btrfs property set /swapfile compression none
-				run_cmd fallocate -l ${swap_gb}G /swapfile || run_cmd dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
+				run_cmd fallocate -l "${swap_gb}"G /swapfile || run_cmd dd if=/dev/zero of=/swapfile bs=1G count="${swap_gb}" status=progress oflag=direct
 			fi
 			;;
 		*)
-			run_cmd fallocate -l ${swap_gb}G /swapfile || run_cmd dd if=/dev/zero of=/swapfile bs=1G count=${swap_gb} status=progress oflag=direct
+			run_cmd fallocate -l "${swap_gb}"G /swapfile || run_cmd dd if=/dev/zero of=/swapfile bs=1G count="${swap_gb}" status=progress oflag=direct
 			;;
 		esac
 
@@ -766,10 +803,10 @@ detect_disk() {
 	is_rotational=$(cat /sys/block/"$disk"/queue/rotational 2>/dev/null)
 
 	if [[ "$is_rotational" == "0" ]]; then
-    disk_type="SSD"
+		disk_type="SSD"
 		scheduler="mq-deadline"
 	else
-    disk_type="HDD"
+		disk_type="HDD"
 		scheduler="bfq"
 	fi
 }
@@ -875,7 +912,8 @@ sh_check_zswap_lifecycle() {
 
 	cmsg="$(gettext 'Param Zswap ativo')"
 	if [[ -f "/sys/module/zswap/parameters/enabled" ]]; then
-		local active=$(cat /sys/module/zswap/parameters/enabled)
+		local active
+		active=$(cat /sys/module/zswap/parameters/enabled)
 		if [[ "$active" == "Y" ]]; then
 			msg_tab "${cmsg} : ${green}Ativo ${cyan}(${active})${rst}"
 		else
@@ -960,7 +998,8 @@ calculate_swap() {
 
 	# 5. Verifica se o /swapfile está ativo
 	# Usamos tail -n +2 para pular o cabeçalho de forma compatível
-	local active_info=$(swapon --show=NAME,TYPE,SIZE,PRIO | grep "^/swapfile ")
+	local active_info
+	active_info=$(swapon --show=NAME,TYPE,SIZE,PRIO | grep "^/swapfile ")
 
 	if [[ -n "$active_info" ]]; then
 		msg_tab "Swap ativo       : ${cyan}${active_info}${reset}"
@@ -970,7 +1009,8 @@ calculate_swap() {
 
 	# 6. Monitoramento de redundância (outras swaps ativas)
 	# Filtra o /swapfile e o cabeçalho (NAME)
-	local other_swaps=$(swapon --show=NAME | tail -n +2 | grep -v "^/swapfile" | xargs)
+	local other_swaps
+	other_swaps=$(swapon --show=NAME | tail -n +2 | grep -v "^/swapfile" | xargs)
 	if [[ -n "$other_swaps" ]]; then
 		msg_tab "Outros devices   : ${yellow}${other_swaps}${reset} (partição detectada)"
 	fi
@@ -1033,7 +1073,7 @@ sh_zswap_parameters_active() {
 
 		# debugfs (stats)
 		if mountpoint -q /sys/kernel/debug 2>/dev/null && [ -d /sys/kernel/debug/zswap ]; then
-			msg_tab "Dump das métricas do zswap     :" ${cyan}$(cat /sys/kernel/debug/zswap/*)${rst}
+			msg_tab "Dump das métricas do zswap: ${cyan}$(cat /sys/kernel/debug/zswap/* | tr '\n' ' ')${rst}"
 		else
 			log_err_tab "zswap stats     : ${red}debugfs não montado${rst}"
 		fi
@@ -1046,14 +1086,13 @@ summary() {
 	replicate '-'
 	sh_system_summary
 	calculate_swap
-	detect_zswap
 	sh_check_zswap_lifecycle
 	sh_zswap_parameters_active
 	show_io_schedulers
 
 	if $changed; then
 		echo
-		warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
+		msg_info "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
 	else
 		#echo
 		#msg "${green}Nenhuma alteração foi necessária.${rst}"
@@ -1068,18 +1107,15 @@ sh_install() {
 	#	detect_fs
 	sh_create_checkpoint
 	cleanup_legacy
-	detect_ram
 	calculate_swap
 	remove_zram
 	configure_swapfile
 	configure_sysctl
 	configure_zswap
 	configure_thp
-	detect_disk
 	configure_scheduler
 	enable_swap
 	enable_preload
-	ensure_debugfs
 	enable_zswap
 	sh_check_zswap_lifecycle
 	#	summary
@@ -1092,7 +1128,7 @@ sh_install() {
 		log_err "${rst}Diagnóstico concluído: ${red}$errors erro(s) encontrado(s).${rst}"
 	fi
 
-	warn "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
+	msg_info "${yellow}Alterações efetuadas. Reinicie o sistema!${reset}"
 	if detect_is_live; then
 		die "Sistema em modo Live. As alterações serão perdidas ao reiniciar.\n $(replicate '-')"
 	fi
@@ -1169,7 +1205,7 @@ usage() {
 	echo -e "  ${red}-r, --rollback${reset}        ${rst}$(gettext 'Reverte os arquivos críticos para o último backup')"
 	echo -e "  ${black}-q, --quiet${reset}           ${rst}$(gettext 'Ativa o modo silencioso')"
 	echo -e "  ${cyan}-h, --help${reset}            ${rst}$(gettext 'Mostra este ajuda')"
-	echo -e "  ${cyan}-V, --version${reset}         ${rst}$(gettext 'Mostra a versão do script')"
+	echo -e "  ${orange}-V, --version${reset}         ${rst}$(gettext 'Mostra a versão do script')"
 	exit 0
 }
 
@@ -1177,7 +1213,6 @@ sh_version() {
 	cat <<EOF
     ${bold}${cyan}${0##*/} v${_VERSION_}${rst}
     ${APPDESC}
-
     ${bold}${black}Copyright (C) 2019-2026 ChiliLinux Development Team${black}
     ${bold}${black}Copyright (C) 2019-2026 Vilmar Catafesta${black}
 
@@ -1221,7 +1256,7 @@ sh_rollback() {
 		for target in "${aCritic_Files[@]}"; do
 			# Encontra o arquivo de backup mais recente para este alvo específico
 			local latest_bkp
-			latest_bkp=$(ls -t "${bkp_dir}/$(basename "$target")"-*.bak 2>/dev/null | head -n 1)
+			latest_bkp=$(find "${bkp_dir}" -maxdepth 1 -name "$(basename "$target")-*.bak" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)
 
 			if [[ -f "$latest_bkp" ]]; then
 				msg_tab "Restaurando ${cyan}$(basename "$target")${rst} a partir de ${cyan}$(basename "$latest_bkp")${rst}"
@@ -1261,10 +1296,12 @@ sh_check_files_critic() {
 	msg "$(gettext 'Validação dos arquivos críticos de configuração')"
 
 	for f in "${aCritic_Files[@]}"; do
-		[[ -f "$f" ]] && log_ok_tab "Config: ${green}$f ${cyan}encontrado${rst}" || {
+		if [[ -f "$f" ]]; then
+			log_ok_tab "Config: ${green}$f ${cyan}encontrado${rst}"
+		else
 			log_err_tab "Config: ${yellow}$f ${red}${cmsg_Nao_encontrado}${rst}"
 			((errors++))
-		}
+		fi
 	done
 }
 
@@ -1274,14 +1311,16 @@ sh_check_services() {
 	systemd)
 		for svc in preload chili-thp chili-bfq; do
 			if systemctl list-unit-files "$svc.service" >/dev/null 2>&1; then
-				systemctl is-active \
-					--quiet "$svc" &&
-					log_ok_tab "$(gettext 'Serviço') ($svc): ${green}Rodando${rst}" ||
+				if systemctl is-active --quiet "$svc"; then
+					log_ok_tab "$(gettext 'Serviço') ($svc): ${green}Rodando${rst}"
+				else
 					log_err_tab "$(gettext 'Serviço') ($svc): ${yellow}Instalado, mas parado${rst}"
+				fi
 			fi
 		done
 		;;
 	runit)
+		# shellcheck disable=SC2043  # loop de 1 item hoje, mantido para futura extensão
 		for svc in preload; do
 			if [[ -d "/var/service/$svc" ]]; then
 				log_ok_tab "Serviço ($svc): ${green}Ativo em /var/service/${rst}"
@@ -1312,7 +1351,8 @@ sh_check_sysctl() {
 		for param in "${!ASYSCTL[@]}"; do
 			local expected_val="${ASYSCTL[$param]}"
 			# Lê o valor que está GRAVADO no arquivo, ignorando comentários e espaços
-			local file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
+			local file_val
+			file_val=$(grep "^${param}=" "${sysctl_conf}" | cut -d'=' -f2 | tr -d ' ')
 
 			if [[ -z "$file_val" ]]; then
 				log_warn_tab "$param: ${red}Não encontrado no arquivo${rst}"
@@ -1376,6 +1416,22 @@ sh_health_check() {
 	fi
 }
 
+detect_language() {
+	# Detecta o idioma do sistema para escolher o formato do prompt de confirmação
+	# em readconf(): LC_DEFAULT=0 -> pt_BR/pt_PT (estilo [N/s]), LC_DEFAULT=1 -> demais idiomas (estilo [N/y])
+	declare -g LC_DEFAULT
+	local lang="${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-$LANG}}}"
+
+	case "$lang" in
+	pt_BR* | pt_PT* | pt*)
+		LC_DEFAULT=0
+		;;
+	*)
+		LC_DEFAULT=1
+		;;
+	esac
+}
+
 sh_Language() {
 	cmsg_Nao_encontrado="$(gettext 'Não encontrado!')"
 	cmsg_Ativado="$(gettext 'Ativado')"
@@ -1383,8 +1439,8 @@ sh_Language() {
 
 # configure ambiente
 set_varcolors
-detect_language
 sh_Language
+detect_language
 DISTRO="$(detect_distro)"
 
 # Preserva os argumentos originais (antes de qualquer filtragem), para que a
@@ -1406,11 +1462,9 @@ set -- "${args[@]}"
 if [[ $# -eq 0 || $1 == @(-h|-H|--help) ]]; then
 	usage
 fi
-
 if [[ $1 == @(-V|--version) ]]; then
 	sh_version
 fi
-
 sh_checkroot "${original_args[@]}"
 
 case "$1" in
@@ -1440,12 +1494,17 @@ case "$1" in
 	;;
 -c | --check)
 	quiet=false
-	detect_init
 	sh_health_check
 	;;
 -u | --uninstall)
 	check_root
 	sh_uninstall
+	;;
+-h | --help)
+	usage
+	;;
+-V | --version)
+	sh_version
 	;;
 *)
 	err "Opção inválida: $1 - (use -h para obter ajuda)"

@@ -1,0 +1,176 @@
+# Chili Tradutor Go - 2.1.20-20260201
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.20-20260201\n"
+"POT-Creation-Date: 2026-07-27 22:14-0400\n"
+"PO-Revision-Date: 2026-07-27 22:14-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-low-ram-optimizer:274
+msgid "Este script precisa ser executado como root. Elevando privilégios..."
+msgstr "Dieses Skript muss als Root ausgeführt werden. Privilegien erhöhen..."
+
+#: chili-low-ram-optimizer:287
+msgid ""
+"Erro: não foi possível elevar privilégios. Execute manualmente como root."
+msgstr ""
+
+#: chili-low-ram-optimizer:432
+msgid "Não foi possível encontrar o comando"
+msgstr "Befehl konnte nicht gefunden werden"
+
+#: chili-low-ram-optimizer:433
+msgid "instalar pacote"
+msgstr "Paket installieren"
+
+#: chili-low-ram-optimizer:449
+msgid "IMPOSSÍVEL CONTINUAR"
+msgstr "UNMÖGLICH, WEITERZUWEISEN"
+
+#: chili-low-ram-optimizer:450
+msgid "Este script precisa dos comandos listados acima"
+msgstr "Dieses Skript benötigt die oben aufgeführten Befehle"
+
+#: chili-low-ram-optimizer:451
+msgid "Instale-os e/ou verifique se eles estão em seu"
+msgstr "Installieren Sie sie und/oder stellen Sie sicher, dass sie auf Ihrem Computer vorhanden sind"
+
+#: chili-low-ram-optimizer:457
+msgid "Instalar dependências base agora?"
+msgstr "Basisabhängigkeiten jetzt installieren?"
+
+#: chili-low-ram-optimizer:458
+msgid "Preparando ambiente para"
+msgstr "Vorbereitende Umgebung für"
+
+#: chili-low-ram-optimizer:461
+msgid "Erro Crítico:"
+msgstr "Kritischer Fehler:"
+
+#: chili-low-ram-optimizer:461
+msgid "A instalação dos pacotes básicos falhou."
+msgstr "Die Installation der Basispakete ist fehlgeschlagen."
+
+#: chili-low-ram-optimizer:465
+msgid "Sucesso:"
+msgstr "Erfolg:"
+
+#: chili-low-ram-optimizer:465
+msgid "Dependências instaladas."
+msgstr "Installierte Abhängigkeiten."
+
+#: chili-low-ram-optimizer:882
+msgid "Suporte do Kernel"
+msgstr "Kernel-Unterstützung"
+
+#: chili-low-ram-optimizer:892
+msgid "Param boot cmdline"
+msgstr "Param Boot-Cmdline"
+
+#: chili-low-ram-optimizer:900
+msgid "Param boot grub"
+msgstr "Param Boot Grub"
+
+#: chili-low-ram-optimizer:913
+msgid "Param Zswap ativo"
+msgstr "Stoppen Sie den aktiven Zswap"
+
+#: chili-low-ram-optimizer:1199
+msgid "mostra resumo do sistema"
+msgstr "Zeigt eine Systemzusammenfassung"
+
+#: chili-low-ram-optimizer:1200
+msgid "mostra resumo explicado do sistema"
+msgstr "zeigt eine erläuterte Zusammenfassung des Systems"
+
+#: chili-low-ram-optimizer:1201
+msgid "Aplica configurações"
+msgstr "Einstellungen übernehmen"
+
+#: chili-low-ram-optimizer:1202
+msgid "Remove configurações"
+msgstr "Einstellungen entfernen"
+
+#: chili-low-ram-optimizer:1203
+msgid "Realiza diagnóstico de saúde do sistema"
+msgstr "Führt eine Systemzustandsdiagnose durch"
+
+#: chili-low-ram-optimizer:1204
+msgid "Cria checkpoint dos arquivos críticos"
+msgstr "Erstellen Sie einen Prüfpunkt für kritische Dateien"
+
+#: chili-low-ram-optimizer:1205 chili-low-ram-optimizer:1251
+msgid "Reverte os arquivos críticos para o último backup"
+msgstr "Setzt kritische Dateien auf die letzte Sicherung zurück"
+
+#: chili-low-ram-optimizer:1206
+msgid "Ativa o modo silencioso"
+msgstr "Aktivieren Sie den Silent-Modus"
+
+#: chili-low-ram-optimizer:1207
+msgid "Mostra este ajuda"
+msgstr "Diese Hilfe anzeigen"
+
+#: chili-low-ram-optimizer:1208
+msgid "Mostra a versão do script"
+msgstr "Zeigt die Skriptversion an"
+
+#: chili-low-ram-optimizer:1219
+msgid "Este é um software livre: você é livre para alterá-lo e redistribuí-lo."
+msgstr "Dies ist freie Software: Es steht Ihnen frei, sie zu ändern und weiterzuverbreiten."
+
+#: chili-low-ram-optimizer:1221
+msgid "inclui software de código aberto sob uma variedade de outras licenças."
+msgstr "umfasst Open-Source-Software unter einer Vielzahl anderer Lizenzen."
+
+#: chili-low-ram-optimizer:1222
+msgid "Você pode ler instruções sobre como baixar e criar para você mesmo"
+msgstr "Sie können Anweisungen zum Herunterladen und Erstellen selbst lesen"
+
+#: chili-low-ram-optimizer:1223
+msgid "o código fonte específico usado para criar esta cópia."
+msgstr "der spezifische Quellcode, der zum Erstellen dieser Kopie verwendet wurde."
+
+#: chili-low-ram-optimizer:1224
+msgid "Este programa vem com absolutamente NENHUMA garantia."
+msgstr "Für dieses Programm gibt es absolut KEINE Garantien."
+
+#: chili-low-ram-optimizer:1252
+msgid "Arquivos"
+msgstr "Dateien"
+
+#: chili-low-ram-optimizer:1253
+msgid "Restaurar arquivos criticos agora?"
+msgstr "Kritische Dateien jetzt wiederherstellen?"
+
+#: chili-low-ram-optimizer:1254
+msgid "Iniciando processo de rollback para o último estado conhecido..."
+msgstr "Rollback-Prozess zum letzten bekannten Status wird gestartet..."
+
+#: chili-low-ram-optimizer:1296
+msgid "Validação dos arquivos críticos de configuração"
+msgstr "Validierung kritischer Konfigurationsdateien"
+
+#: chili-low-ram-optimizer:1309
+msgid "Verificação dos serviços via"
+msgstr "Überprüfung der Dienste über"
+
+#: chili-low-ram-optimizer:1315 chili-low-ram-optimizer:1317
+msgid "Serviço"
+msgstr "Service"
+
+#: chili-low-ram-optimizer:1436
+msgid "Não encontrado!"
+msgstr "Nicht gefunden!"
+
+#: chili-low-ram-optimizer:1437
+msgid "Ativado"
+msgstr "Aktiviert"
