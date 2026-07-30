@@ -1702,7 +1702,8 @@ main::attach_primary_devices() {
 		elif [[ -b "$img" ]]; then
 			msg_info "$(gettext 'Anexando device') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
 			qemu_options+=(
-				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+#				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=io_uring
 			)
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 
