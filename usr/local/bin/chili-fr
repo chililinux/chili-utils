@@ -5,7 +5,7 @@
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
 #  Altered: 2024/10/03 - 00:00
-#  Updated: qua 22 jul 2026 23:07:47 -04
+#  Updated: sex 31 jul 2026 00:00:52 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -49,7 +49,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.07.22-20260722'
+readonly VERSION='3.07.31-20260731'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -97,6 +97,16 @@ declare bridge=false
 declare xmem='8G'
 #
 
+declare -a adisplaydevice=(
+  gtk
+  sdl
+  egl-headless
+  curses
+  spice-app
+  dbus
+  none
+)
+declare displaydevice='gtk'
 declare -a avideodevice=(
   #qemu-system-x86_64 -device help | grep -i virtio
   ati-vga
@@ -114,7 +124,7 @@ declare -a avideodevice=(
   virtio-gpu-rutabaga-pci
   vmware-svga
 )
-declare videodevice='virtio-vga'
+declare videodevice='virtio-vga-gl'
 #
 declare lshare=false
 declare spice=false
@@ -1283,44 +1293,48 @@ sh_usage() {
 	cat <<EOF
 $(gettext 'uso:') ${orange}$APP${reset} [$(gettext 'Opções')]
 ${cyan}$(gettext 'Opções:')${reset}
-  ${rst}-b|--bridge ${orange}<name>                     ${cyan}# $(gettext 'inicia rede em modo') bridge - ex: -b br0 (default: NAT)
-  ${rst}-c|--create_real_bridge ${orange}<name>         ${cyan}# $(gettext 'criar real') bridge - ex: -c br0
-  ${rst}-r|--remove_real_bridge ${orange}<name>         ${cyan}# $(gettext 'remover real') bridge - ex: -r br0
-  ${rst}   --create_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'criar') virbr bridge - ex: --create_virbr_bridge br0
-  ${rst}   --remove_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'remover') virbr bridge - ex: --remove_virbr_bridge br0
-  ${rst}-d|--drive ${orange}<device>                    ${cyan}# $(gettext 'anexa disco externo') - ex: -d /dev/sdX (default: none)
-  ${rst}-m|--memory ${orange}<mem>                      ${cyan}# $(gettext 'memória inicial de convidado') - ex: -m 16G (default: 8GB)
-  ${rst}-v|--vdisk ${orange}<filename.img|qcow2>        ${cyan}# $(gettext 'usa um disco virtual interno') - ( default: none)
-  ${rst}   --cvdisk ${orange}<filename>                 ${cyan}# $(gettext 'cria um disco virtual para uso interno')
-  ${rst}   --rvdisk ${orange}<filename>                 ${cyan}# $(gettext 'remove um disco virtual')
-  ${rst}-g|--video ${orange}<video_driver>              ${cyan}# virtio-vga,virtio-gpu-pci,qxl-vga,VGA,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display - default: VGA
-  ${rst}-N|--network ${orange}<net_driver>              ${cyan}# virtio-net-pci,e1000,rtl8139,vmxnet3 (default: virtio-pc)
-  ${rst}-n|--nocolor                           ${cyan}# $(gettext 'remover cores da saída') - (default: color)
-  ${rst}-s|--spice                             ${cyan}# $(gettext 'ativar o') spice - (default: $(gettext 'desligado'))
-  ${rst}-t|--tty                               ${cyan}# $(gettext 'ativar modo') tty only - (default: $(gettext 'desligado'))
-  ${rst}-l|--list                              ${cyan}# $(gettext 'listar discos virtuais')
-  ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: BIOS)
-  ${rst}-V|--version                           ${cyan}# $(gettext 'exibe a versão do aplicativo')
-  ${rst}-o|--output                            ${cyan}# $(gettext 'exibe a saída gerada pelo comando e sai')
-  ${rst}-a|--audio ${orange}<pipewire|pa|jack>          ${cyan}# $(gettext 'audio server - default: auto')
-  ${rst}   --share                             ${cyan}# $(gettext 'compartilha pasta local na VM - (ex: --share /home/user/Imagens)')
-  ${rst}-h|-H|--help                           ${cyan}# $(gettext 'imprime este ajuda')
-${cyan}$(gettext 'Exemplos:')${rst}
-  $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando') UEFI ${rst}
-  $ ${orange}$APP${reset} -u -s -b br0 file.iso       ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando spice, usando UEFI') ${rst}
-  $ ${orange}$APP${reset} -u file.img                 ${cyan}#$(gettext 'Execute uma imagem, em NAT, usando UEFI') ${rst}
-  $ ${orange}$APP${reset} -b br0 /dev/sdX             ${cyan}#$(gettext 'Execute uma device, em ponte, usando UEFI') ${rst}
-  $ ${orange}$APP${reset} -u -m 16G -b br0 /dev/sdX   ${cyan}#$(gettext 'Execute uma device, em ponte, 16Gb memória, usando UEFI') ${rst}
-  $ ${orange}$APP${reset} -a pipewire /dev/sdX        ${cyan}#$(gettext 'Execute uma device, em NAT, usando audio pipewire') ${rst}
-  $ ${orange}$APP${reset} file.iso                    ${cyan}#$(gettext 'Execute uma imagem usando BIOS')${rst}
-  $ ${orange}$APP${reset} -b file.img                 ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando BIOS')${rst}
-  $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#$(gettext 'Execute uma device, 16GB memória, usando BIOS') ${rst}
-${cyan}$(gettext 'Uso mais comum:')${rst}
-  $ ${orange}$APP${reset} [-u] /dev/sdX ${rst}
-  $ ${orange}$APP${reset} [-u] filename.iso sda.img ${rst}
-  $ ${orange}$APP${reset} $HOME_DIR/vdisk/vdisk_name.img ${rst}
+    ${rst}-b|--bridge ${orange}<name>                     ${cyan}# $(gettext 'inicia rede em modo') bridge - ex: -b br0 - (default: ${yellow}NAT${rst})
+    ${rst}-c|--create_real_bridge ${orange}<name>         ${cyan}# $(gettext 'criar real') bridge - ex: -c br0
+    ${rst}-r|--remove_real_bridge ${orange}<name>         ${cyan}# $(gettext 'remover real') bridge - ex: -r br0
+    ${rst}   --create_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'criar') virbr bridge - ex: --create_virbr_bridge br0
+    ${rst}   --remove_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'remover') virbr bridge - ex: --remove_virbr_bridge br0
+    ${rst}-d|--drive ${orange}<device>                    ${cyan}# $(gettext 'anexa disco externo') - ex: -d /dev/sdX - (default: ${yellow}none${rst})
+    ${rst}-m|--memory ${orange}<mem>                      ${cyan}# $(gettext 'memória inicial de convidado') - ex: -m 16G (default: ${yellow}8GB${rst})
+    ${rst}-v|--vdisk ${orange}<filename.img|qcow2>        ${cyan}# $(gettext 'usa um disco virtual interno') - (default: ${yellow}none${rst})
+    ${rst}   --cvdisk ${orange}<filename>                 ${cyan}# $(gettext 'cria um disco virtual para uso interno')
+    ${rst}   --rvdisk ${orange}<filename>                 ${cyan}# $(gettext 'remove um disco virtual')
+    ${rst}-g|--video ${orange}<video_driver>              ${cyan}# virtio-vga,virtio-gpu-pci,qxl-vga,VGA,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display - (default: ${yellow}virtio-vga-gl${rst})
+${red}new ${rst}   --display ${orange}<display_backend>         ${cyan}# gtk,sdl,egl-headless,curses,spice-app,dbus,none - (default: ${yellow}gtk${rst})
+    ${rst}-N|--network ${orange}<net_driver>              ${cyan}# virtio-net-pci,e1000,rtl8139,vmxnet3 - (default: ${yellow}virtio-pc${rst})
+    ${rst}-n|--nocolor                           ${cyan}# $(gettext 'remover cores da saída') - (default: ${yellow}color${rst})
+    ${rst}-s|--spice                             ${cyan}# $(gettext 'ativar o') spice - (default: ${yellow}$(gettext 'desligado')${rst})
+    ${rst}-t|--tty                               ${cyan}# $(gettext 'ativar modo') tty only - (default: ${yellow}$(gettext 'desligado')${rst})
+    ${rst}-l|--list                              ${cyan}# $(gettext 'listar discos virtuais')
+    ${rst}-u|--uefi                              ${cyan}# $(gettext 'inicialização em') UEFI - (default: ${yellow}BIOS${rst})
+    ${rst}-V|--version                           ${cyan}# $(gettext 'exibe a versão do aplicativo')
+    ${rst}-o|--output                            ${cyan}# $(gettext 'exibe a saída gerada pelo comando e sai')
+    ${rst}-a|--audio ${orange}<pipewire|pa|jack>          ${cyan}# $(gettext 'audio server') - (default: ${yellow}auto${rst})
+    ${rst}   --share                             ${cyan}# $(gettext 'compartilha pasta local na VM - (ex: --share /home/user/Imagens)')
+    ${rst}-h|-H|--help                           ${cyan}# $(gettext 'imprime este ajuda')
+  ${cyan}$(gettext 'Exemplos:')${rst}
+    $ ${orange}$APP${reset} -u -b br0 file.iso          ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando') UEFI ${rst}
+    $ ${orange}$APP${reset} -u -s -b br0 file.iso       ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando spice, usando UEFI') ${rst}
+    $ ${orange}$APP${reset} -u file.img                 ${cyan}#$(gettext 'Execute uma imagem, em NAT, usando UEFI') ${rst}
+    $ ${orange}$APP${reset} -b br0 /dev/sdX             ${cyan}#$(gettext 'Execute uma device, em ponte, usando UEFI') ${rst}
+    $ ${orange}$APP${reset} -u -m 16G -b br0 /dev/sdX   ${cyan}#$(gettext 'Execute uma device, em ponte, 16Gb memória, usando UEFI') ${rst}
+    $ ${orange}$APP${reset} -a pipewire /dev/sdX        ${cyan}#$(gettext 'Execute uma device, em NAT, usando audio pipewire') ${rst}
+    $ ${orange}$APP${reset} file.iso                    ${cyan}#$(gettext 'Execute uma imagem usando BIOS')${rst}
+    $ ${orange}$APP${reset} -b file.img                 ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando BIOS')${rst}
+    $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#$(gettext 'Execute uma device, 16GB memória, usando BIOS') ${rst}
+  ${bold}${cyan}$(gettext 'Uso mais comum:')${rst}
+    $ ${orange}$APP${reset} [-u] /dev/sdX ${rst}
+    $ ${orange}$APP${reset} [-u] filename.iso sda.img ${rst}
+    $ ${orange}$APP${reset} $HOME_DIR/vdisk/sda.img ${rst}
+    $ ${orange}$APP${reset} $HOME_DIR/vdisk/vda.qcow2 ${rst}
+    $ ${orange}$APP${reset} -u --video VGA --display sdl $HOME_DIR/downloads/filename.iso ${rst}
+    $ ${orange}$APP${reset} -u --video virtio-vga-gl --display gtk $HOME_DIR/downloads/filename.iso ${rst}
 EOF
-	exit 0
+  exit 0
 }
 
 sh_createVdiskFiles() {
@@ -1702,7 +1716,8 @@ main::attach_primary_devices() {
 		elif [[ -b "$img" ]]; then
 			msg_info "$(gettext 'Anexando device') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
 			qemu_options+=(
-				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+#				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=io_uring
 			)
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 
@@ -1769,7 +1784,7 @@ main::handle_spice_or_display() {
 		exit 0
 	fi
 
-	qemu_options+=(-device "$videodevice" -display sdl)
+	qemu_options+=(-device "$videodevice" -display ${displaydevice},gl=on)
 
 	if $only_tty; then
 		if $output; then
@@ -1853,7 +1868,7 @@ if [ -z "$DISPLAY" ]; then
 fi
 
 OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
-LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:
+LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:,display:
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 #eval set -- "${opts[*]}"
 eval set -- "${opts[@]}"
@@ -1972,6 +1987,14 @@ while [ $# -gt 0 ]; do
 			shift
 		else
 			die "${red}$(gettext 'Argumento inválido para') ${yellow}-g|--video${rst} $(gettext 'Use:') ${cyan}${avideodevice[@]}${rst}" >&2
+		fi
+		;;
+	--display)
+    if [[ " ${adisplaydevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
+			displaydevice="$2"
+			shift
+		else
+			die "${red}$(gettext 'Argumento inválido para') ${yellow}--display${rst} $(gettext 'Use:') ${cyan}${adisplaydevice[@]}${rst}" >&2
 		fi
 		;;
 	-l | --list)
