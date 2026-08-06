@@ -5,7 +5,7 @@
 #  chili-parted - Wrapper parted para particionamento de disco
 #  Created: 2022/09/10 - 00:13
 #  Altered: 2025/01/20 - 10:48
-#  Updated: qua 18 mar 2026 08:02:57 -04
+#  Updated: seg 27 jul 2026 06:43:56 +00
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -32,7 +32,7 @@
 ##############################################################################
 #export LANGUAGE=pt_BR
 export TEXTDOMAINDIR=/usr/share/locale
-export TEXTDOMAIN=t
+export TEXTDOMAIN=chili-parted
 
 #debug
 export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
@@ -43,19 +43,49 @@ shopt -s extglob
 #system
 declare APP="${0##*/}"
 declare _VERSION_="1.3.18-20260318"
-declare distro="$(uname -n)"
-declare DEPENDENCIES=(losetup tput parted kpartx smartctl qemu-img)
-declare DEPPACKAGES=(util-linux ncurses parted multipath-tools smartmontools qemu-img)
+declare DEPENDENCIES=(losetup tput parted kpartx smartctl qemu-img sgdisk wipefs)
+declare DEPPACKAGES=(util-linux ncurses parted multipath-tools smartmontools qemu-img gdisk)
+
+
+# gettext.sh fornece as funções shell gettext/gettext/ngettext
+if [[ ! -r /usr/bin/gettext.sh ]]; then
+  # fallback: sem gettext.sh disponível, funções viram passthrough (sem tradução)
+  function gettext() { printf '%s' "$1"; }
+  function gettext() { eval "printf '%s' \"$1\""; }
+fi
 
 function conf() {
-	read -r -p "$1 [Y/n]"
-	[[ ${REPLY^} == "" ]] && return 0
-	[[ ${REPLY^} == N ]] && return 1 || return 0
+	read -r -p "$1 [Y/n] "
+	[[ -z "$REPLY" ]] && return 0
+	[[ "${REPLY^^}" == N* ]] && return 1 || return 0
+}
+
+function has_command() {
+	command -v "$1" >/dev/null && return 0 || return 1
+}
+
+function sh_checkdeps() {
+	local missing=()
+	local i
+	for i in "${!DEPENDENCIES[@]}"; do
+		if ! has_command "${DEPENDENCIES[$i]}"; then
+			missing+=("${DEPENDENCIES[$i]} (${DEPPACKAGES[$i]:-?})")
+		fi
+	done
+	if ((${#missing[@]} > 0)); then
+		printf '%s\n' "${red}$(gettext "Erro: dependências ausentes:")${reset}"
+		local dep
+		for dep in "${missing[@]}"; do
+			printf '\t%s\n' "${yellow}${dep}${reset}"
+		done
+		return 1
+	fi
+	return 0
 }
 
 function sh_setvarcolors() {
 	# does the terminal support true-color?
-	if [[ -n "$(command -v "tput")" ]]; then
+	if has_command "tput"; then
 		#tput setaf 127 | cat -v  #capturar saida
 		reset=$(tput sgr0)
 		rst=$(tput sgr0)
@@ -84,6 +114,7 @@ function sh_setvarcolors() {
 		orange=$(tput setaf 202)
 		purple=$(tput setaf 125)
 		violet=$(tput setaf 61)
+		pink=$(tput setaf 213)
 
 		# Definir cores de fundo
 		preto=$(tput setab 0)
@@ -101,6 +132,11 @@ function sh_setvarcolors() {
 	else
 		bold=''
 		reset="\e[0m"
+		rst="\e[0m"
+		underline="\e[4m"
+		nounderline="\e[24m"
+		reverse="\e[7m"
+
 		blue="\e[1;34m"
 		cyan="\e[1;36m"
 		green="\e[1;32m"
@@ -112,6 +148,29 @@ function sh_setvarcolors() {
 		black="\e[1;30m"
 		purple="\e[1;35m"
 		violet="\e[1;35m"
+		magenta="\e[1;35m"
+		gray="\e[1;30m"
+		light_red="\e[1;91m"
+		light_green="\e[1;92m"
+		light_yellow="\e[1;93m"
+		light_blue="\e[1;94m"
+		light_magenta="\e[1;95m"
+		light_cyan="\e[1;96m"
+		light_white="\e[1;97m"
+
+		# Cores de fundo (sem tput)
+		preto="\e[40m"
+		vermelho="\e[41m"
+		verde="\e[42m"
+		amarelo="\e[43m"
+		azul="\e[44m"
+		roxo="\e[45m"
+		ciano="\e[46m"
+		branca="\e[1;30m\e[47m"
+		cinza="\e[100m"
+		laranja="\e[43m"
+		roxa="\e[45m"
+		violeta="\e[45m"
 	fi
 }
 
@@ -185,15 +244,23 @@ function chili-setup-img() {
 
 function sh_checkroot() {
 	if [ "$(id -u)" != "0" ]; then
-		printf "%s\n" "${red} error: You cannot perform this operation unless you are root!"
+		printf "${red} $(gettext "erro: você não pode executar esta operação a menos que seja root!")\n"
 		exit 1
 	fi
 }
 
+function sh_oninterrupt() {
+	printf "\n${red}$(gettext "Interrompido pelo usuário! O disco pode ter ficado em estado inconsistente.")${reset}\n"
+	printf "${yellow}$(gettext "Verifique com 'fdisk -l' ou 'parted print' antes de prosseguir.")${reset}\n"
+	exit 130
+}
+trap sh_oninterrupt INT TERM
+
 sh_setvarcolors
+sh_checkdeps || exit 1
 if [[ $# -eq 0 ]]; then
-	printf '%s\n' "${orange}chili-parted - utilitario para particionar disco${reset}"
-	printf '%s\n' "${red}Usage:${reset}"
+	printf '%s\n' "${orange}$(gettext "chili-parted - utilitario para particionar disco")${reset}"
+	printf '%s\n' "${red}$(gettext "Uso:")${reset}"
 	printf '\t%s\n' "chili-parted ${yellow}/dev/sdX${reset}"
 	printf '\t%s\n' "chili-parted ${yellow}image.img${reset}"
 	exit 1
@@ -201,34 +268,71 @@ fi
 
 function sh_parted() {
 	local error=false
+	local sd="$1"
 
-	sd="$1"
-	if ! smartctl -Hi "$sd"; then
-		error=true
+	if [[ -z "$sd" ]]; then
+		printf "${red}$(gettext "Erro: nenhum dispositivo/imagem informado!")${reset}\n"
+		return 1
 	fi
-	if fdisk -l "$sd"; then
-		if $error; then
-			echo "====================================================${reset}"
-			echo "${cyan}AVISO! disco $sd ${red}NÃO PASSOU ${cyan}no teste de SMART!${reset}"
-			echo "====================================================${reset}"
+
+	if ! fdisk -l "$sd" &>/dev/null; then
+		printf "${red}$(gettext "Erro: dispositivo/arquivo '\$sd' não encontrado ou inválido!")${reset}\n"
+		return 1
+	fi
+
+	# smartctl só faz sentido em dispositivo de bloco real, não em arquivo de imagem
+	if [[ -b "$sd" ]]; then
+		if ! smartctl -Hi "$sd"; then
+			error=true
 		fi
-		echo -e "${yellow}AVISO, CUIDADO, tudo será apagado!!"
-		if conf "Continuar com o particionamento?"; then
-			wipefs -a "$sd"
-			sgdisk --zap-all "$sd"
-			parted --align=opt --script "$sd" -- \
-				mklabel gpt \
-				mkpart primary 2MiB 4MiB \
-				set 1 bios_grub on name 1 BIOS \
-				mkpart primary fat32 4MiB 132MiB \
-				set 2 esp on name 2 EFI \
-				mkpart primary ext4 132MiB 100% \
-				name 3 ROOT
-			parted --script "$sd" -- print
+	fi
+
+	fdisk -l "$sd"
+
+	if $error; then
+		echo "===========================================================================${reset}"
+		printf "${cyan}$(gettext "AVISO! disco $sd NÃO PASSOU no teste de SMART!")${reset}\n"
+		echo "===========================================================================${reset}"
+	fi
+
+	printf "${yellow}$(gettext "AVISO, CUIDADO, tudo será apagado!!")${reset}\n"
+	printf "${red}$(gettext "Digite exatamente ${cyan}$sd${red} para confirmar a destruição dos dados: ")${reset}"
+	read -r confirm_sd
+	if [[ "$confirm_sd" != "$sd" ]]; then
+		printf "${red}$(gettext "Confirmação não confere. Operação cancelada.")${reset}\n"
+		return 1
+	fi
+
+	if conf "$(gettext "Continuar com o particionamento?")"; then
+		if ! wipefs -a "$sd"; then
+			printf "${red}$(gettext "Erro: falha ao limpar assinaturas de '$sd'")${reset}\n"
+			return 1
 		fi
+		if ! sgdisk --zap-all "$sd"; then
+			printf "${red}$(gettext "Erro: falha ao zerar a tabela de partições de '$sd'")${reset}\n"
+			return 1
+		fi
+		if ! parted --align=opt --script "$sd" -- \
+			mklabel gpt \
+			mkpart primary 2MiB 4MiB \
+			set 1 bios_grub on name 1 BIOS \
+			mkpart primary fat32 4MiB 132MiB \
+			set 2 esp on name 2 EFI \
+			mkpart primary ext4 132MiB 100% \
+			name 3 ROOT; then
+			printf "${red}$(gettext "Erro: falha ao particionar '$sd'")${reset}\n"
+			return 1
+		fi
+		parted --script "$sd" -- print
 	fi
 }
 
-sh_setvarcolors
+if [[ $# -gt 1 ]]; then
+	printf "${red}$(gettext "Erro: argumentos demais. Informe apenas um dispositivo ou imagem.")${reset}\n"
+	printf '\t%s\n' "chili-parted ${yellow}/dev/sdX${reset}"
+	exit 1
+fi
+
 sh_checkroot "$@"
 sh_parted "$@"
+
