@@ -1,0 +1,738 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
+#
+# chili-change-uid-user
+# remapeia UID/GID de um usuário com segurança
+# Uso: fix-uid.sh -u USUARIO -n NOVO_UID [-g NOVO_GID] [-y] [-n-color]
+# Testado para funcionar em sh/bash
+#
+# Substitui a sequência manual:
+#   pkill -u USUARIO
+#   usermod -u NOVO_UID USUARIO
+#   groupmod -g NOVO_GID grupo
+#   chown -R --from=UID_ANTIGO:GID_ANTIGO NOVO_UID:NOVO_GID /home/USUARIO
+#
+#  Created: seg 16 fev 2026 09:49:46 -04
+#  Updated: sáb 08 ago 2026 17:28:20 -04
+#
+#  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
+#  Assembled By Vilmar Catafesta for the ChiliLinux project.
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY Vilmar Catafesta ''AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+export LANGUAGE="${LANGUAGE:-pt_BR}"
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-change-uid-user
+
+#debug
+export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
+#set -x
+#set -e
+#set -euo pipefail
+shopt -s extglob
+
+#system
+declare APP="${0##*/}"
+declare _VERSION_="0.02.16-20260216"
+declare APPDESC="$APP - Wraper for "
+declare distro="$(uname -n)"
+declare -A PACKAGEDEP=(
+	[gettext]=gettext
+	[dd]=coreutils
+	[hdparm]=hdparm
+	[fio]=fio
+	[tput]=ncurses
+)
+# Mapa: [distro]="lista de pacotes"
+declare -A DISTRO_PKGS=(
+	["void"]="gettext rsync parted curl xz lvm2"
+	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidlinux"]="gettext rsync parted curl xz lvm2"
+	["chili"]="gettext rsync parted curl xz"
+	["chililinux"]="gettext rsync parted curl xz"
+	["arch"]="gettext rsync parted curl xz"
+	["manjaro"]="gettext rsync parted curl xz"
+	["debian"]="gettext-base rsync parted curl xz-utils"
+)
+# Mapa: [distro]="comando de instalação"
+declare -A DISTRO_MGR=(
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
+)
+# Mapa: [distro]="lista de pacotes"
+declare -A DISTRO_PKGS=(
+	["void"]="gettext rsync parted curl xz lvm2"
+	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidlinux"]="gettext rsync parted curl xz lvm2"
+	["chili"]="gettext rsync parted curl xz"
+	["chililinux"]="gettext rsync parted curl xz"
+	["arch"]="gettext rsync parted curl xz"
+	["biglinux"]="gettext rsync parted curl xz"
+	["manjaro"]="gettext rsync parted curl xz"
+	["debian"]="gettext-base rsync parted curl xz-utils"
+)
+# Mapa: [distro]="comando de instalação"
+declare -A DISTRO_MGR=(
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["viglinux"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
+)
+declare dialogRcFile="$HOME/.dialogrc"
+
+cleanup() { rm -f "$dialogRcFile"; }
+#trap cleanup EXIT
+MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
+trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
+
+sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
+
+set_varcolors() {
+	sh_check_terminal
+	# does the terminal support true-color?
+	if [[ -n "$(command -v "tput")" ]]; then
+		#tput setaf 127 | cat -v  #capturar saida
+		: "${RED=$(tput bold)$(tput setaf 196)}"
+		: "${GREEN=$(tput bold)$(tput setaf 2)}"
+		: "${YELLOW=$(tput bold)$(tput setaf 3)}"
+		: "${BLUE=$(tput setaf 4)}"
+		: "${PURPLE=$(tput setaf 125)}"
+		: "${CYAN=$(tput setaf 6)}"
+		: "${NC=$(tput sgr0)}"
+		: "${RESET=$(tput sgr0)}"
+		: "${BOLD=$(tput bold)}"
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${reverse=$(tput rev)}"
+		: "${branca=${black}$(tput setab 7)}"
+
+		: "${reset=$(tput sgr0)}"
+		: "${rst=$(tput sgr0)}"
+		: "${bold=$(tput bold)}"
+		: "${underline=$(tput smul)}"
+		: "${nounderline=$(tput rmul)}"
+		: "${reverse=$(tput rev)}"
+
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${red=$(tput bold)$(tput setaf 196)}"
+		: "${green=$(tput bold)$(tput setaf 2)}"
+		: "${yellow=$(tput bold)$(tput setaf 3)}"
+		: "${blue=$(tput setaf 27)}"
+		: "${pink=$(tput setaf 5)}"
+		: "${magenta=$(tput setaf 5)}"
+		: "${cyan=$(tput setaf 6)}"
+		: "${white=$(tput setaf 7)}"
+		: "${gray=$(tput setaf 8)}"
+		: "${light_red=$(tput setaf 9)}"
+		: "${light_green=$(tput setaf 10)}"
+		: "${light_yellow=$(tput setaf 11)}"
+		: "${light_blue=$(tput setaf 12)}"
+		: "${light_magenta=$(tput setaf 13)}"
+		: "${light_cyan=$(tput setaf 14)}"
+		: "${light_white=$(tput setaf 15)}"
+		: "${orange=$(tput setaf 202)}"
+		: "${purple=$(tput setaf 125)}"
+		: "${violet=$(tput setaf 61)}"
+
+		# Definir cores de fundo
+		: "${preto=$(tput setab 0)}"
+		: "${vermelho=$(tput setab 196)}"
+		: "${verde=$(tput setab 2)}"
+		: "${amarelo=$(tput setab 3)}"
+		: "${azul=$(tput setab 20)}"
+		: "${roxo=$(tput setab 5)}"
+		: "${ciano=$(tput setab 6)}"
+		: "${branca="${black}$(tput setab 7)"}"
+		: "${cinza=$(tput setab 8)}"
+		: "${laranja=$(tput setab 202)}"
+		: "${roxa=$(tput setab 125)}"
+		: "${violeta=$(tput setab 61)}"
+
+		: "${COL_NC='\e[0m'}" # No Color
+		: "${COL_LIGHT_GREEN='\e[1;32m'}"
+		: "${COL_LIGHT_RED='\e[1;31m'}"
+		: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
+		: "${OVER="\\r\\033[K"}"
+		: "${DOTPREFIX="  ${black}::${reset} "}"
+		: "${clrkey=${light_white}}"
+		: "${TICK="${clrkey}[${green}✓${clrkey}]${rst}"}"
+		: "${CROSS="${clrkey}[${red}✗${clrkey}]${rst}"}"
+		: "${MID="${clrkey}[${red}✗${green}✓${clrkey}]${rst}"}"
+		: "${WARN="${clrkey}[${yellow}⚠${clrkey}]${yellow}"}"
+		: "${INFO="${clrkey}[${yellow}➡ ${clrkey}]${rst}"}"
+
+		# dialog colors
+		REVERSE="\Zr"
+		UNDERLINE="\Zu"
+		BOLD="\Zb"
+		RESET="\Zn"
+		BLACK="\Z0"
+		YELLOW="\Z3"
+		AMARELO="\Zb\Z3"
+		WHITE="\Z7"
+		BLUE="\Z4"
+		AZUL="\Zb\Z4"
+		CYAN="\Z6"
+		RED="\Z1"
+		GREEN="\Z2"
+		MAGENTA="\Z5"
+	else
+		unset_varcolors
+	fi
+}
+
+unset_varcolors() {
+	unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
+	unset reset rst bold underline nounderline reverse
+	unset black red green yellow blue magenta cyan white gray orange purple violet
+	unset light_red light_green light_yellow light_blue light_magenta light_cyan light_white
+	unset preto vermelho verde amarelo azul roxo ciano branca cinza laranja roxa violeta
+	TICK="${white}[${verde}✓${rst}${white}]${rst}"
+	CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
+	INFO="${white}[${cinza}i${rst}${white}]${rst}"
+}
+
+sh_create_dialogrc() {
+	cat >"$dialogRcFile" <<EOF_DIALOGRC
+screen_color = (white,black,off)
+dialog_color = (white,black,off)
+title_color = (green,black,on)
+border_color = dialog_color
+shadow_color = (black,black,on)
+button_inactive_color = dialog_color
+button_key_inactive_color = dialog_color
+button_label_inactive_color = dialog_color
+button_active_color = (black,green,on)
+button_key_active_color = button_active_color
+button_label_active_color = (white,green,on)
+tag_key_selected_color = (white,green,on)
+item_selected_color = tag_key_selected_color
+form_text_color = (green,black,on)
+form_item_readonly_color = (cyan,black,on)
+itemhelp_color = (white,green,off)
+inputbox_color = dialog_color
+inputbox_border_color = dialog_color
+searchbox_color = dialog_color
+searchbox_title_color = title_color
+searchbox_border_color = border_color
+position_indicator_color = title_color
+menubox_color = dialog_color
+menubox_border_color = border_color
+item_color = dialog_color
+tag_color = title_color
+tag_selected_color = button_label_active_color
+tag_key_color = button_key_inactive_color
+check_color = dialog_color
+check_selected_color = button_active_color
+uarrow_color = screen_color
+darrow_color = screen_color
+form_active_text_color = button_active_color
+gauge_color = title_color
+border2_color = dialog_color
+searchbox_border2_color = dialog_color
+menubox_border2_color = dialog_color
+separate_widget = ''
+tab_len = 0
+visit_items = off
+use_shadow = off
+use_colors = on
+EOF_DIALOGRC
+	export DIALOGRC="$dialogRcFile"
+}
+
+# Teste se o terminal suporta caracteres gráficos estendidos
+sh_ascii_lines() {
+	#Isso força o dialog a usar caracteres ASCII básicos para as bordas.
+	#if [[ "$LANG" =~ 'UTF-8' ]]; then
+	[[ "$(printf '\u250C')" == "┌" ]]
+	export NCURSES_NO_UTF8_ACS=$((!$?))
+}
+
+sh_setEnvironment() {
+	[[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
+	sh_ascii_lines
+}
+
+sh_checkroot() {
+	((EUID != 0)) && elevate_to_root "$@" || return 0
+}
+
+elevate_to_root() {
+	log_ok "This script must be run as root. Elevating privileges..."
+	ccabec+='root [elevated]'
+	# Tenta usar sudo primeiro (caso esteja configurado)
+	if command -v sudo >/dev/null 2>&1; then
+		exec sudo bash "$0" "$@"
+	fi
+	# Se sudo falhar, tenta su
+	if command -v su >/dev/null 2>&1; then
+		exec su -c "$0 $*"
+	fi
+	die "Error: Unable to elevate privileges. Run manually as root."
+}
+
+replicate() {
+	local char="${1:-#}"
+	local nsize="${2:-$(tput cols)}"
+	# Gera linha com substituição direta sem forks extras
+	printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
+}
+
+readconf() {
+	local msg="$1"
+	local color="${2:-${yellow}}"
+
+	echo -n -e "$color"
+	if [[ $LC_DEFAULT -eq 0 ]]; then
+		read -r -p "$msg [N/s] :"
+	else
+		read -r -p "$msg [N/y] :"
+	fi
+	echo -n -e "$reset"
+	case "${REPLY^}" in
+	[SY]) return 0 ;;
+	"") return 1 ;;
+	*) return 1 ;;
+	esac
+}
+
+debug() {
+	# dialog
+	whiptail --fb --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n" 0 40
+	local result="$?"
+	((result)) && exit "$result"
+	return "$result"
+}
+
+# ===================================================================
+# Funções auxiliares
+# ===================================================================
+run_cmd() {
+	local cmd="$*"
+
+	if [[ $DRYRUN -eq 1 ]]; then
+		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
+	else
+		echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
+		# Executa o comando, falha se houver erro
+		# Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
+		if [[ "$cmd" =~ ^mkdir\ -p ]] || [[ "$cmd" =~ ^umount\ -R ]]; then
+			eval "$cmd" &>/dev/null || true
+		else
+			eval "$cmd" || log_warn_tab "Falha ao executar: $cmd"
+		fi
+	fi
+}
+
+sh_copyright() {
+	cat <<-EOF-COPY
+		${bold}${cyan}${0##*/} v${_VERSION_}${rst}
+		${bold}${cyan}${APPDESC}${rst}
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
+	EOF-COPY
+}
+
+sh_version() {
+	cat <<-EOF-VERSION
+		  $(sh_copyright)
+
+		        $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
+		        $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
+		        $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
+		        $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
+		        $(gettext 'o código fonte específico usado para criar esta cópia.')
+		        ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')${reset}
+	EOF-VERSION
+}
+
+msg() { echo -e "${INFO} ${*}${reset}"; }
+log_ok() { echo -e "${TICK} ${*}${reset}"; }
+log_err() { echo -e "${CROSS} ${*}${reset}"; }
+log_mid() { echo -e "${MID} ${*}${reset}"; }
+log_warn() { echo -e "${WARN} ${*}${reset}"; }
+msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
+log_ok_tab() { echo -e "  ${TICK} ${*}${reset}"; }
+log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
+log_mid_tab() { echo -e "  ${MID} ${*}${reset}"; }
+log_warn_tab() { echo -e "  ${WARN} ${*}${reset}"; }
+die() {
+	echo -e "${CROSS} ${red}${*}${reset}"
+	exit 1
+}
+
+detect_distro() {
+	local id=""
+
+	if [[ -r /etc/os-release ]]; then
+		# Lê ID=void|arch|debian|... exatamente como a distro declara
+		id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+	elif [[ -r /usr/lib/os-release ]]; then
+		id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
+	else
+		echo "unknown"
+		return
+	fi
+	echo "$id"
+}
+
+sh_checkDependencies() {
+	local DISTRO="$(detect_distro)"
+	local aBlock_files=()
+	local d
+	local pkg
+	local errorFound=false
+	declare -a missing
+	local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+	local cmsgPkg="$(gettext "instalar pacote")"
+
+	for d in "${!PACKAGEDEP[@]}"; do
+		if ! command -v "$d" &>/dev/null; then
+			pkg="${PACKAGEDEP[$d]}"
+			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+			missing+=("${pkg}")
+			errorFound=true
+		else
+			#log_msg "Check: ${cyan}$d"
+			:
+		fi
+	done
+
+	if $errorFound; then
+		replicate '='
+		echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
+		echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
+		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
+		replicate '='
+
+		local cmd="${DISTRO_MGR[$DISTRO]}"
+		#local pkgs="${DISTRO_PKGS[$DISTRO]}"
+		local pkgs="${missing[@]}"
+
+		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		if readconf "$(gettext "Instalar dependências base agora?")"; then
+			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
+			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+			if ! $cmd $pkgs; then
+				echo
+				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+				exit 1
+			fi
+			echo
+			echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+		fi
+	fi
+}
+
+# configure ambiente
+set_varcolors
+sh_checkroot "$@"
+
+##########################################################################################################
+
+set -eu
+
+log_info()  { printf '%s[*]%s %s\n'  "$blue"   "$reset" "$*"; }
+log_ok()    { printf "%s${TICK}%s %s\n" "$green"  "$reset" "$*"; }
+log_warn()  { printf '%s[!]%s %s\n'  "$yellow" "$reset" "$*"; }
+log_err()   { printf "%s${CROSS}%s %s\n" "$red"  "$reset" "$*" >&2; }
+log_step()  { printf '%s%s==>%s %s%s\n' "$bold" "$cyan" "$reset" "$bold" "$*$reset"; }
+
+next_free_uid() {
+    min=$(awk '$1=="UID_MIN"{print $2}' /etc/login.defs 2>/dev/null | head -1)
+    [ -n "$min" ] || min=1000
+    awk -F: -v min="$min" '
+        BEGIN { for (i = min; i < 65000; i++) used[i] = 0 }
+        { if ($3 >= min) used[$3] = 1 }
+        END { for (i = min; i < 65000; i++) if (!used[i]) { print i; exit } }
+    ' /etc/passwd
+}
+
+next_free_gid() {
+    min=$(awk '$1=="GID_MIN"{print $2}' /etc/login.defs 2>/dev/null | head -1)
+    [ -n "$min" ] || min=1000
+    awk -F: -v min="$min" '
+        BEGIN { for (i = min; i < 65000; i++) used[i] = 0 }
+        { if ($3 >= min) used[$3] = 1 }
+        END { for (i = min; i < 65000; i++) if (!used[i]) { print i; exit } }
+    ' /etc/group
+}
+
+# ---------------------------------------------------------------------------
+# Uso / help
+# ---------------------------------------------------------------------------
+
+usage() {
+    cat <<EOF
+${bold}${cyan}Uso:${reset} ${bold}$APP${reset} -u USUARIO -n NOVO_UID [-g NOVO_GID] [opções]
+
+Remapeia UID/GID de um usuário com segurança: mata processos, muda
+uid/gid e ajusta a dono/grupo do diretório home (equivalente a
+usermod -u + groupmod -g + chown -R --from=...).
+
+${bold}${cyan}Parâmetros:${reset}
+  ${green}-u, --user${reset} USUARIO     Nome do usuário a remapear (obrigatório)
+  ${green}-n, --new-uid${reset} UID       Novo UID (padrão: próximo UID livre, igual ao useradd)
+  ${green}-g, --new-gid${reset} GID       Novo GID do grupo primário (padrão: próximo GID livre)
+  ${green}-H, --home${reset} PATH         Caminho do home a ajustar (padrão: home do usuário)
+  ${green}-a, --all${reset}               Varre TODO o sistema (raiz /), não só o home,
+                           ajustando dono/grupo de qualquer arquivo com o
+                           UID/GID antigo (ex: /var/mail, /tmp, crontabs)
+                           ${yellow}LENTO e arriscado — use com cuidado${reset}
+  ${green}-y, --yes${reset}               Não pedir confirmação (não dispensa --force-self)
+  ${green}--force-self${reset}            Confirma que você sabe que a sessão atual pertence
+                           ao próprio usuário sendo remapeado (self-target)
+  ${green}--no-color${reset}              Desativa cores mesmo em terminal
+  ${green}-h, --help${reset}              Mostra esta ajuda
+
+${bold}${cyan}Sobre sessões ativas:${reset}
+  O script detecta se o usuário tem sessões abertas (local ou SSH) e se a
+  sessão que está executando o script é a do próprio usuário. Em ambos os
+  casos ele avisa antes de matar processos, pra evitar derrubar sua
+  conexão SSH ou o shell que chamou o script no meio da operação.
+
+${bold}${cyan}Exemplos:${reset}
+  ${blue}$APP -u vcatafesta${reset}
+  ${blue}$APP -u vcatafesta -n 1000${reset}
+  ${blue}$APP -u vcatafesta -n 1000 -g 1000 -y${reset}
+  ${blue}$APP --user vcatafesta --home /home/vcatafesta${reset}
+
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Parsing de argumentos
+# ---------------------------------------------------------------------------
+USER_NAME=""
+NEW_UID=""
+NEW_GID=""
+HOME_PATH=""
+DO_ALL=0
+ASSUME_YES=0
+FORCE_SELF=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -u|--user)      USER_NAME="${2:?faltou valor para $1}"; shift 2 ;;
+        -n|--new-uid)   NEW_UID="${2:?faltou valor para $1}"; shift 2 ;;
+        -g|--new-gid)   NEW_GID="${2:?faltou valor para $1}"; shift 2 ;;
+        -H|--home)      HOME_PATH="${2:?faltou valor para $1}"; shift 2 ;;
+        -a|--all)       DO_ALL=1; shift ;;
+        -y|--yes)       ASSUME_YES=1; shift ;;
+        --force-self)   FORCE_SELF=1; shift ;;
+        --no-color)     reset=""; bold=""; red=""; green=""; yellow=""; blue=""; cyan=""; shift ;;
+        -h|--help)      usage; exit 0 ;;
+        --) shift; break ;;
+        -*) log_err "opção desconhecida: $1"; usage; exit 1 ;;
+        *) log_err "argumento inesperado: $1"; usage; exit 1 ;;
+    esac
+done
+
+if [ -z "$USER_NAME" ]; then
+    log_err "falta parâmetro obrigatório (-u)"
+    usage
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Validações
+# ---------------------------------------------------------------------------
+if [ "$(id -u)" -ne 0 ]; then
+    log_err "este script precisa ser executado como root"
+    exit 1
+fi
+
+if ! id "$USER_NAME" >/dev/null 2>&1; then
+    log_err "usuário '$USER_NAME' não existe"
+    exit 1
+fi
+
+if [ -z "$NEW_UID" ]; then
+    NEW_UID=$(next_free_uid)
+    log_info "--new-uid não informado, usando o próximo livre: $NEW_UID"
+fi
+
+if [ -z "$NEW_GID" ]; then
+    NEW_GID=$(next_free_gid)
+    log_info "--new-gid não informado, usando o próximo livre: $NEW_GID"
+fi
+
+case "$NEW_UID" in ''|*[!0-9]*) log_err "UID inválido: $NEW_UID"; exit 1 ;; esac
+case "$NEW_GID" in ''|*[!0-9]*) log_err "GID inválido: $NEW_GID"; exit 1 ;; esac
+
+OLD_UID=$(id -u "$USER_NAME")
+OLD_GID=$(id -g "$USER_NAME")
+GROUP_NAME=$(id -gn "$USER_NAME")
+[ -n "$HOME_PATH" ] || HOME_PATH=$(getent passwd "$USER_NAME" | cut -d: -f6)
+
+if [ "$OLD_UID" = "$NEW_UID" ] && [ "$OLD_GID" = "$NEW_GID" ]; then
+    log_warn "UID/GID já são $NEW_UID:$NEW_GID — nada a fazer"
+    exit 0
+fi
+
+if getent passwd "$NEW_UID" >/dev/null 2>&1 && [ "$(id -u "$USER_NAME")" != "$NEW_UID" ]; then
+    conflito=$(getent passwd "$NEW_UID" | cut -d: -f1)
+    if [ "$conflito" != "$USER_NAME" ]; then
+        log_err "UID $NEW_UID já está em uso por '$conflito'"
+        exit 1
+    fi
+fi
+
+if getent group "$NEW_GID" >/dev/null 2>&1; then
+    conflito_g=$(getent group "$NEW_GID" | cut -d: -f1)
+    if [ "$conflito_g" != "$GROUP_NAME" ]; then
+        log_err "GID $NEW_GID já está em uso pelo grupo '$conflito_g'"
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Detecta se a sessão atual pertence ao próprio usuário (self-target) e
+# levanta a cadeia de processos ancestrais do script, pra não matar a si
+# mesmo depois.
+# ---------------------------------------------------------------------------
+ancestors="$$"
+p="$$"
+while [ "$p" -gt 1 ] 2>/dev/null; do
+    ppid=$(awk '/^PPid:/{print $2; exit}' "/proc/$p/status" 2>/dev/null) || break
+    [ -n "$ppid" ] && [ "$ppid" -gt 0 ] 2>/dev/null || break
+    ancestors="$ancestors $ppid"
+    p="$ppid"
+done
+
+self_target=0
+for a in $ancestors; do
+    owner=$(awk '/^Uid:/{print $2; exit}' "/proc/$a/status" 2>/dev/null) || continue
+    if [ "$owner" = "$OLD_UID" ]; then
+        self_target=1
+        break
+    fi
+done
+
+if [ "$self_target" -eq 1 ]; then
+    log_warn "a sessão que está rodando este script pertence a '$USER_NAME' (self-target)"
+    log_warn "matar os processos vai derrubar o shell/SSH que chamou o script"
+    if [ "$FORCE_SELF" -ne 1 ]; then
+        log_err "use --force-self pra confirmar que você entende o risco, ou rode a partir de outra sessão/tty/usuário"
+        exit 1
+    fi
+    log_warn "--force-self confirmado, a sessão atual (PIDs: $ancestors) será preservada"
+fi
+
+sessions=$(who 2>/dev/null | awk -v u="$USER_NAME" '$1==u' || true)
+if [ -n "$sessions" ]; then
+    log_warn "'$USER_NAME' tem sessão(ões) ativa(s):"
+    printf '%s\n' "$sessions" | while IFS= read -r line; do printf '    %s\n' "$line"; done
+    if printf '%s\n' "$sessions" | grep -q '('; then
+        log_warn "isso parece incluir conexão(ões) remota(s)/SSH — serão derrubadas"
+    fi
+    if [ "$ASSUME_YES" -ne 1 ]; then
+        printf '%sDigite CONFIRMAR para derrubar essas sessões: %s' "$yellow" "$reset"
+        read -r resp_sess
+        [ "$resp_sess" = "CONFIRMAR" ] || { log_warn "cancelado pelo usuário"; exit 1; }
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Resumo e confirmação
+# ---------------------------------------------------------------------------
+log_step "Resumo da operação"
+printf '  Usuário:      %s\n' "$USER_NAME"
+printf '  UID atual:    %s   -> novo: %s\n' "$OLD_UID" "$NEW_UID"
+printf '  GID atual:    %s (%s) -> novo: %s\n' "$OLD_GID" "$GROUP_NAME" "$NEW_GID"
+printf '  Home:         %s\n' "$HOME_PATH"
+printf '  chown em /:   %s\n' "$( [ "$DO_ALL" -eq 1 ] && echo sim || echo não )"
+
+if [ "$ASSUME_YES" -ne 1 ]; then
+    printf '%sConfirmar? [y/N] %s' "$yellow" "$reset"
+    read -r resp
+    case "$resp" in
+        y|Y|s|S) ;;
+        *) log_warn "cancelado pelo usuário"; exit 1 ;;
+    esac
+fi
+
+# ---------------------------------------------------------------------------
+# Execução
+# ---------------------------------------------------------------------------
+log_step "Matando processos de '$USER_NAME'"
+all_pids=$(pgrep -u "$USER_NAME" 2>/dev/null || true)
+kill_pids=""
+for pid in $all_pids; do
+    keep=0
+    for a in $ancestors; do
+        [ "$pid" = "$a" ] && keep=1 && break
+    done
+    [ "$keep" -eq 1 ] || kill_pids="$kill_pids $pid"
+done
+
+if [ -n "$kill_pids" ]; then
+    kill $kill_pids 2>/dev/null || true
+    for i in 1 2 3 4 5; do
+        still=0
+        for pid in $kill_pids; do [ -d "/proc/$pid" ] && still=1; done
+        [ "$still" -eq 0 ] && break
+        sleep 1
+    done
+    for pid in $kill_pids; do
+        [ -d "/proc/$pid" ] && kill -9 "$pid" 2>/dev/null || true
+    done
+    log_ok "processos finalizados (sessão atual do script preservada)"
+else
+    log_info "nenhum processo (fora da sessão atual) em execução para '$USER_NAME'"
+fi
+
+log_step "Alterando GID do grupo '$GROUP_NAME' para $NEW_GID"
+groupmod -g "$NEW_GID" "$GROUP_NAME"
+log_ok "grupo atualizado"
+
+log_step "Alterando UID de '$USER_NAME' para $NEW_UID"
+usermod -u "$NEW_UID" "$USER_NAME"
+log_ok "UID atualizado"
+
+log_step "Ajustando dono/grupo do home ($HOME_PATH)"
+if [ -d "$HOME_PATH" ]; then
+    chown -R "$NEW_UID:$NEW_GID" "$HOME_PATH"
+    log_ok "home ajustado"
+else
+    log_warn "home '$HOME_PATH' não encontrado, pulando"
+fi
+
+if [ "$DO_ALL" -eq 1 ]; then
+    log_step "Ajustando dono/grupo em todo o sistema (isso pode demorar)"
+    chown -R --from="$OLD_UID:$OLD_GID" "$NEW_UID:$NEW_GID" / 2>/dev/null || true
+    log_ok "varredura completa concluída"
+fi
+
+log_step "${green}Concluído${reset}: $USER_NAME agora é $NEW_UID:$NEW_GID"
