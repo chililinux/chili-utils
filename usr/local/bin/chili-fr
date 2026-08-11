@@ -4,8 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Altered: 2024/10/03 - 00:00
-#  Updated: sex 31 jul 2026 00:00:52 -04
+#  Updated: ter 11 ago 2026 01:45:02 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -49,7 +48,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.07.31-20260731'
+readonly VERSION='3.08.11-20260811'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -106,7 +105,7 @@ declare -a adisplaydevice=(
   dbus
   none
 )
-declare displaydevice='gtk'
+declare displaydevice='sdl' # gtk
 declare -a avideodevice=(
   #qemu-system-x86_64 -device help | grep -i virtio
   ati-vga
@@ -1450,9 +1449,9 @@ sh_create_vdisk_file() {
 
 sh_list_vdisks() {
 	replicate "================== $(gettext 'DISCOS VIRTUAIS DISPONÍVEIS em') $HOME_DIR/vdisk ===================" 1
-	echo -n $green
-	ls -lh $HOME_DIR/vdisk
-	echo -n $rst
+#	echo -n ${bpurple}
+	ls -lh $HOME_DIR/vdisk/
+#	echo -n $rst
 	replicate '='
 }
 
@@ -1675,20 +1674,21 @@ main::process_devices() {
 main::configure_uefi() {
   local DISTRO=$(detect_distro)
 
-	if $uefi; then
-		sh_checkOVMFFiles
-		msg_info "$(gettext 'Forçando inicialização UEFI...')"
+  if $uefi; then
+    sh_checkOVMFFiles
+    msg_info "$(gettext 'Forçando inicialização UEFI...')"
     case "$DISTRO" in
     void*)
-		cp -f /usr/share/edk2/x64/OVMF_VARS.4m.fd "$HOME_DIR/"
-    ;;
+        ovmf_dir="/usr/share/edk2/x64"
+        ;;
     *)
-		cp -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd "$HOME_DIR/"
-    ;;
+        ovmf_dir="/usr/share/edk2-ovmf/x64"
+        ;;
     esac
-		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd)
-		qemu_options+=(-drive if=pflash,format=raw,file=$HOME_DIR/OVMF_VARS.4m.fd)
-	fi
+    [ -f "$HOME_DIR/OVMF_VARS.4m.fd" ] || cp -f "$ovmf_dir/OVMF_VARS.4m.fd" "$HOME_DIR/"
+    qemu_options+=(-drive if=pflash,format=raw,readonly=on,file="$ovmf_dir/OVMF_CODE.4m.fd")
+    qemu_options+=(-drive if=pflash,format=raw,file="$HOME_DIR/OVMF_VARS.4m.fd")
+  fi
 }
 
 main::build_base_qemu() {
