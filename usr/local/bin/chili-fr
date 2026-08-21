@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: ter 11 ago 2026 01:45:02 -04
+#  Updated: qui 20 ago 2026 20:50:29 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -48,7 +48,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.08.11-20260811'
+readonly VERSION='3.08.20-20260820'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -1572,8 +1572,12 @@ print_summary_access_vm() {
 	# -E: interpreta como busca estendida
 	# O padrão busca "Host" no início da linha seguido de um ou mais espaços e o nome exato do host
 	if ! grep -iqE "^Host[[:space:]]+$HOST_FWD([[:space:]]|$)" "$CFG"; then
-		cat >>"$CFG" <<EOF
+    # Remove eventual entrada antiga do known_hosts
+    ssh-keygen -R "[$HOST_FWD]:$HOST_FWD" >/dev/null 2>&1 || :
+    ssh-keygen -R "$HOST_FWD" >/dev/null 2>&1 || :
+    ssh-keygen -R "[127.0.0.1]:$HOST_FWD" >/dev/null 2>&1 || :
 
+		cat >>"$CFG" <<EOF
 Host $HOST_FWD
     HostName 127.0.0.1
     Port $HOST_FWD
