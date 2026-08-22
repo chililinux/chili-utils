@@ -1,0 +1,294 @@
+# Chili Tradutor Go - 2.1.24-20260816
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.24-20260816\n"
+"POT-Creation-Date: 2026-08-22 13:01-0400\n"
+"PO-Revision-Date: 2026-08-22 13:01-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ko\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-backup-remoto:95 chili-backup-remoto:99 chili-backup-remoto:258
+#: chili-backup-remoto:386
+msgid "Aviso:"
+msgstr "알아채다:"
+
+#: chili-backup-remoto:95
+msgid "elevando privilégios com sudo para preservar donos/permissões..."
+msgstr "소유자/권한을 보존하기 위해 sudo로 권한을 높이는 중..."
+
+#: chili-backup-remoto:99
+msgid "rodando sem root; donos/grupos podem não ser preservados"
+msgstr "루트 없이 실행 중입니다. 소유자/그룹은 보존되지 않을 수 있습니다."
+
+#: chili-backup-remoto:117
+msgid "Uso:"
+msgstr "사용:"
+
+#: chili-backup-remoto:117
+msgid "ORIGEM"
+msgstr "기원"
+
+#: chili-backup-remoto:117
+msgid "DESTINO"
+msgstr "목적지"
+
+#: chili-backup-remoto:118
+msgid "ou:"
+msgstr "또는:"
+
+#: chili-backup-remoto:120
+msgid "Backup de servidor remoto via rsync + SSH."
+msgstr "rsync + SSH를 통한 원격 서버 백업."
+
+#: chili-backup-remoto:121
+msgid ""
+"Parâmetros pela linha de comando; opcionalmente complementados por um JSON."
+msgstr "명령줄을 통한 매개변수 선택적으로 JSON으로 보완됩니다."
+
+#: chili-backup-remoto:123
+msgid "Opções:"
+msgstr "옵션:"
+
+#: chili-backup-remoto:124
+msgid "Host/IP do servidor (omita p/ backup local)"
+msgstr "호스트/IP do servidor(p/백업 로컬 생략)"
+
+#: chili-backup-remoto:125
+msgid "Diretório a copiar (repita p/ vários)"
+msgstr "복사할 디렉터리(여러 번 반복)"
+
+#: chili-backup-remoto:126 chili-backup-remoto:153
+msgid "Destino local dos backups (padrão: /backup)"
+msgstr "로컬 백업 대상(기본값: /backup)"
+
+#: chili-backup-remoto:127 chili-backup-remoto:148
+msgid "Usuário SSH (padrão: root)"
+msgstr "SSH 사용자(기본값: 루트)"
+
+#: chili-backup-remoto:128 chili-backup-remoto:150
+msgid "Porta SSH (padrão: 22)"
+msgstr "SSH 포트(기본값: 22)"
+
+#: chili-backup-remoto:129
+msgid "Chave privada SSH"
+msgstr "SSH 개인 키"
+
+#: chili-backup-remoto:130
+msgid "Padrão rsync a excluir (repita p/ vários)"
+msgstr "삭제할 rsync 패턴(여러 번 반복)"
+
+#: chili-backup-remoto:131 chili-backup-remoto:154
+msgid "Arquivo de log"
+msgstr "로그 파일"
+
+#: chili-backup-remoto:132
+msgid "Simula o backup, não altera nada no disco"
+msgstr "백업을 시뮬레이션하고 디스크의 내용을 변경하지 않습니다."
+
+#: chili-backup-remoto:133
+msgid "Modo silencioso (não mostra a saída do rsync)"
+msgstr "자동 모드(rsync 출력을 표시하지 않음)"
+
+#: chili-backup-remoto:134
+msgid "Gera o arquivo de configuração e explica como preencher"
+msgstr "구성 파일을 생성하고 작성 방법을 설명합니다."
+
+#: chili-backup-remoto:135
+msgid ""
+"Carrega valores de um JSON; opções da linha de\n"
+"                              comando têm precedência"
+msgstr "JSON에서 값을 로드합니다. 라인 옵션\n명령이 우선한다"
+
+#: chili-backup-remoto:137
+msgid "Mostra esta ajuda"
+msgstr "이 도움말 표시"
+
+#: chili-backup-remoto:139
+msgid "Exemplos:"
+msgstr "예:"
+
+#: chili-backup-remoto:143
+msgid "Configuração JSON:"
+msgstr "JSON 구성:"
+
+#: chili-backup-remoto:144
+msgid "Local: ~/.config/chili-backup-remoto.json (ou informe com -c/--config)"
+msgstr "위치: ~/.config/chili-backup-remoto.json (또는 -c/--config로 입력)"
+
+#: chili-backup-remoto:145
+msgid ""
+"Gerado automaticamente se existir; opções da linha de comando têm precedência"
+msgstr "존재하는 경우 자동으로 생성됩니다. 명령줄 옵션이 우선 적용됩니다."
+
+#: chili-backup-remoto:147
+msgid "Parâmetros do JSON:"
+msgstr "JSON 매개변수:"
+
+#: chili-backup-remoto:149
+msgid "Host/IP do servidor; omita ou deixe vazio para backup local"
+msgstr "호스트/서버 IP; 로컬 백업을 위해 생략하거나 비워두세요"
+
+#: chili-backup-remoto:151
+msgid "Chave privada SSH (padrão: chave do agente)"
+msgstr "SSH 개인 키(기본값: 에이전트 키)"
+
+#: chili-backup-remoto:152
+msgid "Diretório/arquivo a copiar; string ou lista"
+msgstr "복사할 디렉터리/파일; 문자열 또는 목록"
+
+#: chili-backup-remoto:155
+msgid "Lista de padrões a excluir do rsync"
+msgstr "rsync에서 제외할 패턴 목록"
+
+#: chili-backup-remoto:157
+msgid "Exemplo completo: veja chili-backup-remoto.json.example"
+msgstr "전체 예: chilli-backup-remote.json.example을 참조하세요."
+
+#: chili-backup-remoto:226
+msgid "Opção inválida:"
+msgstr "잘못된 옵션:"
+
+#: chili-backup-remoto:249 chili-backup-remoto:325 chili-backup-remoto:329
+#: chili-backup-remoto:333 chili-backup-remoto:377 chili-backup-remoto:472
+#: chili-backup-remoto:476
+msgid "Erro:"
+msgstr "오류:"
+
+#: chili-backup-remoto:249
+msgid "use no máximo 2 argumentos: ORIGEM [DESTINO]"
+msgstr "최대 2개의 인수를 사용하세요: ORIGIN [DESTINATION]"
+
+#: chili-backup-remoto:258
+msgid "já existe:"
+msgstr "이미 존재합니다:"
+
+#: chili-backup-remoto:258
+msgid "nada foi alterado"
+msgstr "아무것도 바뀌지 않았어"
+
+#: chili-backup-remoto:259
+msgid "Para usar outro arquivo: -c/--config ARQUIVO"
+msgstr "다른 파일을 사용하려면: -c/--config FILE"
+
+#: chili-backup-remoto:283
+msgid "Criado:"
+msgstr "생성:"
+
+#: chili-backup-remoto:286
+msgid "Como preencher:"
+msgstr "작성 방법:"
+
+#: chili-backup-remoto:287
+msgid "Usuário SSH do servidor (ex.: \"root\"); vazio = usa ~/.ssh/config"
+msgstr "서버 SSH 사용자 이름(예: \"root\") 비어 있음 = ~/.ssh/config 사용"
+
+#: chili-backup-remoto:288
+msgid "IP/nome do servidor; deixe vazio para backup local"
+msgstr "서버 IP/이름; 로컬 백업을 위해 비워두세요"
+
+#: chili-backup-remoto:289
+msgid "Porta SSH (22 é o padrão)"
+msgstr "SSH 포트(기본값은 22)"
+
+#: chili-backup-remoto:290
+msgid "Chave PRIVADA (sem .pub); vazio = chave do agente/~/.ssh/config"
+msgstr "개인 키(.pub 제외); 비어 있음 = 에이전트 키/~/.ssh/config"
+
+#: chili-backup-remoto:291
+msgid "O que copiar: um caminho ou uma lista:"
+msgstr "복사할 항목: 경로 또는 목록:"
+
+#: chili-backup-remoto:294
+msgid "Onde guardar (ex.: /backup) — os arquivos vão direto nele"
+msgstr "저장 위치(예: /backup) - 파일이 바로 해당 위치로 이동합니다."
+
+#: chili-backup-remoto:295
+msgid "Arquivo de log; vazio desativa"
+msgstr "로그 파일; 비어 있으면 비활성화됩니다."
+
+#: chili-backup-remoto:296
+msgid "Padrões rsync a excluir — já vem com os de praxe"
+msgstr "rsync는 기본적으로 제외됨 - 일반적인 것과 함께 제공됨"
+
+#: chili-backup-remoto:298
+msgid "Depois de preencher, teste sem gravar nada:"
+msgstr "작성 후 아무것도 기록하지 않고 테스트하십시오."
+
+#: chili-backup-remoto:325
+msgid "'jq' é necessário para ler a configuração JSON"
+msgstr "JSON 구성을 읽으려면 'jq'가 필요합니다."
+
+#: chili-backup-remoto:329
+msgid "sem permissão de leitura:"
+msgstr "읽기 권한 없이:"
+
+#: chili-backup-remoto:333
+msgid "JSON inválido em:"
+msgstr "잘못된 JSON:"
+
+#: chili-backup-remoto:377
+msgid "--path-remoto é obrigatório (ou defina path_remoto no JSON)"
+msgstr "--remote-path가 필요합니다(또는 JSON에서 remote_path 설정)."
+
+#: chili-backup-remoto:386
+msgid "sem permissão para escrever em"
+msgstr "글을 쓸 허락도 없이"
+
+#: chili-backup-remoto:386
+msgid "seguindo sem log"
+msgstr "로그 없이 팔로우하기"
+
+#: chili-backup-remoto:431
+msgid "backup falhou com código"
+msgstr "코드로 인해 백업이 실패했습니다."
+
+#: chili-backup-remoto:454
+msgid "Simulando backup de"
+msgstr "백업 시뮬레이션"
+
+#: chili-backup-remoto:456
+msgid "Iniciando backup de"
+msgstr "백업 시작"
+
+#: chili-backup-remoto:465
+msgid "Sincronizando:"
+msgstr "동기화 중:"
+
+#: chili-backup-remoto:472
+msgid "origem não encontrada:"
+msgstr "소스를 찾을 수 없습니다:"
+
+#: chili-backup-remoto:476
+msgid "origem não encontrada em"
+msgstr "원산지를 찾을 수 없습니다."
+
+#: chili-backup-remoto:517
+msgid "rsync retornou"
+msgstr "rsync가 반환되었습니다."
+
+#: chili-backup-remoto:517
+msgid "em"
+msgstr "에서"
+
+#: chili-backup-remoto:517
+msgid "alguns arquivos não foram copiados"
+msgstr "일부 파일이 복사되지 않았습니다"
+
+#: chili-backup-remoto:525
+msgid "Simulação concluída — nada foi gravado ou removido"
+msgstr "시뮬레이션 완료 - 아무것도 기록되거나 제거되지 않았습니다."
+
+#: chili-backup-remoto:531
+msgid "Backup concluído com ressalvas:"
+msgstr "주의 사항과 함께 백업이 완료되었습니다."
+
+#: chili-backup-remoto:534
+msgid "Backup concluído:"
+msgstr "백업 완료:"
