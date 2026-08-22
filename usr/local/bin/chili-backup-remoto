@@ -1,0 +1,534 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2034
+#
+#  chili-backup-remote
+#  chili-backup-remoto.sh — Backup de servidor remoto/local via rsync + SSH
+#  Uso: ./chili-backup-remoto.sh [opções] [ORIGEM [DESTINO]]
+#
+#  Created: sáb 22 ago 2026 08:03:36 -04
+#  Updated: sáb 22 ago 2026 08:03:36 -04
+#
+#  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
+#  Assembled By Vilmar Catafesta for the ChiliLinux project.
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY Vilmar Catafesta ''AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+export LANGUAGE="${LANGUAGE:-pt_BR}"
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-backup-remote
+
+# helper gettext
+_() {
+  local msg="$1"
+  gettext "$msg"
+}
+#debug
+export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
+#set -x
+shopt -s extglob
+set -euo pipefail
+
+#system
+declare APP="${0##*/}"
+declare APPBASE=chili-backup-remote
+declare _VERSION_="0.08.22-20260822"
+declare APPVERSION="0.08.22-20260822"
+declare APPDESC="$APP - Wraper for "
+
+# traduz as mensagens das ferramentas (rsync, ssh) para pt_BR quando disponível
+if locale -a 2>/dev/null | grep -qi '^pt_BR'; then
+	export LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8
+fi
+
+# ==================== CORES ====================
+# sempre colorido; desative exportando NO_COLOR=1
+if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
+	bold=$'\e[1m'
+	dim=$'\e[2m'
+	red=$'\e[31m'
+	green=$'\e[32m'
+	yellow=$'\e[33m'
+	cyan=$'\e[36m'
+	bg_red=$'\e[41m'
+	# usado antes do rsync: negrito + preto (equivalente ANSI de tput bold + setaf 0)
+	black=$'\e[1m\e[30m'
+	rst=$'\e[0m'
+else
+	bold=""
+	dim=""
+	red=""
+	green=""
+	yellow=""
+	cyan=""
+	bg_red=""
+	black=""
+	rst=""
+fi
+# ===============================================
+
+# ============ ELEVAÇÃO AUTOMÁTICA (sudo) ============
+# a cópia fiel de donos/grupos exige root na máquina que recebe o backup
+if [ "$(id -u)" -ne 0 ]; then
+	if [ -t 0 ]; then
+		# interativo: reexecuta como root preservando os argumentos
+		echo "${yellow}$(_ "Aviso:")${rst} $(_ "elevando privilégios com sudo para preservar donos/permissões...")"
+		exec sudo -- "$(readlink -f "$0")" "$@"
+	else
+		# cron/sem terminal: segue sem root (não dá para pedir senha)
+		echo "${yellow}$(_ "Aviso:")${rst} $(_ "rodando sem root; donos/grupos podem não ser preservados")" >&2
+	fi
+fi
+# ====================================================
+
+# ==================== PADRÕES ====================
+# sob sudo, usa o home do usuário real (quem invocou) para achar o json
+REAL_HOME="$HOME"
+if [ -n "${SUDO_USER:-}" ]; then
+	REAL_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+fi
+CONFIG_FILE="${REAL_HOME}/.config/chili-backup-remoto.json" # sobrescreva com -c/--config
+
+# valores usados se não definidos no JSON
+# =================================================
+
+usage() {
+	cat <<EOF
+${bold}${cyan}$(_ "Uso:")${rst} ${0##*/} [opções] ${yellow}$(_ "ORIGEM")${rst} [${yellow}$(_ "DESTINO")${rst}]
+   $(_ "ou:") ${0##*/} [opções]
+
+$(_ "Backup de servidor remoto via rsync + SSH.")
+$(_ "Parâmetros pela linha de comando; opcionalmente complementados por um JSON.")
+
+${bold}${cyan}$(_ "Opções:")${rst}
+  ${green}-H${rst}, ${green}--host${rst} ${yellow}HOST${rst}          $(_ "Host/IP do servidor (omita p/ backup local)")
+  ${green}-r${rst}, ${green}--path-remoto${rst} ${yellow}DIR${rst}    $(_ "Diretório a copiar (repita p/ vários)")
+  ${green}-l${rst}, ${green}--path-local${rst} ${yellow}DIR${rst}     $(_ "Destino local dos backups (padrão: /backup)")
+  ${green}-u${rst}, ${green}--usuario${rst} ${yellow}USUÁRIO${rst}    $(_ "Usuário SSH (padrão: root)")
+  ${green}-p${rst}, ${green}--porta${rst} ${yellow}PORTA${rst}        $(_ "Porta SSH (padrão: 22)")
+  ${green}-k${rst}, ${green}--chave${rst} ${yellow}ARQUIVO${rst}      $(_ "Chave privada SSH")
+  ${green}-e${rst}, ${green}--excluir${rst} ${yellow}PADRÃO${rst}     $(_ "Padrão rsync a excluir (repita p/ vários)")
+  ${green}--log${rst} ${yellow}ARQUIVO${rst}            $(_ "Arquivo de log")
+  ${green}-n${rst}, ${green}--dry-run${rst}            $(_ "Simula o backup, não altera nada no disco")
+  ${green}-q${rst}, ${green}--quiet${rst}              $(_ "Modo silencioso (não mostra a saída do rsync)")
+  ${green}--init${rst}                   $(_ "Gera o arquivo de configuração e explica como preencher")
+  ${green}-c${rst}, ${green}--config${rst} ${yellow}ARQUIVO${rst}     $(_ "Carrega valores de um JSON; opções da linha de
+                              comando têm precedência")
+  ${green}-h${rst}, ${green}--help${rst}               $(_ "Mostra esta ajuda")
+
+${bold}${cyan}$(_ "Exemplos:")${rst}
+  ${dim}${0##*/} -H 10.0.0.5 -r /etc -r /home -l /backup${rst}
+  ${dim}${0##*/} --host srv01 --path-remoto /var/www --dry-run${rst}
+
+${bold}${cyan}$(_ "Configuração JSON:")${rst}
+  $(_ "Local: ~/.config/chili-backup-remoto.json (ou informe com -c/--config)")
+  $(_ "Gerado automaticamente se existir; opções da linha de comando têm precedência")
+
+${bold}${cyan}$(_ "Parâmetros do JSON:")${rst}
+  ${yellow}remote_user${rst}    $(_ "Usuário SSH (padrão: root)")
+  ${yellow}remote_host${rst}    $(_ "Host/IP do servidor; omita ou deixe vazio para backup local")
+  ${yellow}remote_port${rst}    $(_ "Porta SSH (padrão: 22)")
+  ${yellow}ssh_key${rst}        $(_ "Chave privada SSH (padrão: chave do agente)")
+  ${yellow}path_remoto${rst}    $(_ "Diretório/arquivo a copiar; string ou lista")
+  ${yellow}path_local${rst}     $(_ "Destino local dos backups (padrão: /backup)")
+  ${yellow}log_file${rst}       $(_ "Arquivo de log")
+  ${yellow}excludes${rst}       $(_ "Lista de padrões a excluir do rsync")
+
+$(_ "Exemplo completo: veja chili-backup-remoto.json.example")
+EOF
+}
+
+DRY_RUN=false
+QUIET=false
+INIT=false
+OPT_USER=""
+OPT_HOST=""
+OPT_PORT=""
+OPT_KEY=""
+OPT_LOCAL=""
+OPT_LOG=""
+CLI_DIRS=()
+CLI_EXCLUDES=()
+POSICIONAIS=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	-H | --host)
+		shift
+		OPT_HOST="${1:?}"
+		;;
+	-r | --path-remoto)
+		shift
+		CLI_DIRS+=("${1:?}")
+		;;
+	-l | --path-local)
+		shift
+		OPT_LOCAL="${1:?}"
+		;;
+	-u | --usuario)
+		shift
+		OPT_USER="${1:?}"
+		;;
+	-p | --porta)
+		shift
+		OPT_PORT="${1:?}"
+		;;
+	-k | --chave)
+		shift
+		OPT_KEY="${1:?}"
+		;;
+	-e | --excluir)
+		shift
+		CLI_EXCLUDES+=("--exclude=${1:?}")
+		;;
+	--log)
+		shift
+		OPT_LOG="${1:?}"
+		;;
+	--init)
+		INIT=true
+		;;
+	-n | --dry-run)
+		DRY_RUN=true
+		;;
+	-q | --quiet)
+		QUIET=true
+		;;
+	-c | --config)
+		shift
+		CONFIG_FILE="${1:?}"
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-*)
+		echo "${red}${bold}$(_ "Opção inválida:")${rst} $1" >&2
+		usage >&2
+		exit 64
+		;;
+	*)
+		POSICIONAIS+=("$1")
+		;;
+	esac
+	shift
+done
+
+# forma curta: script ORIGEM [DESTINO]
+case "${#POSICIONAIS[@]}" in
+0)
+	;;
+1)
+	CLI_DIRS+=("${POSICIONAIS[0]}")
+	;;
+2)
+	CLI_DIRS+=("${POSICIONAIS[0]}")
+	OPT_LOCAL="${POSICIONAIS[1]}"
+	;;
+*)
+	echo "${red}${bold}$(_ "Erro:")${rst} $(_ "use no máximo 2 argumentos: ORIGEM [DESTINO]")" >&2
+	usage >&2
+	exit 64
+	;;
+esac
+
+# ==================== --init: gerar configuração ====================
+if [ "$INIT" = "true" ]; then
+	if [ -e "$CONFIG_FILE" ]; then
+		echo "${yellow}$(_ "Aviso:")${rst} $(_ "já existe:") ${bold}${CONFIG_FILE}${rst} — $(_ "nada foi alterado")"
+		echo "$(_ "Para usar outro arquivo: -c/--config ARQUIVO")"
+		exit 0
+	fi
+	mkdir -p "$(dirname "$CONFIG_FILE")"
+	cat >"$CONFIG_FILE" <<JSON
+{
+  "remote_user": "",
+  "remote_host": "",
+  "remote_port": 22,
+  "ssh_key": "~/.ssh/id_rsa",
+  "path_remoto": "",
+  "path_local": "",
+  "log_file": "",
+  "excludes": [
+    "/proc",
+    "/sys",
+    "/dev",
+    "/tmp",
+    ".cache",
+    "lost+found"
+  ]
+}
+JSON
+	chmod 600 "$CONFIG_FILE"
+	echo "${green}${bold}$(_ "Criado:")${rst} ${CONFIG_FILE}"
+	cat <<FIM
+
+${bold}${cyan}$(_ "Como preencher:")${rst}
+  ${yellow}remote_user${rst}    $(_ 'Usuário SSH do servidor (ex.: "root"); vazio = usa ~/.ssh/config')
+  ${yellow}remote_host${rst}    $(_ "IP/nome do servidor; deixe vazio para backup local")
+  ${yellow}remote_port${rst}    $(_ "Porta SSH (22 é o padrão)")
+  ${yellow}ssh_key${rst}        $(_ "Chave PRIVADA (sem .pub); vazio = chave do agente/~/.ssh/config")
+  ${yellow}path_remoto${rst}    $(_ "O que copiar: um caminho ou uma lista:")
+                       ${dim}"path_remoto": "/etc/"${rst}
+                       ${dim}"path_remoto": ["/etc/", "/home/"]${rst}
+  ${yellow}path_local${rst}     $(_ "Onde guardar (ex.: /backup) — os arquivos vão direto nele")
+  ${yellow}log_file${rst}       $(_ "Arquivo de log; vazio desativa")
+  ${yellow}excludes${rst}       $(_ "Padrões rsync a excluir — já vem com os de praxe")
+
+$(_ "Depois de preencher, teste sem gravar nada:")
+  ${green}${0##*/} --dry-run${rst}
+
+FIM
+	exit 0
+fi
+# ===================================================================
+
+# ==================== VALORES PADRÃO ====================
+# vazio = usa o que estiver definido em ~/.ssh/config
+REMOTE_USER=""
+REMOTE_HOST=""
+REMOTE_PORT=""
+SSH_KEY=""
+PATH_LOCAL="/backup"
+LOG_FILE="/var/log/chili-backup-remoto.log"
+REMOTE_DIRS=()
+EXCLUDES=()
+# =========================================================
+
+# ==================== CONFIGURAÇÃO VIA JSON (opcional) ====================
+if [ -z "$CONFIG_FILE" ] && [ -r "${REAL_HOME}/.config/chili-backup-remoto.json" ]; then
+	CONFIG_FILE="${REAL_HOME}/.config/chili-backup-remoto.json"
+fi
+
+if [ -n "$CONFIG_FILE" ] && [ -e "$CONFIG_FILE" ]; then
+	if ! command -v jq >/dev/null 2>&1; then
+		echo "${red}${bold}$(_ "Erro:")${rst} $(_ "'jq' é necessário para ler a configuração JSON")" >&2
+		exit 78
+	fi
+	if [ ! -r "$CONFIG_FILE" ]; then
+		echo "${red}${bold}$(_ "Erro:")${rst} $(_ "sem permissão de leitura:") ${bold}${CONFIG_FILE}${rst}" >&2
+		exit 66
+	fi
+	if ! jq empty "$CONFIG_FILE" 2>/dev/null; then
+		echo "${red}${bold}$(_ "Erro:")${rst} $(_ "JSON inválido em:") ${bold}${CONFIG_FILE}${rst}" >&2
+		exit 65
+	fi
+
+	REMOTE_USER="$(jq -r '.remote_user // ""' "$CONFIG_FILE")"
+	REMOTE_HOST="$(jq -r '.remote_host // ""' "$CONFIG_FILE")"
+	REMOTE_PORT="$(jq -r '.remote_port // ""' "$CONFIG_FILE")"
+	SSH_KEY="$(jq -r '.ssh_key // ""' "$CONFIG_FILE")"
+	SSH_KEY="${SSH_KEY/#\~/$REAL_HOME}"
+	PATH_LOCAL="$(jq -r '.path_local // "/backup"' "$CONFIG_FILE")"
+	LOG_FILE="$(jq -r '.log_file // "/var/log/chili-backup-remoto.log"' "$CONFIG_FILE")"
+
+	# path_remoto: string ou lista
+	mapfile -t REMOTE_DIRS < <(
+		jq -r '
+      if (.path_remoto | type) == "array" then .path_remoto[]
+      elif (.path_remoto | type) == "string" then .path_remoto
+      elif (.remote_dirs | type) == "array" then .remote_dirs[]
+      else empty end
+    ' "$CONFIG_FILE"
+	)
+	while IFS= read -r ex; do
+		EXCLUDES+=("--exclude=$ex")
+	done < <(jq -r '.excludes[]?' "$CONFIG_FILE")
+fi
+
+# linha de comando tem precedência sobre o JSON
+[ -n "$OPT_USER" ] && REMOTE_USER="$OPT_USER"
+[ -n "$OPT_HOST" ] && REMOTE_HOST="$OPT_HOST"
+[ -n "$OPT_PORT" ] && REMOTE_PORT="$OPT_PORT"
+[ -n "$OPT_KEY" ] && SSH_KEY="${OPT_KEY/#\~/$REAL_HOME}"
+[ -n "$OPT_LOCAL" ] && PATH_LOCAL="$OPT_LOCAL"
+[ -n "$OPT_LOG" ] && LOG_FILE="$OPT_LOG"
+[ "${#CLI_DIRS[@]}" -gt 0 ] && REMOTE_DIRS=("${CLI_DIRS[@]}")
+EXCLUDES+=("${CLI_EXCLUDES[@]}")
+
+# validação final
+# sem remote_host/-H → backup LOCAL (rsync direto, sem ssh)
+if [ -z "$REMOTE_HOST" ]; then
+	MODO_LOCAL=true
+else
+	MODO_LOCAL=false
+fi
+if [ "${#REMOTE_DIRS[@]}" -eq 0 ]; then
+	echo "${red}${bold}$(_ "Erro:")${rst} $(_ "--path-remoto é obrigatório (ou defina path_remoto no JSON)")" >&2
+	exit 64
+fi
+# =======================================================================
+
+# destino é exatamente o caminho informado (-l/--path-local ou path_local)
+DEST_DIR="$PATH_LOCAL"
+
+if [ "$LOG_FILE" != "/dev/null" ] && ! touch "$LOG_FILE" 2>/dev/null; then
+	echo "${yellow}$(_ "Aviso:")${rst} $(_ "sem permissão para escrever em") ${bold}${LOG_FILE}${rst}; $(_ "seguindo sem log")" >&2
+	LOG_FILE="/dev/null"
+fi
+
+# log NIVEL MENSAGEM — terminal colorido, arquivo de log em texto puro
+log() {
+	local level="$1"
+	local msg="$2"
+	local tag
+	local tag_color
+	local plain
+	local ts
+	ts="$(date '+%Y-%m-%d %H:%M:%S')"
+	case "$level" in
+	ok)
+		tag="[  OK  ]"
+		tag_color="${bold}${green}"
+		;;
+	warn)
+		tag="[ AVISO ]"
+		tag_color="${bold}${yellow}"
+		;;
+	error)
+		tag="[ ERRO ]"
+		tag_color="${bg_red}${bold}"
+		;;
+	dry)
+		tag="[SIMULAÇÃO]"
+		tag_color="${bold}${yellow}"
+		;;
+	*)
+		tag="[ INFO ]"
+		tag_color="${bold}${cyan}"
+		;;
+	esac
+	plain="${ts} ${tag} ${msg}"
+	echo "${dim}[${ts}]${rst} ${tag_color}${tag}${rst} ${msg}"
+	if [ "$LOG_FILE" != "/dev/null" ]; then
+		printf '%s\n' "$plain" >>"$LOG_FILE" 2>/dev/null || true
+	fi
+}
+
+cleanup() {
+	local status=$?
+	if [ $status -ne 0 ] && [ "${HOUVE_AVISO:-false}" != "true" ]; then
+		log error "$(_ "backup falhou com código") $status"
+	fi
+}
+trap cleanup EXIT
+
+mkdir -p "$PATH_LOCAL"
+
+SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
+[ -n "$REMOTE_PORT" ] && SSH_OPTS+=(-p "$REMOTE_PORT")
+[ -n "$SSH_KEY" ] && SSH_OPTS+=(-i "$SSH_KEY")
+
+# destino respeita User/Port/IdentityFile do ~/.ssh/config quando não definidos
+if [ "$MODO_LOCAL" = "true" ]; then
+	ALVO="local"
+else
+	if [ -n "$REMOTE_USER" ]; then
+		ALVO="${REMOTE_USER}@${REMOTE_HOST}"
+	else
+		ALVO="${REMOTE_HOST}"
+	fi
+fi
+
+if $DRY_RUN; then
+	log dry "$(_ "Simulando backup de") ${ALVO}"
+else
+	log info "$(_ "Iniciando backup de") ${ALVO}"
+fi
+
+RSYNC_FLAGS=(-aAxv --delete --info=skip0 --itemize-changes)
+$DRY_RUN && RSYNC_FLAGS+=(-n --stats)
+
+HOUVE_AVISO=false
+
+for dir in "${REMOTE_DIRS[@]}"; do
+	log info "$(_ "Sincronizando:") ${bold}${dir}${rst}"
+	RC=0
+
+	# origem inexistente é erro de digitação/caminho errado: falha imediata,
+	# não "ressalva" (o código 23 do rsync fica reservado p/ permissão etc.)
+	if [ "$MODO_LOCAL" = "true" ]; then
+		if [ ! -e "$dir" ]; then
+			echo "${red}${bold}$(_ "Erro:")${rst} $(_ "origem não encontrada:") ${bold}${dir}${rst}" >&2
+			exit 66
+		fi
+	elif ! ssh "${SSH_OPTS[@]}" "$ALVO" "[ -e '$dir' ]" 2>/dev/null; then
+		echo "${red}${bold}$(_ "Erro:")${rst} $(_ "origem não encontrada em") ${bold}${ALVO}${rst}: ${bold}${dir}${rst}" >&2
+		exit 66
+	fi
+
+	# rsync puro: origem e destino exatamente como informados
+	# local: origem é o caminho direto; remoto: usuario@host:/caminho
+	if [ "$MODO_LOCAL" = "true" ]; then
+		SRC="$dir"
+		RSYNC_REMOTE=()
+	else
+		SRC="${ALVO}:${dir}"
+		RSYNC_REMOTE=(-e "ssh ${SSH_OPTS[*]}")
+	fi
+
+	# padrão: saída do rsync no terminal; -q/--quiet silencia
+	# (em silencioso vai para o log quando disponível, ou é descartada)
+	if [ "$QUIET" != "true" ]; then
+		echo -n "$black"
+		rsync "${RSYNC_FLAGS[@]}" \
+			"${RSYNC_REMOTE[@]}" \
+			"${EXCLUDES[@]}" \
+			"$SRC" \
+			"$DEST_DIR" || RC=$?
+	elif [ "$LOG_FILE" != "/dev/null" ]; then
+		rsync "${RSYNC_FLAGS[@]}" \
+			"${RSYNC_REMOTE[@]}" \
+			"${EXCLUDES[@]}" \
+			"$SRC" \
+			"$DEST_DIR" >>"$LOG_FILE" 2>&1 || RC=$?
+	else
+		rsync "${RSYNC_FLAGS[@]}" \
+			"${RSYNC_REMOTE[@]}" \
+			"${EXCLUDES[@]}" \
+			"$SRC" \
+			"$DEST_DIR" >/dev/null 2>&1 || RC=$?
+	fi
+
+	# 23/24 = transferência parcial (ex.: arquivo sem permissão de leitura
+	# no remoto): mantém o backup e segue com aviso; outros códigos = falha
+	if [ "${RC:-0}" -eq 23 ] || [ "${RC:-0}" -eq 24 ]; then
+		HOUVE_AVISO=true
+		log warn "$(_ "rsync retornou") ${RC} $(_ "em") ${dir} — $(_ "alguns arquivos não foram copiados")"
+	elif [ "${RC:-0}" -ne 0 ]; then
+		exit "$RC"
+	fi
+	unset RC
+done
+
+if $DRY_RUN; then
+	log dry "$(_ "Simulação concluída — nada foi gravado ou removido")"
+	exit 0
+fi
+
+SIZE=$(du -sh "$DEST_DIR" | cut -f1)
+if [ "${HOUVE_AVISO:-false}" = "true" ]; then
+	log warn "$(_ "Backup concluído com ressalvas:") ${bold}${DEST_DIR}${rst} (${SIZE})"
+	exit 1
+fi
+log ok "$(_ "Backup concluído:") ${bold}${DEST_DIR}${rst} (${SIZE})"

@@ -1,0 +1,294 @@
+# Chili Tradutor Go - 2.1.24-20260816
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.24-20260816\n"
+"POT-Creation-Date: 2026-08-22 13:02-0400\n"
+"PO-Revision-Date: 2026-08-22 13:02-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-backup-remoto:95 chili-backup-remoto:99 chili-backup-remoto:258
+#: chili-backup-remoto:386
+msgid "Aviso:"
+msgstr "BEACHTEN:"
+
+#: chili-backup-remoto:95
+msgid "elevando privilégios com sudo para preservar donos/permissões..."
+msgstr "Privilegien mit sudo erhöhen, um Eigentümer/Berechtigungen beizubehalten ..."
+
+#: chili-backup-remoto:99
+msgid "rodando sem root; donos/grupos podem não ser preservados"
+msgstr "läuft ohne Root; Eigentümer/Gruppen bleiben möglicherweise nicht erhalten"
+
+#: chili-backup-remoto:117
+msgid "Uso:"
+msgstr "verwenden:"
+
+#: chili-backup-remoto:117
+msgid "ORIGEM"
+msgstr "Herkunft"
+
+#: chili-backup-remoto:117
+msgid "DESTINO"
+msgstr "Ziel"
+
+#: chili-backup-remoto:118
+msgid "ou:"
+msgstr "oder:"
+
+#: chili-backup-remoto:120
+msgid "Backup de servidor remoto via rsync + SSH."
+msgstr "Remote-Server-Backup über rsync + SSH."
+
+#: chili-backup-remoto:121
+msgid ""
+"Parâmetros pela linha de comando; opcionalmente complementados por um JSON."
+msgstr "Parameter über die Kommandozeile; optional ergänzt durch JSON."
+
+#: chili-backup-remoto:123
+msgid "Opções:"
+msgstr "Optionen:"
+
+#: chili-backup-remoto:124
+msgid "Host/IP do servidor (omita p/ backup local)"
+msgstr "Host/IP des Servers (P/Backup lokal weglassen)"
+
+#: chili-backup-remoto:125
+msgid "Diretório a copiar (repita p/ vários)"
+msgstr "Zu kopierendes Verzeichnis (für mehrere wiederholen)"
+
+#: chili-backup-remoto:126 chili-backup-remoto:153
+msgid "Destino local dos backups (padrão: /backup)"
+msgstr "Lokales Backup-Ziel (Standard: /backup)"
+
+#: chili-backup-remoto:127 chili-backup-remoto:148
+msgid "Usuário SSH (padrão: root)"
+msgstr "SSH-Benutzer (Standard: root)"
+
+#: chili-backup-remoto:128 chili-backup-remoto:150
+msgid "Porta SSH (padrão: 22)"
+msgstr "SSH-Port (Standard: 22)"
+
+#: chili-backup-remoto:129
+msgid "Chave privada SSH"
+msgstr "Privater SSH-Schlüssel"
+
+#: chili-backup-remoto:130
+msgid "Padrão rsync a excluir (repita p/ vários)"
+msgstr "Rsync-Muster zum Löschen (für mehrere wiederholen)"
+
+#: chili-backup-remoto:131 chili-backup-remoto:154
+msgid "Arquivo de log"
+msgstr "Protokolldatei"
+
+#: chili-backup-remoto:132
+msgid "Simula o backup, não altera nada no disco"
+msgstr "Simuliert das Backup, verändert nichts auf der Festplatte"
+
+#: chili-backup-remoto:133
+msgid "Modo silencioso (não mostra a saída do rsync)"
+msgstr "Silent-Modus (zeigt keine Rsync-Ausgabe an)"
+
+#: chili-backup-remoto:134
+msgid "Gera o arquivo de configuração e explica como preencher"
+msgstr "Erstellt die Konfigurationsdatei und erklärt, wie sie ausgefüllt wird"
+
+#: chili-backup-remoto:135
+msgid ""
+"Carrega valores de um JSON; opções da linha de\n"
+"                              comando têm precedência"
+msgstr "Lädt Werte aus JSON; Linienoptionen\nBefehl haben Vorrang"
+
+#: chili-backup-remoto:137
+msgid "Mostra esta ajuda"
+msgstr "Diese Hilfe anzeigen"
+
+#: chili-backup-remoto:139
+msgid "Exemplos:"
+msgstr "Beispiele:"
+
+#: chili-backup-remoto:143
+msgid "Configuração JSON:"
+msgstr "JSON-Konfiguration:"
+
+#: chili-backup-remoto:144
+msgid "Local: ~/.config/chili-backup-remoto.json (ou informe com -c/--config)"
+msgstr "Speicherort: ~/.config/chili-backup-remoto.json (oder mit -c/--config eingeben)"
+
+#: chili-backup-remoto:145
+msgid ""
+"Gerado automaticamente se existir; opções da linha de comando têm precedência"
+msgstr "Wird automatisch generiert, falls vorhanden; Befehlszeilenoptionen haben Vorrang"
+
+#: chili-backup-remoto:147
+msgid "Parâmetros do JSON:"
+msgstr "JSON-Parameter:"
+
+#: chili-backup-remoto:149
+msgid "Host/IP do servidor; omita ou deixe vazio para backup local"
+msgstr "Host-/Server-IP; Für die lokale Sicherung weglassen oder leer lassen"
+
+#: chili-backup-remoto:151
+msgid "Chave privada SSH (padrão: chave do agente)"
+msgstr "Privater SSH-Schlüssel (Standard: Agentenschlüssel)"
+
+#: chili-backup-remoto:152
+msgid "Diretório/arquivo a copiar; string ou lista"
+msgstr "Verzeichnis/Datei zum Kopieren; Zeichenfolge oder Liste"
+
+#: chili-backup-remoto:155
+msgid "Lista de padrões a excluir do rsync"
+msgstr "Liste der Muster, die von rsync ausgeschlossen werden sollen"
+
+#: chili-backup-remoto:157
+msgid "Exemplo completo: veja chili-backup-remoto.json.example"
+msgstr "Vollständiges Beispiel: siehe chili-backup-remote.json.example"
+
+#: chili-backup-remoto:226
+msgid "Opção inválida:"
+msgstr "Ungültige Option:"
+
+#: chili-backup-remoto:249 chili-backup-remoto:325 chili-backup-remoto:329
+#: chili-backup-remoto:333 chili-backup-remoto:377 chili-backup-remoto:472
+#: chili-backup-remoto:476
+msgid "Erro:"
+msgstr "FEHLER:"
+
+#: chili-backup-remoto:249
+msgid "use no máximo 2 argumentos: ORIGEM [DESTINO]"
+msgstr "Verwenden Sie maximal 2 Argumente: ORIGIN [DESTINATION]"
+
+#: chili-backup-remoto:258
+msgid "já existe:"
+msgstr "existiert bereits:"
+
+#: chili-backup-remoto:258
+msgid "nada foi alterado"
+msgstr "Es hat sich nichts geändert"
+
+#: chili-backup-remoto:259
+msgid "Para usar outro arquivo: -c/--config ARQUIVO"
+msgstr "Um eine andere Datei zu verwenden: -c/--config FILE"
+
+#: chili-backup-remoto:283
+msgid "Criado:"
+msgstr "Erstellt:"
+
+#: chili-backup-remoto:286
+msgid "Como preencher:"
+msgstr "So füllen Sie aus:"
+
+#: chili-backup-remoto:287
+msgid "Usuário SSH do servidor (ex.: \"root\"); vazio = usa ~/.ssh/config"
+msgstr "Server-SSH-Benutzername (z. B. „root“); leer = verwendet ~/.ssh/config"
+
+#: chili-backup-remoto:288
+msgid "IP/nome do servidor; deixe vazio para backup local"
+msgstr "Server-IP/-Name; Für eine lokale Sicherung leer lassen"
+
+#: chili-backup-remoto:289
+msgid "Porta SSH (22 é o padrão)"
+msgstr "SSH-Port (22 ist die Standardeinstellung)"
+
+#: chili-backup-remoto:290
+msgid "Chave PRIVADA (sem .pub); vazio = chave do agente/~/.ssh/config"
+msgstr "PRIVATE-Schlüssel (ohne .pub); leer = Agentenschlüssel/~/.ssh/config"
+
+#: chili-backup-remoto:291
+msgid "O que copiar: um caminho ou uma lista:"
+msgstr "Was kopiert werden soll: ein Pfad oder eine Liste:"
+
+#: chili-backup-remoto:294
+msgid "Onde guardar (ex.: /backup) — os arquivos vão direto nele"
+msgstr "Speicherort (z. B. /backup) – die Dateien werden direkt dorthin verschoben"
+
+#: chili-backup-remoto:295
+msgid "Arquivo de log; vazio desativa"
+msgstr "Protokolldatei; leer deaktiviert"
+
+#: chili-backup-remoto:296
+msgid "Padrões rsync a excluir — já vem com os de praxe"
+msgstr "rsync ist standardmäßig auf „exclude“ eingestellt – kommt mit den üblichen"
+
+#: chili-backup-remoto:298
+msgid "Depois de preencher, teste sem gravar nada:"
+msgstr "Nach dem Ausfüllen testen, ohne etwas aufzuzeichnen:"
+
+#: chili-backup-remoto:325
+msgid "'jq' é necessário para ler a configuração JSON"
+msgstr "„jq“ ist erforderlich, um die JSON-Konfiguration zu lesen"
+
+#: chili-backup-remoto:329
+msgid "sem permissão de leitura:"
+msgstr "ohne Leseberechtigung:"
+
+#: chili-backup-remoto:333
+msgid "JSON inválido em:"
+msgstr "Ungültiges JSON in:"
+
+#: chili-backup-remoto:377
+msgid "--path-remoto é obrigatório (ou defina path_remoto no JSON)"
+msgstr "--remote-path ist erforderlich (oder remote_path in JSON festlegen)"
+
+#: chili-backup-remoto:386
+msgid "sem permissão para escrever em"
+msgstr "ohne Erlaubnis zum Weiterschreiben"
+
+#: chili-backup-remoto:386
+msgid "seguindo sem log"
+msgstr "folgt ohne Log"
+
+#: chili-backup-remoto:431
+msgid "backup falhou com código"
+msgstr "Sicherung mit Code fehlgeschlagen"
+
+#: chili-backup-remoto:454
+msgid "Simulando backup de"
+msgstr "Backup simulieren"
+
+#: chili-backup-remoto:456
+msgid "Iniciando backup de"
+msgstr "Sicherung wird gestartet"
+
+#: chili-backup-remoto:465
+msgid "Sincronizando:"
+msgstr "Synchronisieren:"
+
+#: chili-backup-remoto:472
+msgid "origem não encontrada:"
+msgstr "Quelle nicht gefunden:"
+
+#: chili-backup-remoto:476
+msgid "origem não encontrada em"
+msgstr "Herkunft nicht gefunden in"
+
+#: chili-backup-remoto:517
+msgid "rsync retornou"
+msgstr "rsync zurückgegeben"
+
+#: chili-backup-remoto:517
+msgid "em"
+msgstr "in"
+
+#: chili-backup-remoto:517
+msgid "alguns arquivos não foram copiados"
+msgstr "Einige Dateien wurden nicht kopiert"
+
+#: chili-backup-remoto:525
+msgid "Simulação concluída — nada foi gravado ou removido"
+msgstr "Simulation abgeschlossen – nichts wurde aufgezeichnet oder entfernt"
+
+#: chili-backup-remoto:531
+msgid "Backup concluído com ressalvas:"
+msgstr "Sicherung mit Einschränkungen abgeschlossen:"
+
+#: chili-backup-remoto:534
+msgid "Backup concluído:"
+msgstr "Sicherung abgeschlossen:"

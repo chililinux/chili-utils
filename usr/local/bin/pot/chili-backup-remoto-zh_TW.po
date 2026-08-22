@@ -1,0 +1,294 @@
+# Chili Tradutor Go - 2.1.24-20260816
+# Copyright (C) 2019-2026 Vilmar Catafesta <vcatafesta@gmail.com>
+# This file is distributed under the same license as the chili-tradutor-go package.
+msgid ""
+msgstr ""
+"Project-Id-Version: chili-tradutor-go 2.1.24-20260816\n"
+"POT-Creation-Date: 2026-08-22 13:01-0400\n"
+"PO-Revision-Date: 2026-08-22 13:01-0400\n"
+"Last-Translator: Vilmar Catafesta <vcatafesta@gmail.com>\n"
+"Language-Team: Portuguese <https://github.com/chililinux/chili-tradutor-go>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_TW\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: chili-backup-remoto:95 chili-backup-remoto:99 chili-backup-remoto:258
+#: chili-backup-remoto:386
+msgid "Aviso:"
+msgstr "注意："
+
+#: chili-backup-remoto:95
+msgid "elevando privilégios com sudo para preservar donos/permissões..."
+msgstr "使用 sudo 提升權限以保留所有者/權限..."
+
+#: chili-backup-remoto:99
+msgid "rodando sem root; donos/grupos podem não ser preservados"
+msgstr "無需root即可運行；所有者/群組可能不會被保留"
+
+#: chili-backup-remoto:117
+msgid "Uso:"
+msgstr "使用："
+
+#: chili-backup-remoto:117
+msgid "ORIGEM"
+msgstr "起源"
+
+#: chili-backup-remoto:117
+msgid "DESTINO"
+msgstr "目的地"
+
+#: chili-backup-remoto:118
+msgid "ou:"
+msgstr "或者："
+
+#: chili-backup-remoto:120
+msgid "Backup de servidor remoto via rsync + SSH."
+msgstr "透過 rsync + SSH 進行遠端伺服器備份。"
+
+#: chili-backup-remoto:121
+msgid ""
+"Parâmetros pela linha de comando; opcionalmente complementados por um JSON."
+msgstr "透過命令列參數；可選地由 JSON 補充。"
+
+#: chili-backup-remoto:123
+msgid "Opções:"
+msgstr "選項："
+
+#: chili-backup-remoto:124
+msgid "Host/IP do servidor (omita p/ backup local)"
+msgstr "主機/IP做伺服器（省略p/備份本地）"
+
+#: chili-backup-remoto:125
+msgid "Diretório a copiar (repita p/ vários)"
+msgstr "要複製的目錄（重複幾個）"
+
+#: chili-backup-remoto:126 chili-backup-remoto:153
+msgid "Destino local dos backups (padrão: /backup)"
+msgstr "本地備份目的地（預設：/backup）"
+
+#: chili-backup-remoto:127 chili-backup-remoto:148
+msgid "Usuário SSH (padrão: root)"
+msgstr "SSH 用戶（預設：root）"
+
+#: chili-backup-remoto:128 chili-backup-remoto:150
+msgid "Porta SSH (padrão: 22)"
+msgstr "SSH 連接埠（預設：22）"
+
+#: chili-backup-remoto:129
+msgid "Chave privada SSH"
+msgstr "SSH 私鑰"
+
+#: chili-backup-remoto:130
+msgid "Padrão rsync a excluir (repita p/ vários)"
+msgstr "要刪除的 rsync 模式（重複幾次）"
+
+#: chili-backup-remoto:131 chili-backup-remoto:154
+msgid "Arquivo de log"
+msgstr "記錄檔"
+
+#: chili-backup-remoto:132
+msgid "Simula o backup, não altera nada no disco"
+msgstr "模擬備份，不會更改磁碟上的任何內容"
+
+#: chili-backup-remoto:133
+msgid "Modo silencioso (não mostra a saída do rsync)"
+msgstr "靜默模式（不顯示rsync輸出）"
+
+#: chili-backup-remoto:134
+msgid "Gera o arquivo de configuração e explica como preencher"
+msgstr "產生設定檔並解釋如何填寫"
+
+#: chili-backup-remoto:135
+msgid ""
+"Carrega valores de um JSON; opções da linha de\n"
+"                              comando têm precedência"
+msgstr "從 JSON 載入值；線路選項\n命令優先"
+
+#: chili-backup-remoto:137
+msgid "Mostra esta ajuda"
+msgstr "顯示此幫助"
+
+#: chili-backup-remoto:139
+msgid "Exemplos:"
+msgstr "範例："
+
+#: chili-backup-remoto:143
+msgid "Configuração JSON:"
+msgstr "JSON 設定："
+
+#: chili-backup-remoto:144
+msgid "Local: ~/.config/chili-backup-remoto.json (ou informe com -c/--config)"
+msgstr "位置：~/.config/chili-backup-remoto.json（或使用 -c/--config 輸入）"
+
+#: chili-backup-remoto:145
+msgid ""
+"Gerado automaticamente se existir; opções da linha de comando têm precedência"
+msgstr "如果存在則自動產生；命令列選項優先"
+
+#: chili-backup-remoto:147
+msgid "Parâmetros do JSON:"
+msgstr "JSON 參數："
+
+#: chili-backup-remoto:149
+msgid "Host/IP do servidor; omita ou deixe vazio para backup local"
+msgstr "主機/伺服器IP；省略或留空以進行本機備份"
+
+#: chili-backup-remoto:151
+msgid "Chave privada SSH (padrão: chave do agente)"
+msgstr "SSH 私鑰（預設：代理金鑰）"
+
+#: chili-backup-remoto:152
+msgid "Diretório/arquivo a copiar; string ou lista"
+msgstr "Diretório/arquivo a copiar; string ou lista"
+
+#: chili-backup-remoto:155
+msgid "Lista de padrões a excluir do rsync"
+msgstr "從 rsync 中排除的模式列表"
+
+#: chili-backup-remoto:157
+msgid "Exemplo completo: veja chili-backup-remoto.json.example"
+msgstr "完整範例：請參閱 chili-backup-remote.json.example"
+
+#: chili-backup-remoto:226
+msgid "Opção inválida:"
+msgstr "無效選項："
+
+#: chili-backup-remoto:249 chili-backup-remoto:325 chili-backup-remoto:329
+#: chili-backup-remoto:333 chili-backup-remoto:377 chili-backup-remoto:472
+#: chili-backup-remoto:476
+msgid "Erro:"
+msgstr "錯誤："
+
+#: chili-backup-remoto:249
+msgid "use no máximo 2 argumentos: ORIGEM [DESTINO]"
+msgstr "最多使用 2 個參數：ORIGIN [DESTINATION]"
+
+#: chili-backup-remoto:258
+msgid "já existe:"
+msgstr "已經存在："
+
+#: chili-backup-remoto:258
+msgid "nada foi alterado"
+msgstr "沒有任何改變"
+
+#: chili-backup-remoto:259
+msgid "Para usar outro arquivo: -c/--config ARQUIVO"
+msgstr "要使用另一個檔案：-c/--config FILE"
+
+#: chili-backup-remoto:283
+msgid "Criado:"
+msgstr "創建："
+
+#: chili-backup-remoto:286
+msgid "Como preencher:"
+msgstr "如何填寫："
+
+#: chili-backup-remoto:287
+msgid "Usuário SSH do servidor (ex.: \"root\"); vazio = usa ~/.ssh/config"
+msgstr "伺服器 SSH 使用者名稱（例如“root”）；空 = 使用 ~/.ssh/config"
+
+#: chili-backup-remoto:288
+msgid "IP/nome do servidor; deixe vazio para backup local"
+msgstr "伺服器IP/名稱；留空用於本地備份"
+
+#: chili-backup-remoto:289
+msgid "Porta SSH (22 é o padrão)"
+msgstr "SSH 連接埠（預設為 22）"
+
+#: chili-backup-remoto:290
+msgid "Chave PRIVADA (sem .pub); vazio = chave do agente/~/.ssh/config"
+msgstr "私鑰（不含 .pub）；空 = 代理金鑰/~/.ssh/config"
+
+#: chili-backup-remoto:291
+msgid "O que copiar: um caminho ou uma lista:"
+msgstr "要複製的內容：路徑或清單："
+
+#: chili-backup-remoto:294
+msgid "Onde guardar (ex.: /backup) — os arquivos vão direto nele"
+msgstr "儲存位置（例如 /backup）－文件直接存放在那裡"
+
+#: chili-backup-remoto:295
+msgid "Arquivo de log; vazio desativa"
+msgstr "記錄檔;空禁用"
+
+#: chili-backup-remoto:296
+msgid "Padrões rsync a excluir — já vem com os de praxe"
+msgstr "rsync 預設排除 - 附帶常用的"
+
+#: chili-backup-remoto:298
+msgid "Depois de preencher, teste sem gravar nada:"
+msgstr "填寫完畢後，不記錄任何內容進行測驗："
+
+#: chili-backup-remoto:325
+msgid "'jq' é necessário para ler a configuração JSON"
+msgstr "讀取 JSON 配置需要“jq”"
+
+#: chili-backup-remoto:329
+msgid "sem permissão de leitura:"
+msgstr "沒有讀取權限："
+
+#: chili-backup-remoto:333
+msgid "JSON inválido em:"
+msgstr "無效 JSON："
+
+#: chili-backup-remoto:377
+msgid "--path-remoto é obrigatório (ou defina path_remoto no JSON)"
+msgstr "--remote-path 是必要的（或在 JSON 中設定remote_path）"
+
+#: chili-backup-remoto:386
+msgid "sem permissão para escrever em"
+msgstr "未經允許書寫"
+
+#: chili-backup-remoto:386
+msgid "seguindo sem log"
+msgstr "沒有日誌的關注"
+
+#: chili-backup-remoto:431
+msgid "backup falhou com código"
+msgstr "備份失敗並顯示程式碼"
+
+#: chili-backup-remoto:454
+msgid "Simulando backup de"
+msgstr "模擬備份"
+
+#: chili-backup-remoto:456
+msgid "Iniciando backup de"
+msgstr "開始備份"
+
+#: chili-backup-remoto:465
+msgid "Sincronizando:"
+msgstr "同步："
+
+#: chili-backup-remoto:472
+msgid "origem não encontrada:"
+msgstr "未找到來源："
+
+#: chili-backup-remoto:476
+msgid "origem não encontrada em"
+msgstr "未找到原產地"
+
+#: chili-backup-remoto:517
+msgid "rsync retornou"
+msgstr "rsync 返回"
+
+#: chili-backup-remoto:517
+msgid "em"
+msgstr "嗯"
+
+#: chili-backup-remoto:517
+msgid "alguns arquivos não foram copiados"
+msgstr "有些文件沒有被複製"
+
+#: chili-backup-remoto:525
+msgid "Simulação concluída — nada foi gravado ou removido"
+msgstr "模擬完成 - 沒有記錄或刪除任何內容"
+
+#: chili-backup-remoto:531
+msgid "Backup concluído com ressalvas:"
+msgstr "備份已完成，但有警告："
+
+#: chili-backup-remoto:534
+msgid "Backup concluído:"
+msgstr "備份完成："
