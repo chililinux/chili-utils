@@ -4,8 +4,7 @@
 #
 #  chili-lvm-manager
 #  Created: sáb 14 mar 2026 18:16:53 -04
-#  Altered: sáb 14 mar 2026 18:16:53 -04
-#  Updated: dom 22 mar 2026 00:25:09 -04
+#  Updated: qua 26 ago 2026
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -39,102 +38,24 @@ export TEXTDOMAIN=chili-lvm-manager
 #debug
 export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset}'
 #set -x
-#set -e
-#set -euo pipefail
 shopt -s extglob
+set -o pipefail
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.03.14-20260314"
-declare APPDESC="$APP - Wraper for "
-declare distro="$(uname -n)"
-declare -A PACKAGEDEP=(
-	[gettext]=gettext
-	[dd]=coreutils
-	[hdparm]=hdparm
-	[fio]=fio
-	[tput]=ncurses
-)
-# Mapa: [distro]="lista de pacotes"
-declare -A DISTRO_PKGS=(
-	["void"]="gettext rsync parted curl xz lvm2"
-	["void-live"]="gettext rsync parted curl xz lvm2"
-	["voidlinux"]="gettext rsync parted curl xz lvm2"
-	["chili"]="gettext rsync parted curl xz"
-	["chililinux"]="gettext rsync parted curl xz"
-	["arch"]="gettext rsync parted curl xz"
-	["manjaro"]="gettext rsync parted curl xz"
-	["debian"]="gettext-base rsync parted curl xz-utils"
-)
-# Mapa: [distro]="comando de instalação"
-declare -A DISTRO_MGR=(
-	["void"]="xbps-install -Syf"
-	["void-live"]="xbps-install -Syf"
-	["voidlinux"]="xbps-install -Syf"
-	["chili"]="pacman -Sy --needed --noconfirm"
-	["chililinux"]="pacman -Sy --needed --noconfirm"
-	["arch"]="pacman -Sy --needed --noconfirm"
-	["manjaro"]="pacman -Sy --needed --noconfirm"
-	["debian"]="apt-get install -y"
-)
-# Mapa: [distro]="lista de pacotes"
-declare -A DISTRO_PKGS=(
-	["void"]="gettext rsync parted curl xz lvm2"
-	["void-live"]="gettext rsync parted curl xz lvm2"
-	["voidlinux"]="gettext rsync parted curl xz lvm2"
-	["chili"]="gettext rsync parted curl xz"
-	["chililinux"]="gettext rsync parted curl xz"
-	["arch"]="gettext rsync parted curl xz"
-	["biglinux"]="gettext rsync parted curl xz"
-	["manjaro"]="gettext rsync parted curl xz"
-	["debian"]="gettext-base rsync parted curl xz-utils"
-)
-# Mapa: [distro]="comando de instalação"
-declare -A DISTRO_MGR=(
-	["void"]="xbps-install -Syf"
-	["void-live"]="xbps-install -Syf"
-	["voidlinux"]="xbps-install -Syf"
-	["chili"]="pacman -Sy --needed --noconfirm"
-	["chililinux"]="pacman -Sy --needed --noconfirm"
-	["arch"]="pacman -Sy --needed --noconfirm"
-	["viglinux"]="pacman -Sy --needed --noconfirm"
-	["manjaro"]="pacman -Sy --needed --noconfirm"
-	["debian"]="apt-get install -y"
-)
-declare dialogRcFile="$HOME/.dialogrc"
+declare _VERSION_="0.04.00-20260826"
+declare APPDESC="Gerenciador de VMs em LVM thin provisioning"
 
-cleanup() { rm -f "$dialogRcFile"; }
-#trap cleanup EXIT
-MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
-trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
+
+# ===================================================================
+# Framework (cores, log, root, dependências)
+# ===================================================================
 
 sh_check_terminal() { [ ! -t 1 ] && use_color=false; }
 
 set_varcolors() {
 	sh_check_terminal
-	# does the terminal support true-color?
 	if [[ -n "$(command -v "tput")" ]]; then
-		#tput setaf 127 | cat -v  #capturar saida
-		: "${RED=$(tput bold)$(tput setaf 196)}"
-		: "${GREEN=$(tput bold)$(tput setaf 2)}"
-		: "${YELLOW=$(tput bold)$(tput setaf 3)}"
-		: "${BLUE=$(tput setaf 4)}"
-		: "${PURPLE=$(tput setaf 125)}"
-		: "${CYAN=$(tput setaf 6)}"
-		: "${NC=$(tput sgr0)}"
-		: "${RESET=$(tput sgr0)}"
-		: "${BOLD=$(tput bold)}"
-		: "${black=$(tput bold)$(tput setaf 0)}"
-		: "${reverse=$(tput rev)}"
-		: "${branca=${black}$(tput setab 7)}"
-
-		: "${reset=$(tput sgr0)}"
-		: "${rst=$(tput sgr0)}"
-		: "${bold=$(tput bold)}"
-		: "${underline=$(tput smul)}"
-		: "${nounderline=$(tput rmul)}"
-		: "${reverse=$(tput rev)}"
-
 		: "${black=$(tput bold)$(tput setaf 0)}"
 		: "${red=$(tput bold)$(tput setaf 196)}"
 		: "${green=$(tput bold)$(tput setaf 2)}"
@@ -145,167 +66,52 @@ set_varcolors() {
 		: "${cyan=$(tput setaf 6)}"
 		: "${white=$(tput setaf 7)}"
 		: "${gray=$(tput setaf 8)}"
-		: "${light_red=$(tput setaf 9)}"
-		: "${light_green=$(tput setaf 10)}"
-		: "${light_yellow=$(tput setaf 11)}"
-		: "${light_blue=$(tput setaf 12)}"
-		: "${light_magenta=$(tput setaf 13)}"
-		: "${light_cyan=$(tput setaf 14)}"
-		: "${light_white=$(tput setaf 15)}"
 		: "${orange=$(tput setaf 202)}"
 		: "${purple=$(tput setaf 125)}"
-		: "${violet=$(tput setaf 61)}"
 
-		# Definir cores de fundo
-		: "${preto=$(tput setab 0)}"
-		: "${vermelho=$(tput setab 196)}"
-		: "${verde=$(tput setab 2)}"
-		: "${amarelo=$(tput setab 3)}"
-		: "${azul=$(tput setab 20)}"
-		: "${roxo=$(tput setab 5)}"
-		: "${ciano=$(tput setab 6)}"
-		: "${branca="${black}$(tput setab 7)"}"
-		: "${cinza=$(tput setab 8)}"
-		: "${laranja=$(tput setab 202)}"
-		: "${roxa=$(tput setab 125)}"
-		: "${violeta=$(tput setab 61)}"
+		: "${reset=$(tput sgr0)}"
+		: "${rst=$(tput sgr0)}"
+		: "${bold=$(tput bold)}"
+		: "${underline=$(tput smul)}"
+		: "${nounderline=$(tput rmul)}"
+		: "${reverse=$(tput rev)}"
 
-		: "${COL_NC='\e[0m'}" # No Color
-		: "${COL_LIGHT_GREEN='\e[1;32m'}"
-		: "${COL_LIGHT_RED='\e[1;31m'}"
-		: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
-		: "${OVER="\\r\\033[K"}"
-		: "${DOTPREFIX="  ${black}::${reset} "}"
-		: "${clrkey=${light_white}}"
+		: "${clrkey=${white}}"
 		: "${TICK="${clrkey}[${green}✓✓✓${clrkey}]${rst}"}"
 		: "${CROSS="${clrkey}[${red}✗✗✗${clrkey}]${rst}"}"
 		: "${MID="${clrkey}[${red}✗✗${green}✓${clrkey}]${rst}"}"
 		: "${WARN="${clrkey}[${yellow}⚠  ${clrkey}]${yellow}"}"
 		: "${INFO="${clrkey}[${yellow}➡  ${clrkey}]${rst}"}"
-
-		# dialog colors
-		REVERSE="\Zr"
-		UNDERLINE="\Zu"
-		BOLD="\Zb"
-		RESET="\Zn"
-		BLACK="\Z0"
-		YELLOW="\Z3"
-		AMARELO="\Zb\Z3"
-		WHITE="\Z7"
-		BLUE="\Z4"
-		AZUL="\Zb\Z4"
-		CYAN="\Z6"
-		RED="\Z1"
-		GREEN="\Z2"
-		MAGENTA="\Z5"
 	else
 		unset_varcolors
 	fi
 }
 
 unset_varcolors() {
-	unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
 	unset reset rst bold underline nounderline reverse
-	unset black red green yellow blue magenta cyan white gray orange purple violet
-	unset light_red light_green light_yellow light_blue light_magenta light_cyan light_white
-	unset preto vermelho verde amarelo azul roxo ciano branca cinza laranja roxa violeta
-	TICK="${white}[${verde}✓${rst}${white}]${rst}"
-	CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
-	INFO="${white}[${cinza}i${rst}${white}]${rst}"
-}
-
-sh_create_dialogrc() {
-	cat >"$dialogRcFile" <<EOF_DIALOGRC
-screen_color = (white,black,off)
-dialog_color = (white,black,off)
-title_color = (green,black,on)
-border_color = dialog_color
-shadow_color = (black,black,on)
-button_inactive_color = dialog_color
-button_key_inactive_color = dialog_color
-button_label_inactive_color = dialog_color
-button_active_color = (black,green,on)
-button_key_active_color = button_active_color
-button_label_active_color = (white,green,on)
-tag_key_selected_color = (white,green,on)
-item_selected_color = tag_key_selected_color
-form_text_color = (green,black,on)
-form_item_readonly_color = (cyan,black,on)
-itemhelp_color = (white,green,off)
-inputbox_color = dialog_color
-inputbox_border_color = dialog_color
-searchbox_color = dialog_color
-searchbox_title_color = title_color
-searchbox_border_color = border_color
-position_indicator_color = title_color
-menubox_color = dialog_color
-menubox_border_color = border_color
-item_color = dialog_color
-tag_color = title_color
-tag_selected_color = button_label_active_color
-tag_key_color = button_key_inactive_color
-check_color = dialog_color
-check_selected_color = button_active_color
-uarrow_color = screen_color
-darrow_color = screen_color
-form_active_text_color = button_active_color
-gauge_color = title_color
-border2_color = dialog_color
-searchbox_border2_color = dialog_color
-menubox_border2_color = dialog_color
-separate_widget = ''
-tab_len = 0
-visit_items = off
-use_shadow = off
-use_colors = on
-EOF_DIALOGRC
-	export DIALOGRC="$dialogRcFile"
-}
-
-# Teste se o terminal suporta caracteres gráficos estendidos
-sh_ascii_lines() {
-	#Isso força o dialog a usar caracteres ASCII básicos para as bordas.
-	#if [[ "$LANG" =~ 'UTF-8' ]]; then
-	[[ "$(printf '\u250C')" == "┌" ]]
-	export NCURSES_NO_UTF8_ACS=$((!$?))
-}
-
-sh_setEnvironment() {
-	[[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
-	sh_ascii_lines
-}
-
-sh_checkroot() {
-	((EUID != 0)) && elevate_to_root "$@" || return 0
-}
-
-elevate_to_root() {
-	msg "This script must be run as root. Elevating privileges..."
-	ccabec+='root [elevated]'
-	# Tenta usar sudo primeiro (caso esteja configurado)
-	if command -v sudo >/dev/null 2>&1; then
-		exec sudo bash "$0" "$@"
-	fi
-	# Se sudo falhar, tenta su
-	if command -v su >/dev/null 2>&1; then
-		exec su -c "$0 $*"
-	fi
-	die "Error: Unable to elevate privileges. Run manually as root."
+	unset black red green yellow blue magenta cyan white gray orange purple
+	TICK="[✓]"
+	CROSS="[x]"
+	MID="[±]"
+	WARN="[!]"
+	INFO="[i]"
 }
 
 replicate() {
 	local char="${1:-#}"
-	local nsize="${2:-$(tput cols)}"
-	# Gera linha com substituição direta sem forks extras
-	printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
+	local nsize="${2:-$(tput cols 2>/dev/null || echo 80)}"
+	local _line
+	printf -v _line "%*s" "$nsize" ""
+	printf '%b\n' "${blue}${_line// /$char}${reset}"
 }
 
 readconf() {
 	local msg="$1"
 	local color="${2:-${yellow}}"
+	local REPLY
 
 	echo -n -e "$color"
-	read -r -p "$msg [S/n] :"
+	read -r -p "$msg [S/n] :" REPLY
 	echo -n -e "$reset"
 	case "${REPLY^}" in
 	[Ss]) return 0 ;;
@@ -314,54 +120,17 @@ readconf() {
 	esac
 }
 
-debug() {
-	# dialog
-	whiptail --fb --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n" 0 40
-	local result="$?"
-	((result)) && exit "$result"
-	return "$result"
-}
+# Pede que o usuário digite exatamente $1 para confirmar uma operação
+# irreversível. Muito mais seguro que um simples [S/n] para wipefs/pvremove/
+# lvremove/vgreduce, onde um erro de dedo custa dados.
+confirm_destructive() {
+	local target="$1"
+	local input
 
-# ===================================================================
-# Funções auxiliares
-# ===================================================================
-run_cmd() {
-	local cmd="$*"
-
-	if [[ $DRYRUN -eq 1 ]]; then
-		msg "${cyan}[DRY-RUN]${rst} ${cmd}"
-	else
-		echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
-		# Executa o comando, falha se houver erro
-		# Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
-		if [[ "$cmd" =~ ^mkdir\ -p ]] || [[ "$cmd" =~ ^umount\ -R ]]; then
-			eval "$cmd" &>/dev/null || true
-		else
-			eval "$cmd" || log_warn_tab "Falha ao executar: $cmd"
-		fi
-	fi
-}
-
-sh_copyright() {
-	cat <<-EOF-COPY
-		${bold}${cyan}${0##*/} v${_VERSION_}${rst}
-		${bold}${cyan}${APPDESC}${rst}
-		${bold}${orange}Copyright (c) 2019-2026, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
-		${bold}${orange}Copyright (c) 2019-2026, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
-	EOF-COPY
-}
-
-sh_version() {
-	cat <<-EOF-VERSION
-		  $(sh_copyright)
-
-		        $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
-		        $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
-		        $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
-		        $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
-		        $(gettext 'o código fonte específico usado para criar esta cópia.')
-		        ${red}$(gettext 'Este programa vem com absolutamente NENHUMA garantia.')${reset}
-	EOF-VERSION
+	echo -e "${red}${bold}Esta operação é destrutiva e IRREVERSÍVEL.${reset}"
+	echo -e "${yellow}Digite exatamente '${bold}${target}${reset}${yellow}' para confirmar (qualquer outra coisa cancela):${reset}"
+	read -r input
+	[[ "$input" == "$target" ]]
 }
 
 msg() { echo -e "${INFO} ${*}${reset}"; }
@@ -379,11 +148,28 @@ die() {
 	exit 1
 }
 
+MostraErro() { echo -e "${CROSS} erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}"; }
+
+sh_checkroot() {
+	((EUID != 0)) && elevate_to_root "$@" || return 0
+}
+
+elevate_to_root() {
+	msg "This script must be run as root. Elevating privileges..."
+	if command -v sudo >/dev/null 2>&1; then
+		exec sudo bash "$0" "$@"
+	fi
+	# Se sudo falhar, tenta su (quoting seguro via printf %q, evita quebra com
+	# espaços/caracteres especiais nos argumentos)
+	if command -v su >/dev/null 2>&1; then
+		exec su -c "$(printf '%q ' "$0" "$@")"
+	fi
+	die "Error: Unable to elevate privileges. Run manually as root."
+}
+
 detect_distro() {
 	local id=""
-
 	if [[ -r /etc/os-release ]]; then
-		# Lê ID=void|arch|debian|... exatamente como a distro declara
 		id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
 	elif [[ -r /usr/lib/os-release ]]; then
 		id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
@@ -394,25 +180,23 @@ detect_distro() {
 	echo "$id"
 }
 
+# Depende de PACKAGEDEP (mapa: comando->pacote), DISTRO_MGR e DISTRO_PKGS
+# (mapas: distro->comando de instalação / lista de pacotes), definidos abaixo.
 sh_checkDependencies() {
-	local DISTRO="$(detect_distro)"
-	local aBlock_files=()
-	local d
-	local pkg
-	local errorFound=false
-	declare -a missing
-	local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
-	local cmsgPkg="$(gettext "instalar pacote")"
+	local DISTRO
+	DISTRO="$(detect_distro)"
+	local d pkg errorFound=false
+	local -a missing=()
+	local cmsgNot cmsgPkg
+	cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+	cmsgPkg="$(gettext "instalar pacote")"
 
 	for d in "${!PACKAGEDEP[@]}"; do
 		if ! command -v "$d" &>/dev/null; then
 			pkg="${PACKAGEDEP[$d]}"
-			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
 			missing+=("${pkg}")
 			errorFound=true
-		else
-			#log_msg "Check: ${cyan}$d"
-			:
 		fi
 	done
 
@@ -423,46 +207,206 @@ sh_checkDependencies() {
 		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
 		replicate '='
 
-		local cmd="${DISTRO_MGR[$DISTRO]}"
-		#local pkgs="${DISTRO_PKGS[$DISTRO]}"
-		local pkgs="${missing[@]}"
+		local cmd="${DISTRO_MGR[$DISTRO]:-}"
+		# shellcheck disable=SC2206 # split intencional: $cmd vem de um mapa de config, não de entrada externa
+		local -a cmd_arr=($cmd)
+		local -a pkgs_arr=("${missing[@]}")
 
-		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		if [[ -z "$cmd" ]]; then
+			die "$(gettext "Distro não suportada para instalação automática:") $DISTRO"
+		fi
+
+		msg "Distro detectada: ${cyan}$DISTRO${rst}"
 		if readconf "$(gettext "Instalar dependências base agora?")"; then
 			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
-			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
-			if ! $cmd $pkgs; then
+			if ! "${cmd_arr[@]}" "${pkgs_arr[@]}"; then
 				echo
 				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
 				exit 1
 			fi
 			echo
 			echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+		else
+			die "$(gettext "Dependências ausentes; abortando.")"
 		fi
 	fi
 }
 
-# configure ambiente
-set_varcolors
-sh_checkroot "$@"
+declare -A PACKAGEDEP=(
+	[gettext]=gettext
+	[tput]=ncurses
+	[lvs]=lvm2
+	[pvs]=lvm2
+	[vgs]=lvm2
+	[lvcreate]=lvm2
+	[lvremove]=lvm2
+	[lvextend]=lvm2
+	[vgextend]=lvm2
+	[vgreduce]=lvm2
+	[vgchange]=lvm2
+	[pvcreate]=lvm2
+	[pvremove]=lvm2
+	[wipefs]=util-linux
+	[lsblk]=util-linux
+)
+# Mapa: [distro]="lista de pacotes"
+declare -A DISTRO_PKGS=(
+	["void"]="gettext rsync parted curl xz lvm2"
+	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidlinux"]="gettext rsync parted curl xz lvm2"
+	["chili"]="gettext rsync parted curl xz lvm2"
+	["chililinux"]="gettext rsync parted curl xz lvm2"
+	["arch"]="gettext rsync parted curl xz lvm2"
+	["biglinux"]="gettext rsync parted curl xz lvm2"
+	["manjaro"]="gettext rsync parted curl xz lvm2"
+	["debian"]="gettext-base rsync parted curl xz-utils lvm2"
+)
+# Mapa: [distro]="comando de instalação"
+declare -A DISTRO_MGR=(
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["biglinux"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
+)
 
-##########################################################################################################
+trap 'echo; log_warn "Interrompido pelo usuário."; exit 130' INT
 
-VG="pve"
-POOL="data"
+sh_copyright() {
+	cat <<-EOF-COPY
+		${bold}${cyan}${APP} v${_VERSION_}${rst}
+		${bold}${cyan}${APPDESC}${rst}
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
+		${bold}${orange}Copyright (c) 2019-2026, ${reset}Vilmar Catafesta <vcatafesta@gmail.com>${black}
+	EOF-COPY
+}
 
-RED="\e[31m"
-GREEN="\e[32m"
-YELLOW="\e[33m"
-BLUE="\e[34m"
-CYAN="\e[36m"
-RESET="\e[0m"
+sh_version() { sh_copyright; }
+
+usage() {
+	cat <<-EOF
+		${APP} v${_VERSION_} - ${APPDESC}
+
+		Uso: ${APP} [opções] [comando [args]]
+
+		Comandos:
+		  list-vms                            Lista VMs (thin volumes)
+		  list-pvs                            Lista PVs
+		  list-vgs                            Lista VGs
+		  list-lvs                            Lista LVs
+		  pool-status                         Status do thin pool
+		  add-disk <disco>                    Adiciona disco ao VG (ex: /dev/sdb)
+		  remove-disk <disco>                 Remove disco do VG
+		  create-vm <vmid> <tamanho> [idx]    Cria VM thin (ex: 100 50G 0 -> vm-100-disk-0)
+		  remove-vm <nome>                    Remove VM/volume lógico
+		  activate                            vgchange -ay && lvscan
+
+		Opções:
+		  --dry-run          Mostra os comandos sem executar
+		  --vg <nome>        Volume Group (padrão: variável VG ou 'pve')
+		  --pool <nome>      Thin pool (padrão: variável POOL ou 'data')
+		  --units <unidade>  Unidade para lvs/pvs/vgs (padrão: g). Ex: g, m, t
+		  -h, --help         Mostra esta ajuda
+		  -v, --version      Mostra a versão
+
+		Sem comando, abre o menu interativo.
+		Operações destrutivas (add-disk, remove-disk, remove-vm) sempre pedem
+		confirmação digitada, mesmo em modo --dry-run e via CLI.
+	EOF
+}
+
+# ===================================================================
+# Funções puras / testáveis (sem I/O de terminal, fáceis de testar com bats)
+# ===================================================================
+
+# validate_vmid ID -> 0 se ID é um inteiro positivo
+validate_vmid() {
+	[[ "$1" =~ ^[0-9]+$ ]]
+}
+
+# validate_size TAMANHO -> 0 se está no formato aceito por lvcreate -V (ex: 50G, 512M, 1.5T)
+validate_size() {
+	[[ "$1" =~ ^[0-9]+(\.[0-9]+)?[KkMmGgTt]$ ]]
+}
+
+# build_lv_name VMID [INDEX] -> nome do volume no padrão Proxmox-like (vm-<id>-disk-<n>)
+build_lv_name() {
+	local vmid="$1" idx="${2:-0}"
+	echo "vm-${vmid}-disk-${idx}"
+}
+
+# to_bytes TAMANHO -> tamanho em bytes (inteiro), assume unidades binárias (1024^n)
+to_bytes() {
+	local size="$1" num unit
+	[[ "$size" =~ ^([0-9]+(\.[0-9]+)?)([KkMmGgTt])$ ]] || return 1
+	num="${BASH_REMATCH[1]}"
+	unit="${BASH_REMATCH[3],,}"
+	case "$unit" in
+	k) awk -v n="$num" 'BEGIN{printf "%.0f", n*1024}' ;;
+	m) awk -v n="$num" 'BEGIN{printf "%.0f", n*1024*1024}' ;;
+	g) awk -v n="$num" 'BEGIN{printf "%.0f", n*1024*1024*1024}' ;;
+	t) awk -v n="$num" 'BEGIN{printf "%.0f", n*1024*1024*1024*1024}' ;;
+	esac
+}
+
+# pool_free_bytes TOTAL_BYTES PERCENT_USADO -> bytes livres estimados no pool
+pool_free_bytes() {
+	local total="$1" percent="$2"
+	awk -v t="$total" -v p="$percent" 'BEGIN{printf "%.0f", t*(100-p)/100}'
+}
+
+# disk_is_pv DISCO_REAL LISTA_PV -> 0 se DISCO_REAL (caminho já resolvido por
+# readlink -f) está entre os PVs listados em LISTA_PV (um por linha, podem
+# ser symlinks). Extraída do padrão frágil original (exit dentro de while em
+# subshell de pipe) para uma função simples e testável.
+disk_is_pv() {
+	local target="$1" pv_list="$2"
+	local pv real
+	while IFS= read -r pv; do
+		[[ -z "$pv" ]] && continue
+		real=$(readlink -f "$pv" 2>/dev/null) || continue
+		[[ "$real" == "$target" ]] && return 0
+	done <<<"$pv_list"
+	return 1
+}
+
+# ===================================================================
+# Execução de comandos com suporte a dry-run (substitui o antigo run_cmd
+# baseado em eval, que era arriscado e não era usado em lugar nenhum)
+# ===================================================================
+declare -i DRYRUN=0
+
+run_cmd() {
+	if ((DRYRUN)); then
+		echo -e "  ${cyan}[DRY-RUN]${rst} $*"
+		return 0
+	fi
+	echo -e "  ${cyan}[exec]${rst} $*"
+	"$@"
+}
+
+# preview_cmds "cmd1 arg..." "cmd2 arg..." ... -> mostra o plano de execução
+preview_cmds() {
+	echo -e "${yellow}Isto vai executar:${reset}"
+	local c
+	for c in "$@"; do
+		echo "  ${cyan}\$${reset} ${c}"
+	done
+}
+
+# ===================================================================
+# Configuração e funções de UI
+# ===================================================================
+VG="${VG:-pve}"
+POOL="${POOL:-data}"
+LVM_UNITS="${LVM_UNITS:-g}"
 
 confirm() {
 	readconf "Confirmar operação?"
-	#  echo -e "${yellow}Confirmar operação? (S/n)${rst}"
-	#  read -r resp
-	#  [[ "$resp" =~ ^[sS]$ ]]
 }
 
 pause() {
@@ -472,191 +416,331 @@ pause() {
 
 list_vms() {
 	replicate '-'
-	echo -e "${CYAN}VMs (thin volumes):${RESET}"
-	lvs "$VG"
+	echo -e "${cyan}VMs (thin volumes):${reset}"
+	lvs --units "$LVM_UNITS" "$VG" || log_err_tab "Falha ao listar VMs em '${VG}' (o VG existe?)"
 	replicate '-'
 }
 
 list_pvs() {
-	echo -e "${CYAN}PVS (listar discos físicos):${RESET}"
-	pvs
+	echo -e "${cyan}PVS (listar discos físicos):${reset}"
+	pvs --units "$LVM_UNITS" || log_err_tab "Falha ao listar PVs."
 }
 
 list_vgs() {
-	echo -e "${CYAN}VGS (listar volume groups):${RESET}"
-	vgs
+	echo -e "${cyan}VGS (listar volume groups):${reset}"
+	vgs --units "$LVM_UNITS" || log_err_tab "Falha ao listar VGs."
 }
 
 list_lvs() {
-	echo -e "${CYAN}LVS (listar volumes lógicos):${RESET}"
-	lvs -a
+	echo -e "${cyan}LVS (listar volumes lógicos):${reset}"
+	lvs --units "$LVM_UNITS" -a || log_err_tab "Falha ao listar LVs."
 }
 
 pool_status() {
-	echo -e "${CYAN}Status do thin pool:${RESET}"
-	lvs -o+data_percent,metadata_percent
+	echo -e "${cyan}Status do thin pool:${reset}"
+	lvs --units "$LVM_UNITS" -o+data_percent,metadata_percent || log_err_tab "Falha ao consultar status do pool."
 }
 
+# add_disk [DISCO] -- se DISCO não for passado, pergunta interativamente
 add_disk() {
-  echo -e "${CYAN}Discos disponíveis:${RESET}"
-  lsblk -d -o NAME,SIZE,MODEL
+	local DISK="${1:-}" REAL_DISK PV_LIST
 
-  echo -e "${BLUE}Digite o disco (exemplo: /dev/sdb):${RESET}"
-  read -r DISK
+	if [[ -z "$DISK" ]]; then
+		echo -e "${cyan}Discos disponíveis:${reset}"
+		lsblk -d -o NAME,SIZE,MODEL
+		echo -e "${blue}Digite o disco (exemplo: /dev/sdb):${reset}"
+		read -r DISK
+	fi
 
-  [ -b "$DISK" ] || {
-    echo -e "${RED}Disco inválido.${RESET}"
-    return 1
-  }
+	[ -b "$DISK" ] || {
+		echo -e "${red}Disco inválido: '${DISK}' não é um block device.${reset}"
+		return 1
+	}
 
-  REAL_DISK=$(readlink -f "$DISK")
+	REAL_DISK=$(readlink -f "$DISK")
+	PV_LIST=$(pvs --noheadings -o pv_name 2>/dev/null)
 
-  PV_LIST=$(pvs --noheadings -o pv_name)
+	if disk_is_pv "$REAL_DISK" "$PV_LIST"; then
+		replicate '-'
+		echo "$PV_LIST" | while IFS= read -r pv; do
+			lsblk -dn -o TYPE,NAME,PATH,SIZE,TRAN,MODEL,LABEL,SERIAL,PTTYPE "$(readlink -f "$pv")"
+		done
+		replicate '-'
+		echo -e "${green}Disco já é PV. Nada a fazer.${reset}"
+		return 0
+	fi
 
-  if echo "$PV_LIST" | while read -r PV; do
-       [ "$(readlink -f "$PV")" = "$REAL_DISK" ] && exit 0
-     done; then
-    replicate '-'
-    echo "$PV_LIST" | while read -r PV; do
-      REAL=$(readlink -f "$PV")
-      grc lsblk -dn -o TYPE,NAME,PATH,SIZE,TRAN,MODEL,LABEL,SERIAL,PTTYPE "$REAL"
-    done
-    replicate '-'
-    echo -e "${GREEN}Disco já é PV. Nada a fazer.${RESET}"
-    return 0
-  fi
+	echo -e "${yellow}Adicionar ${DISK} ao VG ${VG}${reset}"
+	preview_cmds \
+		"wipefs -a $DISK" \
+		"pvcreate $DISK" \
+		"vgextend $VG $DISK" \
+		"lvextend -l +100%FREE $VG/$POOL"
 
-  echo -e "${YELLOW}Adicionar ${DISK} ao VG ${VG}${RESET}"
+	if ! confirm_destructive "$DISK"; then
+		echo -e "${red}Operação cancelada.${reset}"
+		return 1
+	fi
 
-  if confirm; then
-    wipefs -a "$DISK" || return 1
-    pvcreate "$DISK" || return 1
-    vgextend "$VG" "$DISK" || return 1
-    lvextend -l +100%FREE "$VG/$POOL" || return 1
-    echo -e "${GREEN}Disco adicionado ao pool.${RESET}"
-  else
-    echo -e "${RED}Operação cancelada.${RESET}"
-  fi
+	run_cmd wipefs -a "$DISK" || { log_err_tab "Falha em wipefs em ${DISK}."; return 1; }
+	run_cmd pvcreate "$DISK" || { log_err_tab "Falha em pvcreate em ${DISK}."; return 1; }
+	if ! run_cmd vgextend "$VG" "$DISK"; then
+		log_err_tab "Falha ao estender VG '${VG}' com ${DISK}."
+		log_warn_tab "${DISK} ficou marcado como PV mas fora do VG '${VG}'. Rode 'pvremove ${DISK}' se quiser desfazer."
+		return 1
+	fi
+	run_cmd lvextend -l +100%FREE "$VG/$POOL" || { log_err_tab "Falha ao estender pool '${VG}/${POOL}'."; return 1; }
+	echo -e "${green}Disco adicionado ao pool.${reset}"
 }
 
+# remove_disk [DISCO]
 remove_disk() {
-	echo -e "${CYAN}PVs atuais:${RESET}"
-	pvs
+	local DISK="${1:-}" REAL_DISK
 
-	echo -e "${BLUE}Digite o disco para remover (exemplo: /dev/sdb):${RESET}"
-	read -r DISK
+	if [[ -z "$DISK" ]]; then
+		echo -e "${cyan}PVs atuais:${reset}"
+		pvs --units "$LVM_UNITS"
+		echo -e "${blue}Digite o disco para remover (exemplo: /dev/sdb):${reset}"
+		read -r DISK
+	fi
 
-	echo -e "${YELLOW}Remover ${DISK} do VG ${VG}${RESET}"
+	[ -b "$DISK" ] || {
+		echo -e "${red}Disco inválido: '${DISK}' não é um block device.${reset}"
+		return 1
+	}
 
-	if confirm; then
-		vgreduce "$VG" "$DISK"
-		pvremove "$DISK"
-		echo -e "${GREEN}Disco removido.${RESET}"
-	else
-		echo -e "${RED}Operação cancelada.${RESET}"
+	REAL_DISK=$(readlink -f "$DISK")
+	if ! disk_is_pv "$REAL_DISK" "$(pvs --noheadings -o pv_name 2>/dev/null)"; then
+		echo -e "${red}'${DISK}' não é um PV do VG '${VG}'. Nada a fazer.${reset}"
+		return 1
+	fi
+
+	echo -e "${yellow}Remover ${DISK} do VG ${VG}${reset}"
+	preview_cmds "vgreduce $VG $DISK" "pvremove $DISK"
+
+	if ! confirm_destructive "$DISK"; then
+		echo -e "${red}Operação cancelada.${reset}"
+		return 1
+	fi
+
+	run_cmd vgreduce "$VG" "$DISK" || { log_err_tab "Falha ao remover ${DISK} do VG '${VG}'."; return 1; }
+	run_cmd pvremove "$DISK" || { log_err_tab "Falha em pvremove em ${DISK}."; return 1; }
+	echo -e "${green}Disco removido.${reset}"
+}
+
+# check_pool_space TAMANHO_PEDIDO -- avisa (não bloqueia; thin pools permitem
+# overcommit de propósito) se o espaço livre estimado do pool é menor que o
+# solicitado.
+check_pool_space() {
+	local requested="$1" line total_b percent free_b requested_b
+	line=$(lvs --noheadings --units b --nosuffix -o lv_size,data_percent "$VG/$POOL" 2>/dev/null) || return 0
+	total_b=$(awk '{print $1}' <<<"$line")
+	percent=$(awk '{print $2}' <<<"$line")
+	[[ -z "$total_b" || -z "$percent" ]] && return 0
+
+	free_b=$(pool_free_bytes "$total_b" "$percent")
+	requested_b=$(to_bytes "$requested") || return 0
+
+	if ((requested_b > free_b)); then
+		log_warn_tab "Pedido (${requested}) é maior que o espaço livre estimado do pool ($(awk -v b="$free_b" 'BEGIN{printf "%.1fG", b/1024/1024/1024}'))."
+		log_warn_tab "Thin pools permitem overcommit, mas monitore o uso com a opção 5 (Thin Pool) para não estourar o disco físico."
 	fi
 }
 
+# create_vm [VMID] [TAMANHO] [INDEX]
 create_vm() {
-	echo -e "${CYAN}Exemplo: VMID=100 cria vm-100-disk-0${RESET}"
-	echo -e "${BLUE}ID da VM (ex: 100):${RESET}"
-	read -r VMID
+	local VMID="${1:-}" SIZE="${2:-}" IDX="${3:-0}" NAME
 
-	echo -e "${BLUE}Tamanho do disco (ex: 50G):${RESET}"
-	read -r SIZE
-
-	NAME="${VMID}"
-	echo -e "${YELLOW}Criar volume ${NAME} com ${SIZE}${RESET}"
-
-	if confirm; then
-		lvcreate -V "$SIZE" -T "$VG/$POOL" -n "$NAME"
-		echo -e "${GREEN}VM criada com sucesso.${RESET}"
-		list_vms
-	else
-		echo -e "${RED}Operação cancelada.${RESET}"
+	if [[ -z "$VMID" ]]; then
+		echo -e "${cyan}Exemplo: VMID=100 cria vm-100-disk-0${reset}"
+		echo -e "${blue}ID da VM (ex: 100):${reset}"
+		read -r VMID
 	fi
+	if ! validate_vmid "$VMID"; then
+		echo -e "${red}ID inválido: '${VMID}' precisa ser numérico.${reset}"
+		return 1
+	fi
+
+	if [[ -z "$SIZE" ]]; then
+		echo -e "${blue}Tamanho do disco (ex: 50G):${reset}"
+		read -r SIZE
+	fi
+	if ! validate_size "$SIZE"; then
+		echo -e "${red}Tamanho inválido: '${SIZE}' (use algo como 50G, 512M).${reset}"
+		return 1
+	fi
+
+	NAME="$(build_lv_name "$VMID" "$IDX")"
+
+	if lvs "$VG/$NAME" &>/dev/null; then
+		echo -e "${red}Já existe um volume '${NAME}' em '${VG}'.${reset}"
+		return 1
+	fi
+
+	check_pool_space "$SIZE"
+
+	echo -e "${yellow}Criar volume ${NAME} com ${SIZE}${reset}"
+	preview_cmds "lvcreate -V $SIZE -T $VG/$POOL -n $NAME"
+
+	if ! confirm; then
+		echo -e "${red}Operação cancelada.${reset}"
+		return 1
+	fi
+
+	run_cmd lvcreate -V "$SIZE" -T "$VG/$POOL" -n "$NAME" || { log_err_tab "Falha ao criar o volume '${NAME}'."; return 1; }
+	echo -e "${green}VM criada com sucesso.${reset}"
+	list_vms
 }
 
+# remove_vm [NOME]
 remove_vm() {
-	echo -e "${CYAN}VMs existentes:${RESET}"
-	lvs "$VG"
+	local NAME="${1:-}"
 
-	echo -e "${BLUE}Digite o nome da VM (ex: vm-100-disk-0):${RESET}"
-	read -r NAME
-
-	echo -e "${YELLOW}Remover ${NAME}${RESET}"
-
-	if confirm; then
-		lvremove "$VG/$NAME"
-		echo -e "${GREEN}VM removida.${RESET}"
-	else
-		echo -e "${RED}Operação cancelada.${RESET}"
+	if [[ -z "$NAME" ]]; then
+		echo -e "${cyan}VMs existentes:${reset}"
+		lvs --units "$LVM_UNITS" "$VG"
+		echo -e "${blue}Digite o nome da VM (ex: vm-100-disk-0):${reset}"
+		read -r NAME
 	fi
+
+	if ! lvs "$VG/$NAME" &>/dev/null; then
+		echo -e "${red}Volume '${NAME}' não existe em '${VG}'.${reset}"
+		return 1
+	fi
+
+	echo -e "${yellow}${bold}Remover ${NAME} (irreversível)${reset}"
+	preview_cmds "lvremove -f $VG/$NAME"
+
+	if ! confirm_destructive "$NAME"; then
+		echo -e "${red}Operação cancelada.${reset}"
+		return 1
+	fi
+
+	run_cmd lvremove -f "$VG/$NAME" || { log_err_tab "Falha ao remover '${NAME}'."; return 1; }
+	echo -e "${green}VM removida.${reset}"
 }
 
-while true; do
-	clear
-	replicate '-'
-	echo -e "${CYAN}========= $APP - GERENCIADOR LVM THIN =========${RESET}"
-	replicate '-'
-	echo -e "${GREEN}1${RESET}  - Listar VMs (thin volumes)"
-	echo -e "${GREEN}2${RESET}  - PVS (listar discos físicos)"
-	echo -e "${GREEN}3${RESET}  - VGS (listar volume groups)"
-	echo -e "${GREEN}4${RESET}  - LVS (listar volumes lógicos)"
-	echo -e "${GREEN}5${RESET}  - Thin Pool (uso do pool)"
-	echo
-	echo -e "${GREEN}6${RESET}  - Acrescentar disco (pvcreate + vgextend)"
-	echo -e "${GREEN}7${RESET}  - Remover disco (vgreduce + pvremove)"
-	echo
-	echo -e "${GREEN}8${RESET}  - Criar VM (lvcreate thin)"
-	echo -e "${GREEN}9${RESET}  - Remover VM (lvremove)"
-	echo
-	echo -e "${RED}0${RESET}  - Sair"
-	echo
-	read -rp "Escolha: " opt
+activate_volumes() {
+	run_cmd vgchange -ay || log_err_tab "Falha ao ativar volumes (vgchange -ay)."
+	run_cmd lvscan || log_err_tab "Falha ao executar lvscan."
+}
 
-	case "$opt" in
-	1)
-		list_vms
-		pause
-		;;
-	2)
-		list_pvs
-		pause
-		;;
-	3)
-		list_vgs
-		pause
-		;;
-	4)
-		list_lvs
-		pause
-		;;
-	5)
-		pool_status
-		pause
-		;;
-	6)
-		add_disk
-		pause
-		;;
-	7)
-		remove_disk
-		pause
-		;;
-	8)
-		create_vm
-		pause
-		;;
-	9)
-		remove_vm
-		pause
-		;;
-	0) exit ;;
-	*)
-		echo -e "${RED}Opção inválida${RESET}"
-		pause
-		;;
+# ===================================================================
+# Menu interativo
+# ===================================================================
+interactive_menu() {
+	while true; do
+		clear
+		replicate '-'
+		echo -e "${cyan}========= $APP - GERENCIADOR LVM THIN =========${reset}"
+		replicate '-'
+		echo -e "${green}1${reset}  - Listar VMs (thin volumes)"
+		echo -e "${green}2${reset}  - PVS (listar discos físicos)"
+		echo -e "${green}3${reset}  - VGS (listar volume groups)"
+		echo -e "${green}4${reset}  - LVS (listar volumes lógicos)"
+		echo -e "${green}5${reset}  - Thin Pool (uso do pool)"
+		echo
+		echo -e "${green}6${reset}  - Acrescentar disco (pvcreate + vgextend)"
+		echo -e "${green}7${reset}  - Remover disco (vgreduce + pvremove)"
+		echo
+		echo -e "${green}8${reset}  - Criar VM (lvcreate thin)"
+		echo -e "${green}9${reset}  - Remover VM (lvremove)"
+		echo -e "${green}10${reset} - Ativar Volumes LVM (vgchange -ay)"
+		echo
+		if ((DRYRUN)); then
+			echo -e "${yellow}[modo --dry-run ativo: nenhum comando será executado de verdade]${reset}"
+			echo
+		fi
+		echo -e "${red}0${reset}  - Sair"
+		echo
+		read -rp "Escolha: " opt
+
+		case "$opt" in
+		1) list_vms; pause ;;
+		2) list_pvs; pause ;;
+		3) list_vgs; pause ;;
+		4) list_lvs; pause ;;
+		5) pool_status; pause ;;
+		6) add_disk; pause ;;
+		7) remove_disk; pause ;;
+		8) create_vm; pause ;;
+		9) remove_vm; pause ;;
+		10) activate_volumes; pause ;;
+		0) exit 0 ;;
+		*)
+			echo -e "${red}Opção inválida${reset}"
+			pause
+			;;
+		esac
+	done
+}
+
+# ===================================================================
+# CLI
+# ===================================================================
+main() {
+	local cmd=""
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--dry-run)
+			DRYRUN=1
+			shift
+			;;
+		--vg)
+			VG="$2"
+			shift 2
+			;;
+		--pool)
+			POOL="$2"
+			shift 2
+			;;
+		--units)
+			LVM_UNITS="$2"
+			shift 2
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		-v | --version)
+			sh_version
+			exit 0
+			;;
+		list-vms | list-pvs | list-vgs | list-lvs | pool-status | add-disk | remove-disk | create-vm | remove-vm | activate)
+			cmd="$1"
+			shift
+			break
+			;;
+		*)
+			echo -e "${red}Opção/comando desconhecido: $1${reset}" >&2
+			usage
+			exit 1
+			;;
+		esac
+	done
+
+	set_varcolors
+	sh_checkroot "$@"
+	sh_checkDependencies
+
+	case "$cmd" in
+	list-vms) list_vms ;;
+	list-pvs) list_pvs ;;
+	list-vgs) list_vgs ;;
+	list-lvs) list_lvs ;;
+	pool-status) pool_status ;;
+	add-disk) add_disk "$@" ;;
+	remove-disk) remove_disk "$@" ;;
+	create-vm) create_vm "$@" ;;
+	remove-vm) remove_vm "$@" ;;
+	activate) activate_volumes ;;
+	"") interactive_menu ;;
 	esac
+}
 
-done
+# Só executa main quando o script é chamado diretamente — permite sourcear
+# este arquivo (ex.: em testes bats) sem disparar checagem de root, menu, etc.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+	main "$@"
+fi
