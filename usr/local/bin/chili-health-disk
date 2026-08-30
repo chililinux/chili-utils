@@ -4,7 +4,7 @@
 #
 #  chili-health-disk
 #  Created: ter 07 jul 2026 21:31:38 -04
-#  Updated: ter 07 jul 2026 21:31:38 -04
+#  Updated: dom 30 ago 2026 00:06:45 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -44,31 +44,52 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare APPBASE=${prg%.*}
-declare _VERSION_="0.07.07-20260707"
-declare APPVERSION_="0.07.07-20260707"
-declare APPDESC="$APP - Wraper for "
-declare distro="$(uname -n)"
+declare APPBASE="${APP%.*}"
+declare _VERSION_="0.09.00-20260830"
+declare APPVERSION_="0.09.00-20260830"
+declare APPDESC="$APP - Wrapper for disk health diagnostic"
+declare distro=""
 declare DIALOG=dialog
+declare USE_DIALOG=true
+declare OPT_SPEED=false
+declare OPT_ALL=false
+declare OPT_MONITOR=false
+declare HISTORY_DIR="/var/log/chili-health-disk"
+declare -a DISKS=()
+declare -a SUMMARY_DISK=()
+declare -a SUMMARY_ESTRUTURA=()
+declare -a SUMMARY_HARDWARE=()
+
 declare -A PACKAGEDEP=(
   [gettext]=gettext
+  [lsblk]=util-linux
+  [fdisk]=util-linux
+  [blkid]=util-linux
+  [wipefs]=util-linux
+  [blockdev]=util-linux
   [dd]=coreutils
-  [hdparm]=hdparm
-  [fio]=fio
+  [od]=coreutils
   [tput]=ncurses
+  [dialog]=dialog
 )
+
 # Mapa: [distro]="lista de pacotes"
+# Nomes corretos por distro (ex.: ncurses-bin no Debian, não "ncurses").
+# Esta tabela É de fato usada em sh_checkDependencies (antes era declarada
+# mas nunca lida — a instalação usava os nomes genéricos de PACKAGEDEP,
+# que não existem em todo distro).
 declare -A DISTRO_PKGS=(
-  ["voidbr"]="gettext rsync parted curl xz lvm2"
-  ["void"]="gettext rsync parted curl xz lvm2"
-  ["void-live"]="gettext rsync parted curl xz lvm2"
-  ["voidlinux"]="gettext rsync parted curl xz lvm2"
-  ["chili"]="gettext rsync parted curl xz"
-  ["chililinux"]="gettext rsync parted curl xz"
-  ["arch"]="gettext rsync parted curl xz"
-  ["manjaro"]="gettext rsync parted curl xz"
-  ["debian"]="gettext-base rsync parted curl xz-utils"
+  ["voidbr"]="gettext rsync parted curl xz lvm2 util-linux coreutils ncurses smartmontools dialog"
+  ["void"]="gettext rsync parted curl xz lvm2 util-linux coreutils ncurses smartmontools dialog"
+  ["void-live"]="gettext rsync parted curl xz lvm2 util-linux coreutils ncurses smartmontools dialog"
+  ["voidlinux"]="gettext rsync parted curl xz lvm2 util-linux coreutils ncurses smartmontools dialog"
+  ["chili"]="gettext rsync parted curl xz util-linux coreutils ncurses smartmontools dialog"
+  ["chililinux"]="gettext rsync parted curl xz util-linux coreutils ncurses smartmontools dialog"
+  ["arch"]="gettext rsync parted curl xz util-linux coreutils ncurses smartmontools dialog"
+  ["manjaro"]="gettext rsync parted curl xz util-linux coreutils ncurses smartmontools dialog"
+  ["debian"]="gettext-base rsync parted curl xz-utils util-linux coreutils ncurses-bin smartmontools dialog"
 )
+
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
   ["voidbr"]="xbps-install -Syf"
@@ -81,26 +102,24 @@ declare -A DISTRO_MGR=(
   ["manjaro"]="pacman -Sy --needed --noconfirm"
   ["debian"]="apt-get install -y"
 )
-declare dialogRcFile="$HOME/.dialogrc"
 
-#cleanup() { rm -f "$dialogRcFile"; }
-#trap cleanup EXIT
-#MostraErro() { echo "erro: ${red}$1${reset} => comando: ${cyan}'$2'${reset} => result=${yellow}$3${reset}";}
-#trap 'MostraErro "$APP[$FUNCNAME][$LINENO]" "$BASH_COMMAND" "$?"; exit 1' ERR
+# Arquivo temporário seguro para o dialogrc
+declare dialogRcFile
+dialogRcFile="$(mktemp /tmp/chili-health-dialogrc.XXXXXX 2>/dev/null || echo "$HOME/.dialogrc")"
 
-sh_check_terminal() {
-  [[ ! -t 1 ]] && use_color=false
+cleanup() {
+  if [[ -f "$dialogRcFile" && "$dialogRcFile" != "$HOME/.dialogrc" ]]; then
+    rm -f "$dialogRcFile"
+  fi
 }
+trap cleanup EXIT
 
 has_command() {
   command -v "$1" >/dev/null && return 0 || return 1
 }
 
 set_varcolors() {
-  sh_check_terminal
-  # does the terminal support true-color?
   if has_command tput; then
-    #tput setaf 127 | cat -v  #capturar saida
     : "${RED=$(tput bold)$(tput setaf 196)}"
     : "${GREEN=$(tput bold)$(tput setaf 2)}"
     : "${YELLOW=$(tput bold)$(tput setaf 3)}"
@@ -156,7 +175,7 @@ set_varcolors() {
     : "${roxa=$(tput setab 125)}"
     : "${violeta=$(tput setab 61)}"
 
-    : "${COL_NC='\e[0m'}" # No Color
+    : "${COL_NC='\e[0m'}"
     : "${COL_LIGHT_GREEN='\e[1;32m'}"
     : "${COL_LIGHT_RED='\e[1;31m'}"
     : "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
@@ -169,21 +188,39 @@ set_varcolors() {
     : "${WARN="${clrkey}[${yellow}⚠${clrkey}]${yellow}"}"
     : "${INFO="${clrkey}[${yellow}➜${clrkey}]${rst}"}"
 
-    # dialog colors
-    REVERSE="\Zr"
-    UNDERLINE="\Zu"
-    BOLD="\Zb"
-    RESET="\Zn"
-    BLACK="\Z0"
-    YELLOW="\Z3"
-    AMARELO="\Zb\Z3"
-    WHITE="\Z7"
-    BLUE="\Z4"
-    AZUL="\Zb\Z4"
-    CYAN="\Z6"
-    RED="\Z1"
-    GREEN="\Z2"
-    MAGENTA="\Z5"
+    if $USE_DIALOG; then
+      # Cores sintaxe dialog
+      REVERSE="\Zr"
+      UNDERLINE="\Zu"
+      BOLD="\Zb"
+      RESET="\Zn"
+      BLACK="\Z0"
+      YELLOW="\Z3"
+      AMARELO="\Zb\Z3"
+      WHITE="\Z7"
+      BLUE="\Z4"
+      AZUL="\Zb\Z4"
+      CYAN="\Z6"
+      RED="\Z1"
+      GREEN="\Z2"
+      MAGENTA="\Z5"
+    else
+      # Cores ANSI diretas para stdout
+      REVERSE="${reverse}"
+      UNDERLINE="${underline}"
+      BOLD="${bold}"
+      RESET="${reset}"
+      BLACK="${black}"
+      YELLOW="${yellow}"
+      AMARELO="${yellow}"
+      WHITE="${white}"
+      BLUE="${blue}"
+      AZUL="${blue}"
+      CYAN="${cyan}"
+      RED="${red}"
+      GREEN="${green}"
+      MAGENTA="${magenta}"
+    fi
   else
     unset_varcolors
   fi
@@ -249,17 +286,24 @@ EOF_DIALOGRC
   export DIALOGRC="$dialogRcFile"
 }
 
-# Teste se o terminal suporta caracteres gráficos estendidos
 sh_ascii_lines() {
-  #Isso força o dialog a usar caracteres ASCII básicos para as bordas.
-  #if [[ "$LANG" =~ 'UTF-8' ]]; then
-  [[ "$(printf '\u250C')" == "┌" ]]
-  export NCURSES_NO_UTF8_ACS=$((!$?))
+  # Testa se o locale ativo é UTF-8 de verdade; o teste antigo comparava a
+  # saída do bash consigo mesma e era sempre verdadeiro, além de inverter
+  # o valor de NCURSES_NO_UTF8_ACS em relação ao que o comentário dizia.
+  local charmap
+  charmap="$(locale charmap 2>/dev/null)"
+  if [[ "$charmap" == "UTF-8" ]]; then
+    export NCURSES_NO_UTF8_ACS=0
+  else
+    export NCURSES_NO_UTF8_ACS=1
+  fi
 }
 
 sh_setEnvironment() {
-  [[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
-  sh_ascii_lines
+  if $USE_DIALOG; then
+    [[ ! -e "$dialogRcFile" ]] && sh_create_dialogrc
+    sh_ascii_lines
+  fi
 }
 
 sh_checkroot() {
@@ -270,21 +314,18 @@ elevate_to_root() {
   log_err "This script must be run as root. Elevating privileges..."
 
   ccabec+='root [elevated]'
-  # Tenta usar sudo primeiro (caso esteja configurado)
   if has_command sudo; then
     exec sudo bash "$0" "$@"
   fi
-  # Se sudo falhar, tenta su
   if has_command su; then
-    exec su -c "$0 $*"
+    exec su -c "$(printf '%q ' "$0" "$@")"
   fi
   die "Error: Unable to elevate privileges. Run manually as root."
 }
 
 replicate() {
   local char="${1:-#}"
-  local nsize="${2:-$(tput cols)}"
-  # Gera linha com substituição direta sem forks extras
+  local nsize="${2:-$(tput cols 2>/dev/null || echo 80)}"
   printf -v _line "%*s" "$nsize" && printf '%b\n' "${blue}${_line// /$char}${reset}"
 }
 
@@ -293,45 +334,19 @@ readconf() {
   local color="${2:-${yellow}}"
 
   echo -n -e "$color"
-  if [[ $LC_DEFAULT -eq 0 ]]; then
+  if [[ ${LC_DEFAULT:-0} -eq 0 ]]; then
     read -r -p "$msg [N/s] :"
   else
     read -r -p "$msg [N/y] :"
   fi
   echo -n -e "$reset"
-  case "${REPLY^}" in
-  [SY]) return 0 ;;
-  "") return 1 ;;
+  # ${REPLY^^} maiuscula a resposta inteira; S*/Y* casa "s", "sim", "S", "Sim",
+  # "y", "yes", "Y", "Yes" etc. (o padrão antigo [SY] só casava 1 caractere,
+  # então "sim" e "yes" eram tratados como recusa).
+  case "${REPLY^^}" in
+  S*|Y*) return 0 ;;
   *) return 1 ;;
   esac
-}
-
-debug() {
-# dialog
-  whiptail --fb  --clear --backtitle "[debug]$0" --title "[debug]$0" --yesno "${*}\n"  0 40
-  local result="$?"
-  ((result)) && exit "$result"
-  return "$result"
-}
-
-# ===================================================================
-# Funções auxiliares
-# ===================================================================
-run_cmd() {
-  local cmd="$*"
-
-  if [[ $DRYRUN -eq 1 ]]; then
-    msg "${cyan}[DRY-RUN]${rst} ${cmd}"
-  else
-    echo -e "  [⚙  ] ${cyan}${cmd}${rst}"
-    # Executa o comando, falha se houver erro
-    # Redireciona stderr para /dev/null apenas para mkdir -p e ummount -R
-    if [[ "$cmd" =~ ^mkdir\ -p ]] || [[ "$cmd" =~ ^umount\ -R ]]; then
-      eval "$cmd" &>/dev/null || true
-    else
-      eval "$cmd" || log_warn_tab "Falha ao executar: $cmd"
-    fi
-  fi
 }
 
 sh_copyright() {
@@ -345,10 +360,10 @@ EOF-COPY
 
 sh_version() {
   cat <<-EOF-VERSION
-  $(sh_copyright)
+$(sh_copyright)
 
         $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
-        $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
+        ${APP} $(gettext 'é disponibilizado para você sob a') ${yellow}Licença MIT${black}, $(gettext 'e')
         $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
         $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
         $(gettext 'o código fonte específico usado para criar esta cópia.')
@@ -375,7 +390,6 @@ detect_distro() {
   local id=""
 
   if [[ -r /etc/os-release ]]; then
-    # Lê ID=void|arch|debian|... exatamente como a distro declara
     id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
   elif [[ -r /usr/lib/os-release ]]; then
     id=$(grep -E '^ID=' /usr/lib/os-release | cut -d= -f2 | tr -d '"')
@@ -387,9 +401,7 @@ detect_distro() {
 }
 
 sh_checkDependencies() {
-  local DISTRO="$(detect_distro)"
-  local aBlock_files=()
-  local d
+  distro="$(detect_distro)"
   local pkg
   local errorFound=false
   declare -a missing
@@ -399,12 +411,9 @@ sh_checkDependencies() {
   for d in "${!PACKAGEDEP[@]}"; do
     if ! command -v "$d" &>/dev/null; then
       pkg="${PACKAGEDEP[$d]}"
-        log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
-        missing+=("${pkg}")
-        errorFound=true
-    else
-      #log_msg "Check: ${cyan}$d"
-      :
+      log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+      missing+=("${pkg}")
+      errorFound=true
     fi
   done
 
@@ -415,214 +424,708 @@ sh_checkDependencies() {
     echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
     replicate '='
 
-    local cmd="${DISTRO_MGR[$DISTRO]}"
-    #local pkgs="${DISTRO_PKGS[$DISTRO]}"
-    local pkgs="${missing[@]}"
+    local cmd="${DISTRO_MGR[$distro]}"
+    # Usa a lista de pacotes correta da distro detectada (DISTRO_PKGS), que
+    # já tem os nomes certos (ex.: ncurses-bin no Debian). Só cai para os
+    # nomes genéricos de PACKAGEDEP se a distro não estiver mapeada.
+    local pkgs="${DISTRO_PKGS[$distro]:-${missing[*]}}"
 
-    msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+    msg "Distro detectada: ${cyan}$distro${rst}"
+
+    if [[ -z "$cmd" ]]; then
+      die "$(gettext 'Distribuição não reconhecida'): ${distro}. $(gettext 'Instale manualmente'): ${missing[*]}"
+    fi
+
     if readconf "$(gettext "Instalar dependências base agora?")"; then
-      echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
-      # Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+      echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${distro}${reset}..."
       if ! $cmd $pkgs; then
         echo
         echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
         exit 1
       fi
-        echo
-        echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
-      fi
+      echo
+      echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+    else
+      exit 1
     fi
+  fi
 }
 
-##########################################################################################################
-
 sh_info_msg() {
-  cinfo="$1"
+  local cinfo="$1"
+  if $USE_DIALOG; then
     ${DIALOG} \
       --no-collapse \
       --colors \
       --title "$cinfo" \
       --backtitle "$ccabec" \
-      --infobox "\nStep:${BOLD}${YELLOW}${ufmt} ${RESET}${BOLD}$cinfo" \
+      --infobox "\nStep: ${BOLD}${YELLOW}Diagnóstico${RESET} ${BOLD}$cinfo" \
       6 100
+  else
+    msg "$cinfo"
+  fi
+}
+
+# --------------------------------------------------------------------
+# Histórico/tendência: um valor pontual de atributo SMART não diz muito
+# sozinho (3 setores realocados pode ser estável há anos, ou ter surgido
+# essa semana). Guarda o último valor por métrica em $HISTORY_DIR e, se
+# subiu desde a última execução, adiciona uma linha de destaque e conta
+# como aviso de hardware. Usa o serial do disco como chave quando
+# disponível (mais estável que o nome do device, que pode mudar entre
+# boots); cai para o nome do device se não houver serial. Falhas de
+# escrita (sem permissão, sem root, filesystem somente leitura) são
+# silenciosas — histórico é um extra, não pode travar o diagnóstico.
+# --------------------------------------------------------------------
+sh_history_key() {
+  local disk="$1" serial
+  serial=$(lsblk -dn -o SERIAL "$disk" 2>/dev/null | xargs)
+  if [[ -n "$serial" ]]; then
+    echo "$serial"
+  else
+    basename "$disk"
+  fi
+}
+
+sh_history_check() {
+  # Uso: sh_history_check <disk> <nome-da-metrica> <valor-atual> [delta-minimo]
+  # Ecoa uma linha de relatório em stdout se o valor subiu PELO MENOS
+  # <delta-minimo> desde a última checagem; sempre atualiza o arquivo de
+  # histórico com o valor atual, independente de ter disparado ou não.
+  #
+  # delta-minimo default = 1 (qualquer aumento importa) — correto para
+  # setores realocados/pendentes/incorrigíveis e erros de mídia NVMe,
+  # que deveriam ficar em zero num disco saudável: qualquer incremento
+  # é sinal real. NÃO é correto para "Percentage Used" do NVMe, que por
+  # natureza SOBE com o uso normal (é um desgaste esperado, não uma
+  # falha) — usar o default ali gerava aviso a cada execução assim que
+  # o disco começasse a acumular qualquer desgaste, mesmo saudável.
+  # Para essa métrica o chamador passa um delta-minimo maior (ex.: 10
+  # pontos percentuais de uma vez), sinalizando só um salto anormal.
+  local disk="$1" metric="$2" current="$3" min_delta="${4:-1}"
+  local key file prev
+
+  [[ "$current" =~ ^[0-9]+$ ]] || return 0
+
+  key="$(sh_history_key "$disk")"
+  file="${HISTORY_DIR}/${key}.${metric}"
+
+  mkdir -p "$HISTORY_DIR" 2>/dev/null
+
+  if [[ -f "$file" ]]; then
+    prev=$(cat "$file" 2>/dev/null)
+    if [[ "$prev" =~ ^[0-9]+$ ]] && (( current - prev >= min_delta )); then
+      echo "    ${RED}▲ subiu de $prev para $current desde a última checagem${RESET}\n"
+    fi
+  fi
+
+  echo "$current" > "$file" 2>/dev/null
+}
+
+# Evita acúmulo indefinido de arquivos de histórico (ex.: oficina que
+# testa dezenas de discos diferentes por mês, cada um com serial
+# próprio). Chamada uma vez por execução do script, não por disco.
+sh_history_prune() {
+  [[ -d "$HISTORY_DIR" ]] || return 0
+  find "$HISTORY_DIR" -type f -mtime +180 -delete 2>/dev/null
 }
 
 # ------------------------------------------------------------
 # Verifica possíveis problemas no disco
-# Retorna:
-#   0 = OK
-#   1 = Aviso
-#   2 = Crítico
+#
+# Existem DOIS status independentes, para não misturar categorias
+# diferentes de problema num único número:
+#   st_estrutura -> tabela de partição, GPT/MBR, blkid, wipefs
+#   st_hardware  -> SMART, dmesg
+# Um disco novo/zerado (sem tabela) é aviso de ESTRUTURA, nunca defeito
+# de HARDWARE. Só SMART e dmesg podem indicar defeito físico real.
+#
+# O exit code da função é o MAIOR dos dois (0=ok, 1=aviso, 2=crítico).
+# Além do exit code, a função grava em LAST_DISK_RESOLVED/LAST_ST_* os
+# valores da última execução, para o chamador (loop multi-disco) montar
+# um resumo agregado sem depender só do "$?" de uma função bash (que só
+# carrega um número de 0-255, não os dois status separados).
 # ------------------------------------------------------------
 sh_check_disk_health() {
-  local disk="$1"
-  local msg
+  local target="$1"
+  local disk="$target"
 
-	[[ -b "$disk" ]] || {
+  [[ -b "$disk" ]] || {
     die "Dispositivo inválido: ${cyan}$disk${rst}"
     return 2
-	}
+  }
 
-  sh_info_msg "$(gettext 'Testando saude do disco'): ${CYAN}${disk}${RESET}"
-
-	local model serial size tran
-	local pttype=""
-	local status=0
-	local report=""
-	local errors=""
-	local smart="Não disponível"
-
-	model=$(lsblk -dn -o MODEL "$disk")
-	serial=$(lsblk -dn -o SERIAL "$disk")
-	size=$(lsblk -dn -o SIZE "$disk")
-	tran=$(lsblk -dn -o TRAN "$disk")
-	pttype=$(lsblk -dn -o PTTYPE "$disk")
-
-	report+="Disco.............: ${CYAN}$disk${RESET}\n"
-	report+="Modelo............: ${CYAN}${model:-Desconhecido}${RESET}\n"
-	report+="Serial............: ${CYAN}${serial:-N/A}${RESET}\n"
-	report+="Tamanho...........: ${CYAN}$size${RESET}\n"
-	report+="Interface.........: ${CYAN}${tran:-N/A}${RESET}\n\n"
-
-	# --------------------------------------------------------
-	# GPT / MBR
-	# --------------------------------------------------------
-	if [[ -z "$pttype" ]]; then
-		if fdisk -l "$disk" 2>/dev/null | grep -qi "Tipo de rótulo do disco: gpt"; then
-			report+="Tabela............: ${RED}GPT (lsblk não detectou)${RESET}\n"
-			report+="Aviso.............: ${RED}libblkid falhou ao detectar GPT.${RESET}\n"
-			status=1
-		else
-			report+="Tabela............: ${RED}Não detectada${RESET}\n"
-			status=2
-		fi
-	else
-		report+="Tabela............: ${GREEN}$pttype${RESET}\n"
-	fi
-
-	# --------------------------------------------------------
-	# GPT Primária
-	# --------------------------------------------------------
-	if dd if="$disk" bs=512 skip=1 count=1 status=none 2>/dev/null | strings | grep -q "EFI PART"; then
-		report+="GPT Primária......: ${GREEN}OK${RESET}\n"
-	else
-		report+="GPT Primária......: ${RED}FALHOU${RESET}\n"
-		status=2
-	fi
-
-	# --------------------------------------------------------
-	# GPT Backup
-	# --------------------------------------------------------
-	local sectors
-	sectors=$(blockdev --getsz "$disk" 2>/dev/null)
-
-	if [[ -n "$sectors" ]]; then
-		if dd if="$disk" bs=512 skip=$((sectors-1)) count=1 status=none 2>/dev/null | strings | grep -q "EFI PART"; then
-			report+="GPT Backup........: ${GREEN}OK${RESET}\n"
-		else
-			report+="GPT Backup........: ${RED}FALHOU${RESET}\n"
-			(( status < 2 )) && status=1
-		fi
-	fi
-
-	# --------------------------------------------------------
-	# blkid
-	# --------------------------------------------------------
-	if blkid -p "$disk" >/dev/null 2>&1; then
-		report+="blkid.............: ${GREEN}OK${RESET}\n"
-	else
-		report+="blkid.............: ${RED}FALHOU${RESET}\n"
-		(( status < 1 )) && status=1
-	fi
-
-	# --------------------------------------------------------
-	# wipefs
-	# --------------------------------------------------------
-	if wipefs "$disk" >/dev/null 2>&1; then
-		report+="wipefs............: ${GREEN}OK${RESET}\n"
-	else
-		report+="wipefs............: ${RED}FALHOU${RESET}\n"
-		(( status < 1 )) && status=1
-	fi
-
-	# --------------------------------------------------------
-	# SMART (opcional)
-	# --------------------------------------------------------
-	if command -v smartctl >/dev/null; then
-		smart=$(smartctl -H "$disk" 2>/dev/null | awk -F: '/overall-health|SMART overall-health|SMART Health Status/ {
-			gsub(/^[ \t]+/, "", $2)
-			print $2
-		}')
-
-		[[ -z "$smart" ]] && smart="Indisponível"
-		report+="SMART.............: $smart\n"
-
-		if echo "$smart" | grep -qiE 'FAILED|BAD'; then
-			status=2
-		fi
-	else
-		report+="SMART.............: Não instalado\n"
-	fi
-
-	# --------------------------------------------------------
-	# dmesg
-	# --------------------------------------------------------
-	local dev
-	dev=$(basename "$disk")
-	errors=$(dmesg | grep -iE "$dev" | tail -15)
-
-	if [[ -n "$errors" ]]; then
-		report+="\n${CYAN}Erros recentes:${RESET}\n"
-		report+="${YELLOW}$errors${RESET}\n"
-    if grep -iE "I/O error|Buffer I/O|blk_update_request|critical medium error|end_request" <<< "$errors"
-    then
-  		(( status < 2 )) && status=2
+  # Se for uma partição (ex: /dev/sda1), detecta o disco pai (/dev/sda) e
+  # PEDE CONFIRMAÇÃO antes de trocar o alvo — trocar silenciosamente é
+  # surpreendente: quem passou /dev/sda1 pode não perceber que o disco
+  # inteiro foi testado no lugar.
+  local parent
+  parent=$(lsblk -no PKNAME "$disk" 2>/dev/null | xargs)
+  if [[ -n "$parent" && -b "/dev/$parent" ]]; then
+    log_warn "Você informou uma partição: ${cyan}$disk${rst}"
+    log_warn "O diagnóstico será feito no disco inteiro: ${cyan}/dev/$parent${rst}"
+    if ! readconf "Continuar com o disco pai?"; then
+      die "Operação cancelada pelo usuário."
     fi
-	fi
+    disk="/dev/$parent"
+  fi
 
-	# --------------------------------------------------------
-	# Status Final
-	# --------------------------------------------------------
-	report+="\n"
-	case "$status" in
-		0) report+="${GREEN}STATUS: DISCO APARENTEMENTE SAUDÁVEL${RESET}" ;;
-		1) report+="${YELLOW}STATUS: AVISOS ENCONTRADOS${RESET}" ;;
-		2) report+="${RED}STATUS: POSSÍVEIS DEFEITOS NO DISCO${RESET}" ;;
-	esac
+  # GPT/MBR/SMART pressupõem hardware físico. Em volumes lógicos (LVM),
+  # dispositivos criptografados (LUKS/crypt), RAID por software ou
+  # multipath, esses testes não fazem sentido e o resultado pode
+  # confundir mais do que ajudar — avisa e pede confirmação antes de
+  # rodar mesmo assim. "disk" e "loop" (imagens de disco, uso legítimo
+  # para validar estrutura de partição) não disparam o aviso.
+  local dtype
+  dtype=$(lsblk -dn -o TYPE "$disk" 2>/dev/null | xargs)
+  case "$dtype" in
+    disk|loop|"") : ;;
+    *)
+      log_warn "O alvo não é um disco físico (tipo detectado: ${cyan}${dtype}${rst})."
+      log_warn "Testes de GPT/MBR/SMART podem não refletir hardware real em volumes lógicos, RAID ou containers criptografados."
+      if ! readconf "Continuar mesmo assim?"; then
+        die "Operação cancelada pelo usuário."
+      fi
+      ;;
+  esac
 
-	${DIALOG} \
-	  --colors \
-		--backtitle "$ccabec" \
-		--title "Diagnóstico do Disco" \
-		--msgbox "$report" \
-		00 00
+  sh_info_msg "$(gettext 'Testando saúde do disco'): ${CYAN}${disk}${RESET}"
 
-	return "$status"
+  local model serial size tran pttype=""
+  local st_estrutura=0 st_hardware=0
+  local report=""
+  local errors=""
+  local smart="Não disponível"
+
+  model=$(lsblk -dn -o MODEL "$disk" 2>/dev/null | xargs)
+  serial=$(lsblk -dn -o SERIAL "$disk" 2>/dev/null | xargs)
+  size=$(lsblk -dn -o SIZE "$disk" 2>/dev/null | xargs)
+  tran=$(lsblk -dn -o TRAN "$disk" 2>/dev/null | xargs)
+  pttype=$(lsblk -dn -o PTTYPE "$disk" 2>/dev/null | xargs)
+
+  report+="Modelo............: ${CYAN}${model:-Desconhecido}${RESET}\n"
+  report+="Serial............: ${CYAN}${serial:-N/A}${RESET}\n"
+  report+="Tamanho...........: ${CYAN}$size${RESET}\n"
+  report+="Interface.........: ${CYAN}${tran:-N/A}${RESET}\n\n"
+
+  # --------------------------------------------------------
+  # Tabela de Partições (GPT / MBR / DOS)   [categoria: ESTRUTURA]
+  # --------------------------------------------------------
+  # Fallback via fdisk com LC_ALL=C: o grep antigo procurava a mensagem em
+  # pt_BR ("Tipo de rótulo do disco: ..."), mas o fdisk só imprime nesse
+  # idioma se o SISTEMA (não o script) estiver de fato em locale pt_BR.
+  # Em qualquer outro locale (inglês, POSIX/C, o padrão da maioria dos
+  # containers, live-CDs e servidores) o fdisk imprime "Disklabel type: ...",
+  # o grep nunca batia, e um disco GPT/MBR perfeitamente saudável caía no
+  # "else" como "Não detectada" -> status crítico (falso defeito).
+  if [[ -z "$pttype" ]]; then
+    if LC_ALL=C fdisk -l "$disk" 2>/dev/null | grep -qi "Disklabel type: gpt"; then
+      pttype="gpt"
+      report+="Tabela............: ${YELLOW}GPT (lsblk não detectou)${RESET}\n"
+      report+="Aviso.............: ${YELLOW}libblkid falhou ao detectar GPT; usado fallback via fdisk.${RESET}\n"
+      (( st_estrutura < 1 )) && st_estrutura=1
+    elif LC_ALL=C fdisk -l "$disk" 2>/dev/null | grep -qi "Disklabel type: dos"; then
+      pttype="dos"
+      report+="Tabela............: ${GREEN}DOS/MBR${RESET}\n"
+    else
+      # Disco sem tabela nenhuma (novo ou recém-zerado) é um ESTADO, não
+      # um defeito de hardware — não deve subir a status crítico.
+      report+="Tabela............: ${YELLOW}Não detectada (disco sem partições?)${RESET}\n"
+      (( st_estrutura < 1 )) && st_estrutura=1
+    fi
+  else
+    report+="Tabela............: ${GREEN}${pttype^^}${RESET}\n"
+  fi
+
+  # --------------------------------------------------------
+  # Validação de Headers (GPT vs MBR/DOS)   [categoria: ESTRUTURA]
+  # --------------------------------------------------------
+  case "${pttype,,}" in
+    gpt)
+      # Tamanho de setor lógico real via blockdev --getss (não fixo em
+      # 512), para não dar falso-negativo em discos 4Kn. blockdev --getsz
+      # sempre devolve em unidades de 512 bytes, então convertemos para o
+      # número de setores lógicos antes de calcular o offset do backup.
+      # A comparação "EFI PART" via head -c 8 elimina a dependência de
+      # "strings" (binutils), que não era verificada em PACKAGEDEP: se
+      # ausente, os dois testes falhavam e o disco virava "defeituoso".
+      local ss sectors512 logical_sectors sig
+      ss=$(blockdev --getss "$disk" 2>/dev/null)
+      ss="${ss:-512}"
+      sectors512=$(blockdev --getsz "$disk" 2>/dev/null)
+      logical_sectors=$(( sectors512 * 512 / ss ))
+
+      sig=$(dd if="$disk" bs="$ss" skip=1 count=1 status=none 2>/dev/null | head -c 8)
+      if [[ "$sig" == "EFI PART" ]]; then
+        report+="GPT Primária......: ${GREEN}OK${RESET}\n"
+      else
+        report+="GPT Primária......: ${RED}FALHOU${RESET}\n"
+        st_estrutura=2
+      fi
+
+      if (( logical_sectors > 0 )); then
+        sig=$(dd if="$disk" bs="$ss" skip=$((logical_sectors - 1)) count=1 status=none 2>/dev/null | head -c 8)
+        if [[ "$sig" == "EFI PART" ]]; then
+          report+="GPT Backup........: ${GREEN}OK${RESET}\n"
+        else
+          report+="GPT Backup........: ${RED}FALHOU${RESET}\n"
+          (( st_estrutura < 2 )) && st_estrutura=1
+        fi
+      fi
+      ;;
+    dos|mbr)
+      # Antes só imprimia "OK" sem checar nada de fato. Agora lê a
+      # assinatura 0x55AA nos bytes 510-511 (via od, já dependência do
+      # script — sem precisar de "strings").
+      local mbr_sig
+      mbr_sig=$(dd if="$disk" bs=1 skip=510 count=2 status=none 2>/dev/null | od -An -tx1 | tr -d ' \n')
+      if [[ "$mbr_sig" == "55aa" ]]; then
+        report+="Assinatura MBR....: ${GREEN}OK (0x55AA)${RESET}\n"
+      else
+        report+="Assinatura MBR....: ${RED}FALHOU${RESET}\n"
+        st_estrutura=2
+      fi
+      ;;
+  esac
+
+  # --------------------------------------------------------
+  # blkid — rc=2 significa "sem assinatura" (disco vazio), não é erro.
+  # Só rc>2 é falha de verdade. Além disso, distingue "sem permissão"
+  # (ambiente restrito: container/sandbox sem acesso raw ao bloco) de
+  # falha real, já que as duas coisas produzem rc não-zero mas têm
+  # causas e implicações bem diferentes.
+  # LC_ALL=C força a mensagem de erro em inglês independente do locale
+  # do sistema — sem isso, "Permission denied" pode sair traduzido
+  # (glibc usa LC_MESSAGES via strerror()) e o grep abaixo nunca bate,
+  # o mesmo tipo de bug de locale já corrigido no fallback do fdisk.
+  #   [categoria: ESTRUTURA]
+  # --------------------------------------------------------
+  local blkid_rc blkid_err
+  blkid_err=$(LC_ALL=C blkid -p "$disk" 2>&1 >/dev/null)
+  blkid_rc=$?
+  case "$blkid_rc" in
+    0) report+="blkid.............: ${GREEN}OK${RESET}\n" ;;
+    2) report+="blkid.............: ${GREEN}Sem assinatura detectada${RESET}\n" ;;
+    *)
+      if grep -qiE "permission denied|operation not permitted" <<< "$blkid_err"; then
+        report+="blkid.............: ${YELLOW}Sem permissão para verificar (ambiente restrito?)${RESET}\n"
+      else
+        report+="blkid.............: ${RED}FALHOU (rc=$blkid_rc)${RESET}\n"
+      fi
+      (( st_estrutura < 1 )) && st_estrutura=1
+      ;;
+  esac
+
+  # --------------------------------------------------------
+  # wipefs -n (somente consulta; sem -a ele já não apaga nada, mas -n
+  # deixa a intenção explícita no código de um script rodando como root).
+  # Mesma distinção de causa e mesmo motivo para LC_ALL=C do blkid acima.
+  #   [categoria: ESTRUTURA]
+  # --------------------------------------------------------
+  local wipefs_err
+  wipefs_err=$(LC_ALL=C wipefs -n "$disk" 2>&1 >/dev/null)
+  if [[ -z "$wipefs_err" ]]; then
+    report+="wipefs (consulta).: ${GREEN}OK${RESET}\n"
+  else
+    if grep -qiE "permission denied|operation not permitted" <<< "$wipefs_err"; then
+      report+="wipefs (consulta).: ${YELLOW}Sem permissão para verificar (ambiente restrito?)${RESET}\n"
+    else
+      report+="wipefs (consulta).: ${RED}FALHOU${RESET}\n"
+    fi
+    (( st_estrutura < 1 )) && st_estrutura=1
+  fi
+
+  # --------------------------------------------------------
+  # SMART (opcional)   [categoria: HARDWARE]
+  # --------------------------------------------------------
+  # Tenta detecção automática, depois -d sat e -d scsi: em muitas pontes
+  # USB o smartctl sem -d não retorna nada, mesmo com o disco saudável.
+  if command -v smartctl >/dev/null 2>&1; then
+    local smart_dtype="" smart_probe
+    for smart_dtype in "" "-d sat" "-d scsi"; do
+      # shellcheck disable=SC2086
+      smart_probe=$(smartctl -H $smart_dtype "$disk" 2>/dev/null | awk -F: '/overall-health|SMART overall-health|SMART Health Status/ {
+        gsub(/^[ \t]+/, "", $2)
+        print $2
+      }' | xargs)
+      [[ -n "$smart_probe" ]] && { smart="$smart_probe"; break; }
+    done
+
+    [[ -z "$smart" || "$smart" == "Não disponível" ]] && smart="Indisponível (USB pode exigir -d sat)"
+    report+="SMART.............: $smart\n"
+
+    if echo "$smart" | grep -qiE 'FAILED|BAD'; then
+      st_hardware=2
+    fi
+
+    if [[ "${tran,,}" == "nvme" ]]; then
+      # NVMe não usa a tabela de atributos numerados do ATA/SATA — os
+      # atributos 5/187/197/198 simplesmente não existem nesse formato.
+      # smartctl -a em NVMe imprime um log de saúde com campos próprios;
+      # os equivalentes mais próximos de "degradação real" são estes.
+      local nvme_out crit_warn pct_used media_errors avail_spare avail_thresh hist_line
+      nvme_out=$(smartctl -a "$disk" 2>/dev/null)
+
+      crit_warn=$(awk -F: '/Critical Warning/ {gsub(/^[ \t]+/,"",$2); print $2}' <<< "$nvme_out" | head -1)
+      pct_used=$(awk -F: '/Percentage Used/ {gsub(/[^0-9]/,"",$2); print $2}' <<< "$nvme_out" | head -1)
+      media_errors=$(awk -F: '/Media and Data Integrity Errors/ {gsub(/[^0-9]/,"",$2); print $2}' <<< "$nvme_out" | head -1)
+      avail_spare=$(awk -F: '/^Available Spare:/ {gsub(/[^0-9]/,"",$2); print $2}' <<< "$nvme_out" | head -1)
+      avail_thresh=$(awk -F: '/Available Spare Threshold/ {gsub(/[^0-9]/,"",$2); print $2}' <<< "$nvme_out" | head -1)
+
+      if [[ -n "$crit_warn" ]]; then
+        if [[ "$crit_warn" != "0x00" && "$crit_warn" != "0" ]]; then
+          report+="  Critical Warning..........: ${RED}${crit_warn}${RESET}\n"
+          st_hardware=2
+        else
+          report+="  Critical Warning..........: ${GREEN}${crit_warn}${RESET}\n"
+        fi
+      fi
+
+      if [[ "$pct_used" =~ ^[0-9]+$ ]]; then
+        if (( pct_used >= 90 )); then
+          report+="  Percentage Used...........: ${RED}${pct_used}%${RESET}\n"
+          (( st_hardware < 2 )) && st_hardware=2
+        elif (( pct_used >= 70 )); then
+          report+="  Percentage Used...........: ${YELLOW}${pct_used}%${RESET}\n"
+          (( st_hardware < 1 )) && st_hardware=1
+        else
+          report+="  Percentage Used...........: ${GREEN}${pct_used}%${RESET}\n"
+        fi
+        hist_line=$(sh_history_check "$disk" "nvme_pctused" "$pct_used" 10)
+        [[ -n "$hist_line" ]] && { report+="$hist_line"; (( st_hardware < 1 )) && st_hardware=1; }
+      fi
+
+      if [[ "$media_errors" =~ ^[0-9]+$ ]]; then
+        if [[ "$media_errors" != "0" ]]; then
+          report+="  Media/Integrity Errors....: ${RED}${media_errors}${RESET}\n"
+          st_hardware=2
+        else
+          report+="  Media/Integrity Errors....: ${GREEN}0${RESET}\n"
+        fi
+        hist_line=$(sh_history_check "$disk" "nvme_mediaerr" "$media_errors")
+        [[ -n "$hist_line" ]] && { report+="$hist_line"; st_hardware=2; }
+      fi
+
+      if [[ "$avail_spare" =~ ^[0-9]+$ && "$avail_thresh" =~ ^[0-9]+$ ]]; then
+        if (( avail_spare <= avail_thresh )); then
+          report+="  Available Spare...........: ${RED}${avail_spare}% (limite ${avail_thresh}%)${RESET}\n"
+          (( st_hardware < 2 )) && st_hardware=2
+        else
+          report+="  Available Spare...........: ${GREEN}${avail_spare}%${RESET}\n"
+        fi
+      fi
+    else
+      # ATA/SATA: tabela de atributos numerados. Indicam degradação real
+      # mesmo com -H "PASSED" — um disco pode ter centenas de setores
+      # realocados e ainda "passar" no teste de saúde geral, que só
+      # falha perto do fim da vida útil.
+      local attr_id attr_name attr_raw attr_color hist_line
+      for attr_id in 5 187 197 198; do
+        case "$attr_id" in
+          5)   attr_name="Setores realocados......" ;;
+          187) attr_name="Erros não corrigidos....." ;;
+          197) attr_name="Setores pendentes........" ;;
+          198) attr_name="Setores incorrig. offline" ;;
+        esac
+        # shellcheck disable=SC2086
+        attr_raw=$(smartctl -A $smart_dtype "$disk" 2>/dev/null | awk -v id="$attr_id" '$1==id {print $NF}')
+        [[ -z "$attr_raw" ]] && continue
+        if [[ "$attr_raw" != "0" ]]; then
+          attr_color="${YELLOW}"
+          (( st_hardware < 1 )) && st_hardware=1
+        else
+          attr_color="${GREEN}"
+        fi
+        report+="  ${attr_name}: ${attr_color}${attr_raw}${RESET}\n"
+        hist_line=$(sh_history_check "$disk" "smart_attr_${attr_id}" "$attr_raw")
+        [[ -n "$hist_line" ]] && { report+="$hist_line"; (( st_hardware < 1 )) && st_hardware=1; }
+      done
+    fi
+  else
+    report+="SMART.............: Não instalado\n"
+  fi
+
+  # --------------------------------------------------------
+  # dmesg — regex ancorada (\b...\b) para "sda" não casar com "sda1" ou
+  # "sdaa"; grep -q para não vazar o match bruto por cima da tela/dialog.
+  #   [categoria: HARDWARE]
+  # --------------------------------------------------------
+  local dev
+  dev=$(basename "$disk")
+  errors=$(dmesg 2>/dev/null | grep -E "\b${dev}[0-9]*\b" | tail -15)
+
+  if [[ -n "$errors" ]]; then
+    report+="\n${CYAN}Erros recentes:${RESET}\n"
+    report+="${YELLOW}$errors${RESET}\n"
+    if grep -qiE "I/O error|Buffer I/O|blk_update_request|critical medium error|end_request" <<< "$errors"; then
+      (( st_hardware < 2 )) && st_hardware=2
+    fi
+  fi
+
+  # --------------------------------------------------------
+  # Velocidade de leitura (opcional, --speed/-s)   [não afeta status]
+  # --------------------------------------------------------
+  # Somente leitura: hdparm -t --direct, ou fio com --readonly como
+  # trava adicional. Nunca escreve no disco, nunca muda st_estrutura
+  # nem st_hardware — é puramente informativo.
+  if $OPT_SPEED; then
+    local speed_result=""
+    if has_command hdparm; then
+      speed_result=$(hdparm -t --direct "$disk" 2>/dev/null | awk -F= '/Timing/ {print $2}' | xargs)
+    fi
+    if [[ -z "$speed_result" ]] && has_command fio; then
+      speed_result=$(fio --name=readtest --filename="$disk" --rw=read --bs=1M \
+        --size=256M --readonly --direct=1 --ioengine=sync --numjobs=1 \
+        --group_reporting --minimal 2>/dev/null | awk -F';' '{print $7" KB/s"}')
+    fi
+    report+="\n"
+    if [[ -z "$speed_result" ]]; then
+      report+="Velocidade leitura: ${YELLOW}Não foi possível medir (hdparm/fio ausentes ou falharam)${RESET}\n"
+    else
+      report+="Velocidade leitura: ${CYAN}${speed_result}${RESET}\n"
+    fi
+  fi
+
+  # --------------------------------------------------------
+  # Status Final — dois status independentes
+  # --------------------------------------------------------
+  local final_status=$st_estrutura
+  (( st_hardware > final_status )) && final_status=$st_hardware
+
+  # Registra para o resumo agregado do loop multi-disco (main flow) e
+  # para o exit code final do processo — sem isso, rodar contra vários
+  # discos só refletia o status do ÚLTIMO disco testado no "$?" final,
+  # mascarando um defeito crítico em qualquer disco que não o último.
+  SUMMARY_DISK+=("$disk")
+  SUMMARY_ESTRUTURA+=("$st_estrutura")
+  SUMMARY_HARDWARE+=("$st_hardware")
+
+  if $OPT_MONITOR; then
+    # Saída de uma linha, estável e fácil de parsear (Nagios/Zabbix/cron),
+    # em vez do relatório colorido completo. Nunca abre dialog.
+    # Se --speed foi pedido junto, o teste já rodou (bloco acima, antes
+    # do cálculo de final_status) — inclui o resultado em vez de deixar
+    # o trabalho de I/O ser feito e descartado sem chegar à saída.
+    local mon_label mon_extra=""
+    case "$final_status" in
+      0) mon_label="OK" ;;
+      1) mon_label="WARNING" ;;
+      2) mon_label="CRITICAL" ;;
+    esac
+    if $OPT_SPEED; then
+      if [[ -n "${speed_result:-}" ]]; then
+        mon_extra=" speed=${speed_result// /_}"
+      else
+        mon_extra=" speed=N/A"
+      fi
+    fi
+    echo "DISK_HEALTH ${mon_label} disk=${disk} estrutura=${st_estrutura} hardware=${st_hardware}${mon_extra}"
+    return "$final_status"
+  fi
+
+  report+="\n"
+  case "$st_estrutura" in
+    0) report+="${GREEN}ESTRUTURA: OK${RESET}\n" ;;
+    1) report+="${YELLOW}ESTRUTURA: AVISOS ENCONTRADOS${RESET}\n" ;;
+    2) report+="${RED}ESTRUTURA: POSSÍVEIS DEFEITOS${RESET}\n" ;;
+  esac
+  case "$st_hardware" in
+    0) report+="${GREEN}HARDWARE.: OK${RESET}" ;;
+    1) report+="${YELLOW}HARDWARE.: AVISOS ENCONTRADOS${RESET}" ;;
+    2) report+="${RED}HARDWARE.: POSSÍVEIS DEFEITOS${RESET}" ;;
+  esac
+
+  if $USE_DIALOG; then
+    ${DIALOG} \
+      --colors \
+      --scrollbar \
+      --backtitle "$ccabec" \
+      --title "Diagnóstico do Disco" \
+      --msgbox "$report" \
+      0 0
+  else
+    replicate '='
+    echo -e "${BOLD}${WHITE}  DIAGNÓSTICO DO DISCO: ${CYAN}${disk}${RESET}"
+    replicate '='
+    echo -e "$report"
+    replicate '='
+  fi
+
+  return "$final_status"
+}
+
+sh_print_summary() {
+  local i d est hw worst color report=""
+  for i in "${!SUMMARY_DISK[@]}"; do
+    d="${SUMMARY_DISK[$i]}"
+    est="${SUMMARY_ESTRUTURA[$i]}"
+    hw="${SUMMARY_HARDWARE[$i]}"
+    worst=$est
+    (( hw > worst )) && worst=$hw
+    case "$worst" in
+      0) color="${GREEN}" ;;
+      1) color="${YELLOW}" ;;
+      2) color="${RED}" ;;
+    esac
+    report+="${color}$(printf '%-16s' "$d")${RESET} estrutura=$est hardware=$hw\n"
+  done
+
+  if $USE_DIALOG; then
+    ${DIALOG} \
+      --colors \
+      --scrollbar \
+      --backtitle "$ccabec" \
+      --title "Resumo (${#SUMMARY_DISK[@]} discos)" \
+      --msgbox "$report" \
+      0 0
+  else
+    replicate '='
+    echo -e "${BOLD}${WHITE}  RESUMO (${#SUMMARY_DISK[@]} discos)${RESET}"
+    replicate '='
+    echo -e "$report"
+    replicate '='
+  fi
 }
 
 usage() {
     cat << EOF
 ${bold}${cyan}Uso:${reset}
-  ${green}${0##*/}${reset} ${yellow}[OPÇÕES]${reset}
+  ${green}${0##*/}${reset} ${yellow}[OPÇÕES] [DISCO...]${reset}
 
 ${bold}${cyan}Opções:${reset}
   ${green}-h${reset}, ${green}--help${reset}      Exibe esta ajuda e encerra.
-  ${green}/dev/sdX${reset}        Informa o disco que será testado.
+  ${green}-v${reset}, ${green}--version${reset}   Exibe a versão do programa e encerra.
+  ${green}-t${reset}, ${green}--texto${reset}     Exibe o relatório no console (stdout) sem usar interface dialog.
+  ${green}-s${reset}, ${green}--speed${reset}     Inclui teste de velocidade de leitura (hdparm/fio, somente leitura).
+  ${green}-a${reset}, ${green}--all${reset}       Testa todos os discos físicos detectados (ignora loop/cdrom).
+  ${green}-m${reset}, ${green}--monitor${reset}   Saída de uma linha por disco, para Nagios/Zabbix/cron (implica --texto).
+  ${green}/dev/sdX${reset}        Informa o(s) disco(s) que será(ão) testado(s).
+
+${bold}${cyan}Status do relatório:${reset}
+  ${cyan}ESTRUTURA${reset}: tabela de partição, GPT/MBR, blkid, wipefs.
+  ${cyan}HARDWARE${reset} : SMART (ATA e NVMe), erros de E/S no dmesg.
+  Com mais de um disco, o exit code final é o PIOR entre todos eles —
+  um disco crítico no meio da lista não fica mascarado pelo último
+  disco testado.
+
+${bold}${cyan}Histórico:${reset}
+  Atributos SMART são comparados com a última execução em
+  ${cyan}${HISTORY_DIR}${reset} (chave: serial do disco, ou nome do
+  device se não houver serial). Se um valor subiu desde a última vez,
+  isso é destacado no relatório e conta como aviso de hardware.
 
 ${bold}${cyan}Exemplos:${reset}
   ${green}${0##*/}${reset} ${yellow}/dev/sda${reset}
-  ${green}${0##*/}${reset} ${yellow}/dev/nvme0n1${reset}
+  ${green}${0##*/}${reset} ${yellow}-t /dev/nvme0n1${reset}
+  ${green}${0##*/}${reset} ${yellow}--texto --speed /dev/sda${reset}
+  ${green}${0##*/}${reset} ${yellow}/dev/sda /dev/sdb${reset}
+  ${green}${0##*/}${reset} ${yellow}--all${reset}
+  ${green}${0##*/}${reset} ${yellow}--monitor /dev/sda${reset}
+  ${green}${0##*/}${reset} ${yellow}--version${reset}
 
 EOF
 }
 
-# configure ambiente
-set_varcolors
+# Guarda os argumentos originais exatos para não perder opções (ex: -t) na elevação via sudo
+declare -a ORIG_ARGS=("$@")
 
-[[ $# -eq 0 || "${1,,}" == "-h" || "${1,,}" == "--help" ]] && {
+# Sem terminal controlador (cron, pipe, execução remota não interativa),
+# o dialog não tem como abrir; cai automaticamente para o modo texto.
+# --texto continua funcionando normalmente para forçar isso manualmente.
+[[ -t 1 ]] || USE_DIALOG=false
+
+# Parsing de argumentos
+while [[ $# -gt 0 ]]; do
+  case "${1,,}" in
+    -h|--help)
+      set_varcolors
+      usage
+      exit 0
+      ;;
+    -v|--version)
+      set_varcolors
+      sh_version
+      exit 0
+      ;;
+    -t|--texto)
+      USE_DIALOG=false
+      shift
+      ;;
+    -s|--speed)
+      OPT_SPEED=true
+      shift
+      ;;
+    -a|--all)
+      OPT_ALL=true
+      shift
+      ;;
+    -m|--monitor)
+      OPT_MONITOR=true
+      USE_DIALOG=false
+      shift
+      ;;
+    -*)
+      set_varcolors
+      echo -e "${CROSS} Opção inválida: $1"
+      usage
+      exit 1
+      ;;
+    *)
+      DISKS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# --all ignora discos passados explicitamente e detecta todos os discos
+# físicos do sistema (exclui major 7=loop e 11=cdrom; -d evita listar
+# partições, só o dispositivo inteiro; zram é excluído à parte porque
+# tem TYPE=disk no lsblk mas é RAM comprimida, não armazenamento físico
+# — SMART/GPT não fazem sentido nele).
+if $OPT_ALL; then
+  set_varcolors
+  if [[ ${#DISKS[@]} -gt 0 ]]; then
+    log_warn "--all ignora os discos informados manualmente (${DISKS[*]}); testando todos os discos físicos detectados."
+  fi
+  DISKS=()
+  while IFS= read -r name; do
+    [[ -z "$name" ]] && continue
+    [[ "$name" == zram* ]] && continue
+    DISKS+=("/dev/$name")
+  done < <(lsblk -dn -o NAME -e 7,11 2>/dev/null)
+fi
+
+if [[ ${#DISKS[@]} -eq 0 ]]; then
+  set_varcolors
+  if $OPT_ALL; then
+    die "Nenhum disco físico detectado."
+  fi
   usage
   exit 0
-}
+fi
 
-sh_checkroot "$@"
-sh_check_disk_health "$@"
+# Configure ambiente
+set_varcolors
+sh_checkroot "${ORIG_ARGS[@]}"
+sh_setEnvironment
+sh_checkDependencies
+sh_history_prune
+
+declare -i WORST_STATUS=0
+for dev in "${DISKS[@]}"; do
+  sh_check_disk_health "$dev"
+  st=$?
+  (( st > WORST_STATUS )) && WORST_STATUS=$st
+done
+
+# Resumo agregado — só faz sentido com mais de um disco. Em modo
+# --monitor cada disco já saiu numa linha própria, um resumo extra só
+# atrapalharia o parsing por outra ferramenta. Usa o mesmo padrão dual
+# dialog/texto do relatório por disco: ${GREEN}/${YELLOW}/${RED}/${RESET}
+# já viram \Z (dialog) ou ANSI (texto) dependendo de $USE_DIALOG, então
+# o mesmo texto funciona nos dois modos sem duplicar lógica de cor.
+if ! $OPT_MONITOR && [[ ${#SUMMARY_DISK[@]} -gt 1 ]]; then
+  sh_print_summary
+fi
+
+exit "$WORST_STATUS"
