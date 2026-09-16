@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: qui 20 ago 2026 20:50:29 -04
+#  Updated: ter 15 set 2026 08:40:00 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -48,7 +48,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.08.20-20260820'
+readonly VERSION='3.09.15-20260915'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -64,29 +64,29 @@ readonly -A PACKAGEDEP=(
 )
 # Mapa: [distro]="lista de pacotes"
 declare -A DISTRO_PKGS=(
-  ["voidbr"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["void"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["void-live"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["voidlinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["chili"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["chililinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["arch"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["biglinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["manjaro"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
-  ["debian"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext-base edk2-ovmf"
+	["voidbr"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["void"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["void-live"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["voidlinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["chili"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["chililinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["arch"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["biglinux"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["manjaro"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext edk2-ovmf"
+	["debian"]="ncurses qemu spice-vdagent virt-viewer python libvirt findutils gawk bridge-utils gettext-base edk2-ovmf"
 )
 # Mapa: [distro]="comando de instalação"
 declare -A DISTRO_MGR=(
-  ["voidbr"]="xbps-install -Syf"
-  ["void"]="xbps-install -Syf"
-  ["void-live"]="xbps-install -Syf"
-  ["voidlinux"]="xbps-install -Syf"
-  ["chili"]="pacman -Sy --needed --noconfirm"
-  ["chililinux"]="pacman -Sy --needed --noconfirm"
-  ["arch"]="pacman -Sy --needed --noconfirm"
-  ["biglinux"]="pacman -Sy --needed --noconfirm"
-  ["manjaro"]="pacman -Sy --needed --noconfirm"
-  ["debian"]="apt-get install -y"
+	["voidbr"]="xbps-install -Syf"
+	["void"]="xbps-install -Syf"
+	["void-live"]="xbps-install -Syf"
+	["voidlinux"]="xbps-install -Syf"
+	["chili"]="pacman -Sy --needed --noconfirm"
+	["chililinux"]="pacman -Sy --needed --noconfirm"
+	["arch"]="pacman -Sy --needed --noconfirm"
+	["biglinux"]="pacman -Sy --needed --noconfirm"
+	["manjaro"]="pacman -Sy --needed --noconfirm"
+	["debian"]="apt-get install -y"
 )
 
 declare quiet=false
@@ -97,33 +97,43 @@ declare xmem='8G'
 #
 
 declare -a adisplaydevice=(
-  gtk
-  sdl
-  egl-headless
-  curses
-  spice-app
-  dbus
-  none
+	gtk
+	sdl
+	egl-headless
+	curses
+	spice-app
+	dbus
+	none
 )
 declare displaydevice='sdl' # gtk
 declare -a avideodevice=(
-  #qemu-system-x86_64 -device help | grep -i virtio
-  ati-vga
-  bochs-display
-  cirrus-vga
-  none
-  qxl
-  qxl-vga
-  ramfb
-  VGA
-  virtio-gpu
-  virtio-gpu-gl
-  virtio-vga
-  virtio-vga-gl
-  virtio-gpu-rutabaga-pci
-  vmware-svga
+	#qemu-system-x86_64 -device help | grep -i virtio
+	ati-vga
+	bochs-display
+	cirrus-vga
+	none
+	qxl
+	qxl-vga
+	ramfb
+	VGA
+	virtio-gpu
+	virtio-gpu-gl
+	virtio-vga
+	virtio-vga-gl
+	virtio-gpu-rutabaga-pci
+	vmware-svga
 )
 declare videodevice='virtio-vga-gl'
+#
+declare -a acachemode=(
+	none
+	writeback
+	writethrough
+	directsync
+	unsafe
+)
+declare cache_type='none'
+declare LPARAM_CACHE=false
 #
 declare lshare=false
 declare spice=false
@@ -142,6 +152,7 @@ declare -i Prow=0
 declare -i Pcol=0
 declare -a qemu_options=()
 declare -a avdisk_names=()
+declare -a aimages=()
 declare LPARAM_AUDIO=false
 # garante que nunca ficam unset
 : "${GUEST_CID:=}"
@@ -149,23 +160,21 @@ declare LPARAM_AUDIO=false
 : "${HOST_GOTIFY:=}"
 
 has_command() {
-  command -v "$1" >/dev/null && return 0 || return 1
+	command -v "$1" >/dev/null && return 0 || return 1
 }
 
 has_file() {
-  [[ -e "$1" ]] && return 0 || return 1
+	[[ -e "$1" ]] && return 0 || return 1
 }
 
 detect_distro() {
-	if [[ -r /etc/os-release ]]; then
-		. /etc/os-release
-	elif [[ -r /usr/lib/os-release ]]; then
-		. /usr/lib/os-release
-	else
-		echo "unknown"
-		return
-	fi
-	echo "${ID:-unknown}"
+	local f id=''
+	for f in /etc/os-release /usr/lib/os-release; do
+		[[ -r "$f" ]] || continue
+		id=$(awk -F= '$1=="ID"{gsub(/^["\x27]|["\x27]$/,"",$2); print $2; exit}' "$f")
+		break
+	done
+	echo "${id:-unknown}"
 }
 
 # Função para limpar sujeira se o script for interrompido ANTES do disown
@@ -183,12 +192,6 @@ cleanup() {
 	if [[ -n ${viewer_pid:-} ]]; then
 		kill "$viewer_pid" 2>/dev/null
 	fi
-
-	# 🔌 fallback (caso algo escapou)
-	for port in "${HOST_FWD:-}" "${HOST_GOTIFY:-}"; do
-		[[ -z "$port" ]] && continue
-		cmd_sudo fuser -k -n tcp "$port" 2>/dev/null
-	done
 
 	# 🧠 fallback vsock
 	if [[ -n ${GUEST_CID:-} ]]; then
@@ -456,54 +459,58 @@ readconf() {
 }
 
 sh_checkDependencies() {
-  local DISTRO="$(detect_distro)"
-  local aBlock_files=()
-  local d
-  local pkg
-  local errorFound=false
-  declare -a missing
-  local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
-  local cmsgPkg="$(gettext "instalar pacote")"
+	local DISTRO="$(detect_distro)"
+	local aBlock_files=()
+	local d
+	local pkg
+	local errorFound=false
+	declare -a missing
+	local cmsgNot="$(gettext "Não foi possível encontrar o comando")"
+	local cmsgPkg="$(gettext "instalar pacote")"
 
-  for d in "${!PACKAGEDEP[@]}"; do
-    if ! has_command "$d"; then
-      pkg="${PACKAGEDEP[$d]}"
-        log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
-        missing+=("${pkg}")
-        errorFound=true
-    else
-      #log_msg "Check: ${cyan}$d"
-      :
-    fi
-  done
+	for d in "${!PACKAGEDEP[@]}"; do
+		if ! has_command "$d"; then
+			pkg="${PACKAGEDEP[$d]}"
+			log_err "${red}Error${rst}: ${cmsgNot} $(printf "${cyan}%-15s${rst}\n" "$d") -> ${cmsgPkg} ${cyan}${pkg}${rst}"
+			missing+=("${pkg}")
+			errorFound=true
+		else
+			#log_msg "Check: ${cyan}$d"
+			:
+		fi
+	done
 
-  if $errorFound; then
-    replicate '='
-    echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
-    echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
-    echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
-    replicate '='
+	if $errorFound; then
+		replicate '='
+		echo "${yellow}             $(gettext "IMPOSSÍVEL CONTINUAR")"
+		echo "${black}$(gettext "Este script precisa dos comandos listados acima")"
+		echo "${black}$(gettext "Instale-os e/ou verifique se eles estão em seu") ${red}\$PATH${reset}"
+		replicate '='
 
-    local cmd="${DISTRO_MGR[$DISTRO]}"
-    #local pkgs="${DISTRO_PKGS[$DISTRO]}"
-    local pkgs="${missing[@]}"
+		local cmd="${DISTRO_MGR[$DISTRO]:-}"
+		#local pkgs="${DISTRO_PKGS[$DISTRO]}"
+		local pkgs="${missing[*]}"
 
-    msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
-    if readconf "$(gettext "Instalar dependências base agora?")"; then
-      echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
-      # Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
-      if ! $cmd $pkgs; then
-        echo
-        echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
-        exit 1
-      fi
-      echo
-      echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
-    else
-      echo -e "${red}$(gettext "Ignorando: instalação de dependências recusada pelo usuário.")"
-      replicate '-'
-    fi
-  fi
+		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		if [[ -z "$cmd" ]]; then
+			msg_err "$(gettext 'Distro sem gerenciador mapeado:') ${cyan}${DISTRO}${rst} - $(gettext 'instale manualmente:') ${yellow}${pkgs}${rst}"
+			exit 1
+		fi
+		if readconf "$(gettext "Instalar dependências base agora?")"; then
+			echo -e "${blue}::${rst} $(gettext "Preparando ambiente para") ${green}${DISTRO}${reset}..."
+			# Execução dinâmica: $cmd (gerenciador) + $pkgs (lista de pacotes)
+			if ! cmd_sudo $cmd $pkgs; then
+				echo
+				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+				exit 1
+			fi
+			echo
+			echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+		else
+			echo -e "${red}$(gettext "Ignorando: instalação de dependências recusada pelo usuário.")"
+			replicate '-'
+		fi
+	fi
 }
 
 sh_checkOVMFFiles() {
@@ -515,7 +522,7 @@ sh_checkOVMFFiles() {
 
 	for d in "${aBlock_files[@]}"; do
 		if ! has_file "$d"; then
-#			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o arquivo') ${cyan}'$d'${yellow} -> $(gettext 'instalar pacote') ${cyan}edk2-ovmf${reset}"
+			#			log_err "Check: ${red}ERROR${rst}: $(gettext 'Não foi possível encontrar o arquivo') ${cyan}'$d'${yellow} -> $(gettext 'instalar pacote') ${cyan}edk2-ovmf${reset}"
 			errorFound=true
 			break
 		else
@@ -534,18 +541,22 @@ sh_checkOVMFFiles() {
 		echo "${black}Ao decidir não instalar, o UEFI poderá não funcionar corretamente.${rst}"
 		replicate '='
 
-    msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
+		msg_info "Distro detectada: ${cyan}$DISTRO${rst}"
 		if readconf "Deseja instalar o pacote e suprir arquivos necessários ?"; then
-      local cmd="${DISTRO_MGR[$DISTRO]}"
-      local pkgs="edk2-ovmf"
-      if ! cmd_sudo $cmd $pkgs; then
-        echo
-        echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
-        exit 1
-      fi
-      echo
-      echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
-      sh_checkOVMFFiles
+			local cmd="${DISTRO_MGR[$DISTRO]:-}"
+			local pkgs="edk2-ovmf"
+			if [[ -z "$cmd" ]]; then
+				msg_err "$(gettext 'Distro sem gerenciador mapeado:') ${cyan}${DISTRO}${rst}"
+				return 1
+			fi
+			if ! cmd_sudo $cmd $pkgs; then
+				echo
+				echo -e "${red}$(gettext "Erro Crítico:")${rst} $(gettext "A instalação dos pacotes básicos falhou.")"
+				exit 1
+			fi
+			echo
+			echo -e "${green}$(gettext "Sucesso:")${reset} $(gettext "Dependências instaladas.")"
+			sh_checkOVMFFiles
 		fi
 	fi
 }
@@ -589,6 +600,16 @@ get_next_free_bridge() {
 		next_bridge=$((next_bridge + 1))
 	done
 	echo "$base_bridge$next_bridge"
+}
+
+# Match EXATO de bridge (evita '-b br' casar com 'br0' e $2 vazio casar com tudo)
+bridge_exists() {
+	local b="$1" x
+	[[ -z "$b" ]] && return 1
+	while read -r x; do
+		[[ "$x" == "$b" ]] && return 0
+	done < <(get_bridge_interfaces)
+	return 1
 }
 
 # ---------------------------
@@ -700,18 +721,22 @@ create_real_bridge() {
 		"VLAN Tagged ($(gettext 'criar') ${iface_phys}.<id> $(gettext 'e usar como slave'))"
 		"VLAN Trunk (bridge vlan-filtering $(gettext 'habilitado'))"
 	)
+	# chaves paralelas a vlan_options[] - comparar por indice evita depender
+	# do texto traduzido (fonte do bug anterior)
+	local -a vlan_keys=(none tagged trunk)
 	create_menu_with_array "$(gettext 'Selecione o modo VLAN:')" vlan_options[@]
 
-	local vlan_choice
-	case "$MENU_RESULT" in
-	"$(gettext 'Sem VLAN (rede normal)')") vlan_choice="none" ;;
-	"VLAN Tagged ($(gettext 'criar') ${iface_phys}.<id> $(gettext 'e usar como slave)')") vlan_choice="tagged" ;;
-	"VLAN Trunk (bridge vlan-filtering $(gettext 'habilitado')") vlan_choice="trunk" ;;
-	*)
+	local vlan_choice='' i
+	for i in "${!vlan_options[@]}"; do
+		if [[ "$MENU_RESULT" == "${vlan_options[$i]}" ]]; then
+			vlan_choice="${vlan_keys[$i]}"
+			break
+		fi
+	done
+	if [[ -z "$vlan_choice" ]]; then
 		msg_err "$(gettext 'Erro inesperado no menu VLAN')"
 		return 1
-		;;
-	esac
+	fi
 	msg_info "$(gettext 'Modo VLAN selecionado:') ${cyan}$vlan_choice${rst}"
 
 	local vlan_id="" slave_iface="" want_vlan_trunk=false
@@ -988,9 +1013,10 @@ remove_real_bridge() {
 
 	# IDENTIFICAR PERFIL FÍSICO CORRETO  (teu método definitivo)
 	###########################################################################
+	local phys_con
 	phys_con=$(
 		nmcli -t -f NAME,DEVICE,TYPE,SLAVE connection show |
-			awk -F: -v dev="$interface" '
+			awk -F: -v dev="$iface_phys" '
         $3 ~ /802-3-ethernet/ && ($2 == dev || $2 == "") && $4 != "bridge" {print $1; exit}
     '
 	)
@@ -1278,7 +1304,7 @@ sh_version() {
 		${bold}${black}Copyright (C) 2019-2025 Vilmar Catafesta${black}
 
 		  $(gettext 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.')
-		  $(gettext 'O $APP é disponibilizado para você sob a ${yellow}Licença MIT${black}, e')
+		  $(gettext 'O') ${APP} $(gettext 'é disponibilizado para você sob a') ${yellow}$(gettext 'Licença MIT')${black}, e
 		  $(gettext 'inclui software de código aberto sob uma variedade de outras licenças.')
 		  $(gettext 'Você pode ler instruções sobre como baixar e criar para você mesmo')
 		  $(gettext 'o código fonte específico usado para criar esta cópia.')
@@ -1304,6 +1330,7 @@ ${cyan}$(gettext 'Opções:')${reset}
     ${rst}   --rvdisk ${orange}<filename>                 ${cyan}# $(gettext 'remove um disco virtual')
     ${rst}-g|--video ${orange}<video_driver>              ${cyan}# virtio-vga,virtio-gpu-pci,qxl-vga,VGA,cirrus-vga,ati-vga,virtio-gpu-pci,bochs-display - (default: ${yellow}virtio-vga-gl${rst})
 ${red}new ${rst}   --display ${orange}<display_backend>         ${cyan}# gtk,sdl,egl-headless,curses,spice-app,dbus,none - (default: ${yellow}gtk${rst})
+${red}new ${rst}-C|--cache ${orange}<mode>                      ${cyan}# none,writeback,writethrough,directsync,unsafe - (default: ${yellow}none${rst})
     ${rst}-N|--network ${orange}<net_driver>              ${cyan}# virtio-net-pci,e1000,rtl8139,vmxnet3 - (default: ${yellow}virtio-pc${rst})
     ${rst}-n|--nocolor                           ${cyan}# $(gettext 'remover cores da saída') - (default: ${yellow}color${rst})
     ${rst}-s|--spice                             ${cyan}# $(gettext 'ativar o') spice - (default: ${yellow}$(gettext 'desligado')${rst})
@@ -1333,7 +1360,7 @@ ${red}new ${rst}   --display ${orange}<display_backend>         ${cyan}# gtk,sdl
     $ ${orange}$APP${reset} -u --video VGA --display sdl $HOME_DIR/downloads/filename.iso ${rst}
     $ ${orange}$APP${reset} -u --video virtio-vga-gl --display gtk $HOME_DIR/downloads/filename.iso ${rst}
 EOF
-  exit 0
+	exit 0
 }
 
 sh_createVdiskFiles() {
@@ -1404,7 +1431,6 @@ sh_setup() {
 	manjaro) : ;;
 	debian) : ;;
 	ubuntu) : ;;
-	ubuntu) : ;;
 	fedora) : ;;
 	endeavouros) : ;;
 	*)
@@ -1449,9 +1475,9 @@ sh_create_vdisk_file() {
 
 sh_list_vdisks() {
 	replicate "================== $(gettext 'DISCOS VIRTUAIS DISPONÍVEIS em') $HOME_DIR/vdisk ===================" 1
-#	echo -n ${bpurple}
+	#	echo -n ${bpurple}
 	ls -lh $HOME_DIR/vdisk/
-#	echo -n $rst
+	#	echo -n $rst
 	replicate '='
 }
 
@@ -1563,32 +1589,40 @@ print_summary_access_vm() {
 	fi
 
 	CFG="$HOME/.ssh/config"
-	# HOST_FWD e USER devem estar definidos anteriormente no seu script
 	mkdir -p "$HOME/.ssh"
+	chmod 700 "$HOME/.ssh" 2>/dev/null
 	touch "$CFG"
 
-	# -i: ignore case
-	# -q: quiet (não imprime nada)
-	# -E: interpreta como busca estendida
-	# O padrão busca "Host" no início da linha seguido de um ou mais espaços e o nome exato do host
-	if ! grep -iqE "^Host[[:space:]]+$HOST_FWD([[:space:]]|$)" "$CFG"; then
-    # Remove eventual entrada antiga do known_hosts
-    ssh-keygen -R "[$HOST_FWD]:$HOST_FWD" >/dev/null 2>&1 || :
-    ssh-keygen -R "$HOST_FWD" >/dev/null 2>&1 || :
-    ssh-keygen -R "[127.0.0.1]:$HOST_FWD" >/dev/null 2>&1 || :
+	# Remove eventual entrada antiga do known_hosts
+	ssh-keygen -R "[127.0.0.1]:$HOST_FWD" >/dev/null 2>&1 || :
 
-		cat >>"$CFG" <<EOF
-Host $HOST_FWD
+	# Bloco gerenciado: reescrito a cada execução para o config não crescer
+	# indefinidamente com uma entrada por porta sorteada.
+	local tmp_cfg
+	tmp_cfg=$(mktemp) || return 0
+	awk '
+		/^# BEGIN chili-fr$/ { skip=1; next }
+		/^# END chili-fr$/   { skip=0; next }
+		!skip                { print }
+	' "$CFG" >"$tmp_cfg"
+
+	{
+		cat "$tmp_cfg"
+		cat <<EOF
+# BEGIN chili-fr
+Host chili-vm $HOST_FWD
     HostName 127.0.0.1
     Port $HOST_FWD
     User $USER
     IdentityFile ~/.ssh/id_rsa
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+# END chili-fr
 EOF
-		msg_info_tab "Configuração para $HOST_FWD adicionada com sucesso."
-	else
-		#msg_info_tab "Host $HOST_FWD já presente no arquivo '${CFG}'. Nenhuma ação necessária."
-		:
-	fi
+	} >"$CFG"
+	rm -f "$tmp_cfg"
+	chmod 600 "$CFG" 2>/dev/null
+	msg_info_tab "$(gettext 'Alias ssh atualizado:') ${cyan}chili-vm${rst} ($(gettext 'porta') $HOST_FWD)"
 }
 
 sh_start_with_spice() {
@@ -1634,12 +1668,12 @@ EOF
 }
 
 main::init_main() {
-	params=("$@")
+	# imagens vindas de -i/--image entram antes dos argumentos posicionais
+	params=("${aimages[@]}" "$@")
 
 	random_port="$(shuf -i 4444-45000 -n 1)"
 	random_spice_port="$(shuf -i 5900-5910 -n 1)"
 
-	cache_type='writeback'
 	bootindex=1
 	media_type=""
 	count=1
@@ -1655,7 +1689,7 @@ main::process_devices() {
 		}
 
 		if ! has_file "$img"; then
-			if ! has_file "$HOME_DIR/vdisk/$img" ; then
+			if ! has_file "$HOME_DIR/vdisk/$img"; then
 				log_msg 1 "Check input ${yellow}#${count}: ${cyan}$img"
 				sh_list_vdisks
 				die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'não localizada, tente os listados acima!')${reset}"
@@ -1676,23 +1710,23 @@ main::process_devices() {
 }
 
 main::configure_uefi() {
-  local DISTRO=$(detect_distro)
+	local DISTRO=$(detect_distro)
 
-  if $uefi; then
-    sh_checkOVMFFiles
-    msg_info "$(gettext 'Forçando inicialização UEFI...')"
-    case "$DISTRO" in
-    void*)
-        ovmf_dir="/usr/share/edk2/x64"
-        ;;
-    *)
-        ovmf_dir="/usr/share/edk2-ovmf/x64"
-        ;;
-    esac
-    [ -f "$HOME_DIR/OVMF_VARS.4m.fd" ] || cp -f "$ovmf_dir/OVMF_VARS.4m.fd" "$HOME_DIR/"
-    qemu_options+=(-drive if=pflash,format=raw,readonly=on,file="$ovmf_dir/OVMF_CODE.4m.fd")
-    qemu_options+=(-drive if=pflash,format=raw,file="$HOME_DIR/OVMF_VARS.4m.fd")
-  fi
+	if $uefi; then
+		sh_checkOVMFFiles
+		msg_info "$(gettext 'Forçando inicialização UEFI...')"
+		case "$DISTRO" in
+		void*)
+			ovmf_dir="/usr/share/edk2/x64"
+			;;
+		*)
+			ovmf_dir="/usr/share/edk2-ovmf/x64"
+			;;
+		esac
+		[ -f "$HOME_DIR/OVMF_VARS.4m.fd" ] || cp -f "$ovmf_dir/OVMF_VARS.4m.fd" "$HOME_DIR/"
+		qemu_options+=(-drive if=pflash,format=raw,readonly=on,file="$ovmf_dir/OVMF_CODE.4m.fd")
+		qemu_options+=(-drive if=pflash,format=raw,file="$HOME_DIR/OVMF_VARS.4m.fd")
+	fi
 }
 
 main::build_base_qemu() {
@@ -1718,10 +1752,14 @@ main::attach_primary_devices() {
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 
 		elif [[ -b "$img" ]]; then
-			msg_info "$(gettext 'Anexando device') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
+			msg_info "$(gettext 'Anexando device') ${yellow}#${bootindex}: ${bold}${cyan}${img} (cache=${cache_type})"
 			qemu_options+=(
-#				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
-				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=io_uring
+				#				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=none,aio=native
+				#				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=unsafe,aio=io_uring
+				#				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=writeback,aio=io_uring
+				#       -drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=writethrough,aio=io_uring
+				#       -drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=directsync,aio=io_uring
+				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=${cache_type},aio=io_uring
 			)
 			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
 
@@ -1762,7 +1800,17 @@ main::configure_name() {
 
 main::configure_display_and_audio() {
 	if $only_tty; then
+		# -machine e obrigatorio tambem no TTY: sem accel=kvm o '-cpu host'
+		# faz o QEMU abortar ("host CPU model requires KVM or HVF")
+		qemu_options+=(-machine type=q35,smm=on,accel=kvm,usb=on)
+		qemu_options+=(-rtc base=localtime,clock=host)
+		qemu_options+=(-global ICH9-LPC.disable_s3=1)
 		qemu_options+=(-vga std -display curses)
+
+		if $lshare; then
+			qemu_options+=(-fsdev local,id=fsdev0,path="${cshare}",security_model=passthrough)
+			qemu_options+=(-device virtio-9p-pci,fsdev=fsdev0,mount_tag=vmshare)
+		fi
 		return
 	fi
 
@@ -1788,9 +1836,8 @@ main::handle_spice_or_display() {
 		exit 0
 	fi
 
-	qemu_options+=(-device "$videodevice" -display ${displaydevice},gl=on)
-
 	if $only_tty; then
+		# display/vga ja definidos em configure_display_and_audio (curses)
 		if $output; then
 			cat <<EOF
 ${cyan}
@@ -1803,6 +1850,8 @@ EOF
 		cmd_sudo env SDL_VIDEODRIVER=x11 XDG_RUNTIME_DIR=/run/user/$(id -u) qemu-system-x86_64 "${qemu_options[@]}"
 		exit 0
 	fi
+
+	qemu_options+=(-device "$videodevice" -display ${displaydevice},gl=on)
 
 	cmd=(
 		sudo -E setsid env
@@ -1864,15 +1913,8 @@ fi
 sh_checkDependencies
 sh_checkVdiskFiles
 
-if [ -z "$DISPLAY" ]; then
-	log_err "DISPLAY='${DISPLAY:-<vazio>}'"
-	log_err "Erro: variável de ambiente DISPLAY não está definida."
-	log_err "Nenhum servidor X11 disponível para interface gráfica."
-	exit 1
-fi
-
-OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:l:oq
-LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk,list,output,quiet,share:,display:
+OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:loqC:
+LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk:,list,output,quiet,share:,display:,cache:
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 #eval set -- "${opts[*]}"
 eval set -- "${opts[@]}"
@@ -1888,10 +1930,10 @@ while [ $# -gt 0 ]; do
 		uefi=true
 		;;
 	-i | --image)
-		if [[ -z "$2" ]]; then
+		if [[ -z "$2" || "$2" == "--" ]]; then
 			die "$(gettext 'Argumento inválido para') ${1}, $(gettext 'falta parâmetro de imagem/disco/device')" >&2
 		else
-			img="$2"
+			aimages+=("$2")
 			shift
 		fi
 		;;
@@ -1906,7 +1948,7 @@ while [ $# -gt 0 ]; do
 		fi
 		;;
 	-r | --remove_real_bridge)
-		if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
+		if bridge_exists "$2"; then
 			bridge_name="$2"
 			remove_real_bridge "$bridge_name"
 			exit 0
@@ -1920,17 +1962,17 @@ while [ $# -gt 0 ]; do
 		if [[ -z "$2" ]]; then
 			die "$(gettext 'Argumento inválido para') --create_virbr_bridge, $(gettext 'falta nome para ponte') \nEx.: --create_virbr_bridge br0" >&2
 		else
-			if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
+			if bridge_exists "$2"; then
 				die "$(gettext 'Argumento inválido para') ${cyan}--create_virbr_bridge${red}. BRIDGE ${cyan}$2 ${red}$(gettext 'já existe')" >&2
 			else
 				bridge_name="$2"
-				create_virbr_bridge "$bridge_name"
+				create_bridge_virbr "$bridge_name"
 				shift
 			fi
 		fi
 		;;
 	--remove_virbr_bridge)
-		if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
+		if bridge_exists "$2"; then
 			bridge_name="$2"
 			remove_virbr_bridge_and_tap "$bridge_name"
 			shift
@@ -1949,7 +1991,7 @@ while [ $# -gt 0 ]; do
 		if [[ "$next_arg" =~ ^(pipewire|pa|jack|none)$ ]]; then
 			audioserver="$next_arg"
 			msg_info "$(gettext 'Parametro') ${yellow}--audio${rst} $(gettext 'detectado: usando') ${cyan}'$next_arg'${rst}"
-      LPARAM_AUDIO=true
+			LPARAM_AUDIO=true
 			shift
 		else
 			echo -e "${red}Erro:${rst} $(gettext 'Argumento inválido para') ${cyan}${1}${rst} - válidos: ${yellow}pipewire pa jack none"
@@ -1957,7 +1999,7 @@ while [ $# -gt 0 ]; do
 		fi
 		;;
 	-b | --bridge)
-		if [[ " $(get_bridge_interfaces) " =~ "$2" ]]; then
+		if bridge_exists "$2"; then
 			iface_bridge="$2"
 			msg_info "$(gettext 'Parametro') ${yellow}--bridge${rst} $(gettext 'detectado: usando ponte') ${cyan}'$iface_bridge'${rst}"
 			bridge=true
@@ -1986,7 +2028,7 @@ while [ $# -gt 0 ]; do
 		only_tty=true
 		;;
 	-g | --video)
-    if [[ " ${avideodevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
+		if [[ " ${avideodevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
 			videodevice="$2"
 			shift
 		else
@@ -1994,11 +2036,22 @@ while [ $# -gt 0 ]; do
 		fi
 		;;
 	--display)
-    if [[ " ${adisplaydevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
+		if [[ " ${adisplaydevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
 			displaydevice="$2"
 			shift
 		else
 			die "${red}$(gettext 'Argumento inválido para') ${yellow}--display${rst} $(gettext 'Use:') ${cyan}${adisplaydevice[@]}${rst}" >&2
+		fi
+		;;
+	-C | --cache)
+		if [[ " ${acachemode[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
+			cache_type="$2"
+			LPARAM_CACHE=true
+			[[ "$2" == "unsafe" ]] &&
+				msg_warn "${yellow}cache=unsafe${rst}: $(gettext 'ignora flush do guest - risco de perda de dados se o host travar')"
+			shift
+		else
+			die "${red}$(gettext 'Argumento inválido para') ${yellow}-C|--cache${rst} $(gettext 'Use:') ${cyan}${acachemode[@]}${rst}" >&2
 		fi
 		;;
 	-l | --list)
@@ -2026,7 +2079,7 @@ while [ $# -gt 0 ]; do
 		exit $?
 		;;
 	-N | --network)
-		if [[ $2 =~ ^(virtio-net-pci|e1000|rtl8139|vmxnet3|ne2k_pci|ne2k_isa|pcnet|smc91c111|i82551|i82557b|i82559er)?$ ]]; then
+		if [[ $2 =~ ^(virtio-net-pci|e1000|rtl8139|vmxnet3|ne2k_pci|ne2k_isa|pcnet|smc91c111|i82551|i82557b|i82559er)$ ]]; then
 			netdevice="$2"
 			anetdevices+=("$netdevice")
 			netchoosedriver=true
@@ -2079,14 +2132,20 @@ done
 
 audio="${audioserver:-$(detect_audio_server)}"
 if $LPARAM_AUDIO; then
-  msg_tick "Servidor audio informado: ${bcyan}${audio}${rst}"
+	msg_tick "Servidor audio informado: ${bcyan}${audio}${rst}"
 else
-  msg_tick "Servidor audio detectado: ${bcyan}${audio}${rst}"
+	msg_tick "Servidor audio detectado: ${bcyan}${audio}${rst}"
 fi
 
- msg_tick "Servidor video configurado: ${bcyan}${videodevice}${rst}"
+msg_tick "Servidor video configurado: ${bcyan}${videodevice}${rst}"
 
-if [[ $# > 0 ]]; then
+if $LPARAM_CACHE; then
+	msg_tick "Cache informado: ${bcyan}${cache_type}${rst}"
+else
+	msg_tick "Cache padrão: ${bcyan}${cache_type}${rst}"
+fi
+
+if [[ $# -gt 0 || ${#aimages[@]} -gt 0 ]]; then
 	# Configurar rede
 	#random_mac_net0=$(python3 -c "import random; print(':'.join(['{:02x}'.format(random.randint(0, 255)) for _ in range(6)]))")
 	#random_mac_net1=$(python3 -c "import random; print(':'.join(['{:02x}'.format(random.randint(0, 255)) for _ in range(6)]))")
@@ -2106,9 +2165,14 @@ if [[ $# > 0 ]]; then
 	#export HOST_FWD=$((RANDOM % 6 + 60022))
 	#export HOST_GOTIFY=$((HOST_FWD + 1))
 
-	# Função para verificar se a porta está livre
+	# Função para verificar se a porta TCP está livre
 	port_is_free() {
 		! ss -tulpn | grep -q ":$1 "
+	}
+
+	# CID de vsock NÃO é porta TCP - checar contra QEMUs em execução
+	cid_is_free() {
+		! pgrep -f "guest-cid=$1" >/dev/null 2>&1
 	}
 
 	# 1. Sorteio inicial dos valores base
@@ -2116,11 +2180,11 @@ if [[ $# > 0 ]]; then
 	CHECK_FWD=$((RANDOM % 6 + 60022))
 
 	# 2. Validação individual do CID
-	until port_is_free "$CHECK_CID"; do
+	until cid_is_free "$CHECK_CID"; do
 		msg_warn "CID $CHECK_CID ocupado, tentando próximo..."
-    ((CHECK_CID++))
+		((CHECK_CID++))
 		# Opcional: resetar se passar do limite
-    ((CHECK_CID > 560)) && CHECK_CID=555
+		((CHECK_CID > 560)) && CHECK_CID=555
 	done
 
 	# 3. Validação da dupla de portas (FWD e GOTIFY)
@@ -2131,7 +2195,7 @@ if [[ $# > 0 ]]; then
 		if port_is_free "$CHECK_FWD" && port_is_free "$CHECK_GOTIFY"; then
 			break
 		fi
-#		msg_warn "${rst}Portas ${yellow}${CHECK_FWD}/${CHECK_GOTIFY}${rst} ocupadas, tentando próxima..."
+		#		msg_warn "${rst}Portas ${yellow}${CHECK_FWD}/${CHECK_GOTIFY}${rst} ocupadas, tentando próxima..."
 		CHECK_FWD=$((CHECK_FWD + 1))
 
 		# Opcional: resetar se passar do limite de segurança
