@@ -683,9 +683,10 @@ create_entry_limine() {
 
 usage() {
 	echo -e "${yellow}Uso: ${APP} [opções]${rst}"
-	echo -e "${yellow}Ex : ${APP} --disk /dev/sdX --efi_part /dev/sdX2 --nick UEFI ${rst}"
-	echo -e "${cyan}Ex : ${APP} --disk /dev/sdX --bootloader grub --nick VoidBR ${rst}"
-	echo -e "${cyan}Ex : ${APP} --disk /dev/nvme0n1 --efi_part /dev/nvme0n1p1 --bootloader limine --nick VoidBR ${rst}"
+	echo -e "${yellow}     ${APP} --disk /dev/sdX${rst}"
+	echo -e "${yellow}     ${APP} --disk /dev/sdX --efi_part /dev/sdX2 --nick UEFI${rst}"
+	echo -e "${cyan}     ${APP} --disk /dev/sdX --bootloader grub --nick VoidBR${rst}"
+	echo -e "${cyan}     ${APP} --disk /dev/nvme0n1 --efi_part /dev/nvme0n1p1 --bootloader limine --nick VoidBR${rst}"
 	echo
 	echo -e "${yellow}Opções:${reset}"
 	echo -e "   ${orange}--disk ${yellow}<dispositivo>    ${yellow}${cyan}Disco onde está a partição EFI (ex: /dev/nvme0n1)"
