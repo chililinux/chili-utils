@@ -60,6 +60,15 @@ cleanup() {
 			run_cmd "umount -R $MNT_TMP" 2>/dev/null || true
 		fi
 	fi
+	# Desfaz o mapeamento das partições da LV, senão ela fica "em uso"
+	# (trava lvremove/migração no Proxmox)
+	if [[ "$DM_MAPPED" == true ]]; then
+		local p
+		for p in $(lsblk -lnp -o NAME,TYPE "$DISK" 2>/dev/null | awk '$2=="part"{print $1}'); do
+			dmsetup remove "$p" >/dev/null 2>&1 || true
+		done
+	fi
+	return 0
 }
 trap cleanup EXIT
 
@@ -221,6 +230,11 @@ log_err_tab() { echo -e "  ${CROSS} ${*}${reset}"; }
 log_mid() { echo -e "${MID} ${*}${reset}"; }
 log_warn() { echo -e "${WARN} ${*}${reset}"; }
 die() {
+	# No modo dialog, mostra o erro numa caixa antes de sair
+	if $DIALOG_UI; then
+		dlg --title "ERRO" --ok-label "OK" --msgbox "\n${BOLD}${RED}$*${RESET}" 10 70
+		clear
+	fi
 	echo -e "${CROSS} ${red}${*}${reset}"
 	exit 1
 }
@@ -238,6 +252,11 @@ HAS_MBR=false
 GRUB_FILE_EFI=""
 CHANGE_GUID=false
 IS_GUID_DUPLICADO=false
+USE_DIALOG=false                               # --dialog (ou sem argumentos)
+DIALOG_UI=false                                # true enquanto as telas do dialog estão ativas
+dialogRcFile="$HOME/.dialogrc"                 # tema do dialog (criado se não existir)
+APPURL="https://github.com/chililinux/chili"
+ccabec=""                                      # cabeçalho do dialog
 BOOTLOADER="grub"                              # grub | limine
 LIMINE_EFI_SRC="/usr/share/limine/BOOTX64.EFI" # .efi instalado pelo pacote limine
 LIMINE_FILE_EFI=""
@@ -396,6 +415,16 @@ get_part_num() {
 		return 0
 	fi
 
+	# Partição de LV (device-mapper): /dev/mapper/pve-xfce1 ou pve-vm--100--disk--0p1
+	if [[ -n "$DISK" && "$part" == "$DISK"* ]]; then
+		partnum="${part#"$DISK"}"
+		partnum="${partnum#p}"
+		if [[ "$partnum" =~ ^[0-9]+$ ]]; then
+			echo "$partnum"
+			return 0
+		fi
+	fi
+
 	if [[ "$part" =~ ^/dev/(nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+)p([0-9]+)$ ]]; then
 		# nvme0n1p2, mmcblk0p1 ou loop0p1
 		partnum="${BASH_REMATCH[2]}"
@@ -410,6 +439,34 @@ get_part_num() {
 	echo "$partnum"
 }
 
+# O kernel não cria os nós das partições de dentro de uma LV: a tabela está
+# gravada nela, mas sem mapeamento em /dev/mapper o lsblk não lista filho.
+# Mapeia só o disco escolhido (mesma lógica do void-install).
+DM_MAPPED=false
+map_dm_partitions() {
+	local dev="$1"
+
+	[[ -b "$dev" ]] || return 0
+	[[ "$(lsblk -dno TYPE "$dev" 2>/dev/null)" == "lvm" ]] || return 0
+	lsblk -lnpo TYPE "$dev" 2>/dev/null | grep -qx part && return 0
+	[[ -n "$(blkid -p -s PTTYPE -o value "$dev" 2>/dev/null)" ]] || return 0
+
+	msg "Mapeando as partições da LV ${yellow}${dev}${reset}..."
+	# partprobe primeiro; kpartx só se o partprobe não criar nada
+	partprobe "$dev" >/dev/null 2>&1
+	udevadm settle 2>/dev/null
+	if ! lsblk -lnpo TYPE "$dev" 2>/dev/null | grep -qx part && command -v kpartx >/dev/null 2>&1; then
+		kpartx -a -s "$dev" >/dev/null 2>&1
+		udevadm settle 2>/dev/null
+	fi
+	if lsblk -lnpo TYPE "$dev" 2>/dev/null | grep -qx part; then
+		DM_MAPPED=true
+		return 0
+	fi
+	log_warn "Não foi possível mapear as partições de $dev (verifique se o kpartx está instalado)"
+	return 1
+}
+
 detect_parts() {
 	local disk="$1"
 
@@ -422,13 +479,14 @@ detect_parts() {
 	fi
 
 	if [[ -z "$ROOT_PART" || -z "$EFI_PART" ]]; then
-		for p in $(lsblk -ln -o NAME,TYPE,FSTYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
+		# -p: caminho completo (partição de LV fica em /dev/mapper/..., não em /dev/<nome>)
+		for p in $(lsblk -lnp -o NAME,TYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
 			local fstype
-			fstype=$(detect_fs_type "/dev/$p")
+			fstype=$(detect_fs_type "$p")
 			if [[ "$fstype" =~ ^(ext4|btrfs|xfs)$ ]]; then
-				[[ -z "$ROOT_PART" ]] && ROOT_PART="/dev/$p"
+				[[ -z "$ROOT_PART" ]] && ROOT_PART="$p"
 			elif [[ "$fstype" =~ ^(vfat|fat32)$ ]]; then
-				[[ -z "$EFI_PART" ]] && EFI_PART="/dev/$p"
+				[[ -z "$EFI_PART" ]] && EFI_PART="$p"
 			fi
 		done
 	fi
@@ -472,6 +530,11 @@ confirm_parts() {
 	msg "${cyan}BOOTLOADER  ==> ${yellow}${BOOTLOADER}"
 	msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
 	replicate
+
+	if $USE_DIALOG; then
+		dialog_confirm
+		return 0
+	fi
 
 	msgread="${red}Deseja continuar com esses parâmetros?${reset}"
 	if readconf "$msgread"; then
@@ -681,12 +744,302 @@ create_entry_limine() {
 	log_ok_tab "Entrada ${yellow}'$NICK' ${reset}(Limine) criada com sucesso!"
 }
 
+# ===================================================================
+# Modo dialog
+# ===================================================================
+check_dialog() {
+	command -v dialog >/dev/null 2>&1 || die "O dialog não está instalado (xbps-install -S dialog)"
+	setup_dialog
+}
+
+# Igual ao void-install: as cores seguem o ~/.dialogrc;
+# se ele não existir, é criado com o tema padrão do VoidBR.
+setup_dialog() {
+	[[ ! -e "$dialogRcFile" ]] && create_dialogrc
+
+	# cabeçalho (backtitle) igual ao do void-install
+	ccabec="${BOLD}${WHITE}${REVERSE}${APP} ${YELLOW}v${_VERSION_} ${BLUE}${APPURL} "
+}
+
+create_dialogrc() {
+	cat >"$dialogRcFile" <<-'EOF'
+		screen_color = (white,black,off)
+		dialog_color = (white,black,off)
+		title_color = (green,black,on)
+		border_color = dialog_color
+		shadow_color = (black,black,on)
+		button_inactive_color = dialog_color
+		button_key_inactive_color = dialog_color
+		button_label_inactive_color = dialog_color
+		button_active_color = (black,green,on)
+		button_key_active_color = button_active_color
+		button_label_active_color = (white,green,on)
+		tag_key_selected_color = (white,green,on)
+		item_selected_color = tag_key_selected_color
+		form_text_color = (green,black,on)
+		form_item_readonly_color = (cyan,black,on)
+		itemhelp_color = (white,green,off)
+		inputbox_color = dialog_color
+		inputbox_border_color = dialog_color
+		searchbox_color = dialog_color
+		searchbox_title_color = title_color
+		searchbox_border_color = border_color
+		position_indicator_color = title_color
+		menubox_color = dialog_color
+		menubox_border_color = border_color
+		item_color = dialog_color
+		tag_color = title_color
+		tag_selected_color = button_label_active_color
+		tag_key_color = button_key_inactive_color
+		check_color = dialog_color
+		check_selected_color = button_active_color
+		uarrow_color = screen_color
+		darrow_color = screen_color
+		form_active_text_color = button_active_color
+		gauge_color = title_color
+		border2_color = dialog_color
+		searchbox_border2_color = dialog_color
+		menubox_border2_color = dialog_color
+		separate_widget = ''
+		tab_len = 0
+		visit_items = off
+		use_shadow = off
+		use_colors = on
+	EOF
+	export DIALOGRC="$dialogRcFile"
+}
+
+# dialog com o cabeçalho e as cores (\Z) do tema
+dlg() {
+	dialog --colors --backtitle "$ccabec" "$@"
+}
+
+trim() {
+	local s="$1"
+	s="${s#"${s%%[![:space:]]*}"}"
+	s="${s%"${s##*[![:space:]]}"}"
+	printf '%s' "$s"
+}
+
+dialog_msg() {
+	dlg --title "${1^^}" --ok-label "OK" --msgbox "\n$2" 10 70
+}
+
+# Mapa tipo/pai de todos os dispositivos (mesma lógica do void-install)
+declare -gA _kname_type=()
+declare -gA _kname_pkname=()
+populate_nested_lvm_map() {
+	local line kn tp pk
+	_kname_type=()
+	_kname_pkname=()
+	while IFS= read -r line; do
+		[[ "$line" =~ KNAME=\"([^\"]*)\"\ TYPE=\"([^\"]*)\"\ PKNAME=\"([^\"]*)\" ]] || continue
+		kn="${BASH_REMATCH[1]}"
+		tp="${BASH_REMATCH[2]}"
+		pk="${BASH_REMATCH[3]}"
+		_kname_type["$kn"]="$tp"
+		_kname_pkname["$kn"]="$pk"
+	done < <(lsblk -Po KNAME,TYPE,PKNAME 2>/dev/null)
+}
+
+# LV que mora numa PARTIÇÃO de outra LV (instalação anterior em cascata) não é
+# disco de verdade. LV filha direta de outra LV (pool thin) é normal e fica.
+is_nested_lvm() {
+	local kname="$1"
+	local parent="${_kname_pkname[$kname]}"
+	local grandparent depth=0
+
+	while [[ -n "$parent" && $depth -lt 6 ]]; do
+		if [[ "${_kname_type[$parent]}" == "part" ]]; then
+			grandparent="${_kname_pkname[$parent]}"
+			[[ "${_kname_type[$grandparent]}" == "lvm" ]] && return 0
+		fi
+		parent="${_kname_pkname[$parent]}"
+		((depth++))
+	done
+	return 1
+}
+
+# Lista os discos (físicos e LVs) em colunas, no layout do void-install,
+# e devolve o escolhido em stdout (status 1 = cancelado/nenhum)
+dialog_select_disk() {
+	local -a items=()
+	local line type path size tran pttype model kname sis
+	local sep="│"
+	local nlen=0
+
+	populate_nested_lvm_map
+
+	# Sem -d: o lsblk -d não mostra LVs (elas ficam embaixo do disco físico na árvore).
+	# Remove as LVs internas do thin pool e as repetidas (mesma LV aparece sob cada PV).
+	while IFS= read -r line; do
+		[[ "$line" =~ TYPE=\"([^\"]*)\"\ PATH=\"([^\"]*)\"\ SIZE=\"([^\"]*)\"\ TRAN=\"([^\"]*)\"\ PTTYPE=\"([^\"]*)\"\ MODEL=\"([^\"]*)\"\ KNAME=\"([^\"]*)\" ]] || continue
+		type="${BASH_REMATCH[1]}"
+		path="${BASH_REMATCH[2]}"
+		size="${BASH_REMATCH[3]}"
+		tran="${BASH_REMATCH[4]}"
+		pttype="${BASH_REMATCH[5]}"
+		model="${BASH_REMATCH[6]}"
+		kname="${BASH_REMATCH[7]}"
+		[[ "$path" == /dev/zram* ]] && continue
+		[[ "$type" == "lvm" ]] && is_nested_lvm "$kname" && continue
+
+		sis=" "
+		is_root_disk "$path" && sis="*"
+		((nlen < ${#path})) && nlen=${#path}
+		items+=("$path" "$(printf "$sep%-4s$sep%-6s$sep%6s$sep%-6s$sep%-30s" \
+			"$sis" "${tran:-$type}" "$size" "${pttype:--}" "${model:-$type device}")")
+	done < <(lsblk -PAo TYPE,PATH,SIZE,TRAN,PTTYPE,MODEL,KNAME 2>/dev/null |
+		grep -P 'TYPE="(disk|lvm)"' |
+		grep -Pv 'PATH=".*(_tdata|-data|_tmeta|-tpool)"' |
+		sort -u -t'"' -k2,2 -k4,4)
+
+	if ((${#items[@]} == 0)); then
+		dialog_msg "Discos" "Nenhum disco encontrado."
+		return 1
+	fi
+
+	((nlen += 6))
+	dlg --stdout \
+		--default-item "$DISK" \
+		--title "SELECIONE O DISCO" \
+		--ok-label "Selecionar" \
+		--cancel-label "Voltar" \
+		--menu "Disco onde está (ou ficará) a partição EFI.  ${BOLD}${YELLOW}*${RESET} = disco do sistema\n\n\
+$(printf "%${nlen}s$sep%-4s$sep%-6s$sep%6s$sep%-6s$sep%-30s" "DEVICE" "SIS" "TRAN" "SIZE" "PTTYPE" "MODEL")" \
+		24 0 2 "${items[@]}"
+}
+
+# Lista os bootloaders válidos e devolve o escolhido em stdout (status 1 = Voltar)
+dialog_select_bootloader() {
+	local digitado="$1"
+	local aviso=""
+
+	[[ -n "$digitado" ]] && aviso="${BOLD}${RED}Bootloader inválido: '${digitado}'${RESET}\n\n"
+
+	dlg --stdout \
+		--default-item "$BOOTLOADER" \
+		--title "BOOTLOADER" \
+		--ok-label "Selecionar" \
+		--cancel-label "Voltar" \
+		--menu "${aviso}Escolha o bootloader da entrada UEFI:" 14 70 2 \
+		"grub"   "GRUB 2  (grub-install / grubx64.efi)" \
+		"limine" "Limine (copia o BOOTX64.EFI do pacote limine)"
+}
+
+# Formulário principal; repete até os campos estarem válidos
+dialog_form() {
+	local -a vals
+	local disk efi nick boot guid rc
+
+	disk="$DISK"
+	efi="$EFI_PART"
+	nick="$NICK"
+	boot="$BOOTLOADER"
+	$CHANGE_GUID && guid="s" || guid="n"
+
+	while true; do
+		mapfile -t vals < <(
+			dlg --stdout --title "ENTRADA UEFI" \
+				--ok-label "Continuar" --cancel-label "Sair" \
+				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}Partição EFI${WHITE} vazia para detectar automaticamente.${RESET}\n" 17 72 5 \
+				"Disco:"              1 1 "$disk" 1 22 44 0 \
+				"Partição EFI:"       2 1 "$efi"  2 22 44 0 \
+				"Nick:"               3 1 "$nick" 3 22 44 0 \
+				"Bootloader:"         4 1 "$boot" 4 22 10 0 \
+				"Alterar GUID (s/n):" 5 1 "$guid" 5 22 3 0
+			echo "rc=$?"
+		)
+		rc="${vals[-1]#rc=}"
+		unset 'vals[-1]'
+		if [[ "$rc" != "0" ]]; then
+			DIALOG_UI=false
+			clear
+			msg "Cancelado pelo usuário."
+			exit 0
+		fi
+
+		# tira só os espaços das pontas (espaço no meio continua inválido)
+		disk=$(trim "${vals[0]}")
+		efi=$(trim "${vals[1]}")
+		nick=$(trim "${vals[2]}")
+		boot=$(trim "${vals[3],,}")
+		guid=$(trim "${vals[4],,}")
+
+		# Disco vazio: busca os discos e volta ao formulário com o escolhido
+		if [[ -z "$disk" ]]; then
+			disk=$(dialog_select_disk) || disk=""
+			continue
+		fi
+
+		if [[ ! -b "$disk" ]] || ! is_disk "$disk"; then
+			dialog_msg "Disco" "'$disk' não é um disco válido.\nUse o disco inteiro (ex: /dev/sda, /dev/nvme0n1)."
+			continue
+		fi
+		if [[ -n "$efi" ]] && { [[ ! -b "$efi" ]] || ! is_valid_efi_fs "$efi"; }; then
+			dialog_msg "Partição EFI" "'$efi' não é uma partição EFI válida (precisa ser FAT32)."
+			continue
+		fi
+		if [[ ! "$nick" =~ ^[A-Za-z0-9._-]+$ ]]; then
+			dialog_msg "Nick" "Nick inválido: '$nick'\nUse só letras, números, ponto, _ e -."
+			continue
+		fi
+		# Bootloader vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
+		if [[ ! "$boot" =~ ^(grub|limine)$ ]]; then
+			boot=$(dialog_select_bootloader "$boot") || boot="$BOOTLOADER"
+			continue
+		fi
+		if [[ ! "$guid" =~ ^[sn]$ ]]; then
+			dialog_msg "Alterar GUID" "Responda s ou n."
+			continue
+		fi
+		break
+	done
+
+	DISK="$disk"
+	if [[ -n "$efi" ]]; then
+		EFI_PART="$efi"
+		IS_EFI_PART_USER=true
+	else
+		EFI_PART=""
+		IS_EFI_PART_USER=false
+	fi
+	NICK="$nick"
+	BOOTLOADER="$boot"
+	[[ "$guid" == "s" ]] && CHANGE_GUID=true || CHANGE_GUID=false
+	return 0
+}
+
+# Confirmação final no dialog (substitui o readconf)
+dialog_confirm() {
+	local origem_efi="auto detectada"
+	$IS_EFI_PART_USER && origem_efi="informada pelo usuário"
+
+	if dlg --title "CONFIRMAR" \
+		--yes-label "Continuar" --no-label "Cancelar" --defaultno \
+		--yesno "\n\
+${BOLD}${CYAN}DISCO      ${RESET} ${DISK}  [$(get_disk_info "$DISK")]\n\
+${BOLD}${CYAN}ROOT_PART  ${RESET} ${ROOT_PART:-<não detectada>}\n\
+${BOLD}${CYAN}EFI_PART   ${RESET} ${EFI_PART:-<não detectada>} (${origem_efi})\n\
+${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n\
+${BOLD}${CYAN}BOOTLOADER ${RESET} ${BOOTLOADER}\n\
+${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n\n\
+${BOLD}${RED}Deseja continuar com esses parâmetros?${RESET}" 16 74; then
+		DIALOG_UI=false
+		clear
+		msg "Continuando instalação..."
+	else
+		die "Instalação abortada pelo usuário."
+	fi
+}
+
 usage() {
 	echo -e "${yellow}Uso: ${APP} [opções]${rst}"
 	echo -e "${yellow}     ${APP} --disk /dev/sdX${rst}"
 	echo -e "${yellow}     ${APP} --disk /dev/sdX --efi_part /dev/sdX2 --nick UEFI${rst}"
 	echo -e "${cyan}     ${APP} --disk /dev/sdX --bootloader grub --nick VoidBR${rst}"
 	echo -e "${cyan}     ${APP} --disk /dev/nvme0n1 --efi_part /dev/nvme0n1p1 --bootloader limine --nick VoidBR${rst}"
+	echo -e "${cyan}     ${APP} --dialog${rst}"
 	echo
 	echo -e "${yellow}Opções:${reset}"
 	echo -e "   ${orange}--disk ${yellow}<dispositivo>    ${yellow}${cyan}Disco onde está a partição EFI (ex: /dev/nvme0n1)"
@@ -694,6 +1047,7 @@ usage() {
 	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
 	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
+	echo -e "   ${orange}-D, --dialog            ${yellow}${cyan}Interface com dialog (padrão quando rodado sem argumentos)"
 	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
 	echo -e "   ${orange}-h, --help              ${yellow}${cyan}Exibe esta ajuda${rst}"
 	exit 1
@@ -738,6 +1092,10 @@ parse_args() {
 			CHANGE_GUID=true
 			shift
 			;;
+		-D | --dialog)
+			USE_DIALOG=true
+			shift
+			;;
 		-h | --help)
 			usage
 			;;
@@ -757,7 +1115,18 @@ parse_args() {
 # Main
 # ===================================================================
 main() {
+	# Sem argumentos: abre o dialog (se estiver instalado)
+	if [[ $# -eq 0 ]] && command -v dialog >/dev/null 2>&1; then
+		USE_DIALOG=true
+	fi
 	parse_args "$@"
+
+	# Opções da linha de comando (se houver) já vêm preenchidas no formulário
+	if $USE_DIALOG; then
+		check_dialog
+		DIALOG_UI=true
+		dialog_form
+	fi
 
 	[[ -z "$DISK" ]] && die "Disco (--disk) é obrigatório. Use -h para ajuda"
 	[[ ! -b "$DISK" ]] && die "$DISK não é um disco válido"
@@ -775,6 +1144,7 @@ main() {
 		fi
 	else
 		msg "Disco alternativo detectado: ${yellow}${DISK}${reset}"
+		map_dm_partitions "$DISK" || true
 		detect_parts "$DISK"
 		IS_ROOT_DISK=false
 	fi
