@@ -262,7 +262,7 @@ dialogRcFile="$HOME/.dialogrc"                 # tema do dialog (criado se não 
 APPURL="https://github.com/chililinux/chili"
 ccabec=""                                      # cabeçalho do dialog
 BOOTLOADER="grub"                              # grub | limine
-MODE="uefi"                                    # uefi | bios
+MODE=""                                        # uefi | bios (vazio = detecta pelo modo em que o sistema iniciou)
 MNT_ROOT=""                                    # montagem da raiz do disco alternativo (GRUB BIOS)
 MNT_TMP_MOUNTED=false                          # true se a ESP foi montada por este script
 BIOS_SOFT=false                                # true no modo UEFI: falha no BIOS só avisa (UEFI já feito)
@@ -290,6 +290,20 @@ sh_version() {
 		        o código fonte específico usado para criar esta cópia.
 		        ${red}Este programa vem com absolutamente NENHUMA garantia.${reset}
 	EOF
+}
+
+# Sistema iniciado em UEFI? (sem isso não há NVRAM para o efibootmgr)
+is_efi_boot() {
+	[[ -d /sys/firmware/efi ]]
+}
+
+# Modo padrão: UEFI (+ BIOS) se o sistema iniciou em UEFI; senão, só BIOS
+detect_mode() {
+	if is_efi_boot; then
+		MODE="uefi"
+	else
+		MODE="bios"
+	fi
 }
 
 verificar_uefi() {
@@ -1087,7 +1101,17 @@ dialog_select_mode() {
 	local digitado="$1"
 	local aviso=""
 
-	[[ -n "$digitado" ]] && aviso="${BOLD}${RED}Modo inválido: '${digitado}'${RESET}\n\n"
+	local -a items=()
+
+	if is_efi_boot; then
+		[[ -n "$digitado" ]] && aviso="${BOLD}${RED}Modo inválido: '${digitado}'${RESET}\n\n"
+		items+=("uefi" "UEFI + BIOS  (NVRAM com efibootmgr e início do disco)")
+	elif [[ "$digitado" == "uefi" ]]; then
+		aviso="${BOLD}${RED}O sistema não foi iniciado em UEFI: só o modo BIOS está disponível.${RESET}\n\n"
+	elif [[ -n "$digitado" ]]; then
+		aviso="${BOLD}${RED}Modo inválido: '${digitado}'${RESET}\n\n"
+	fi
+	items+=("bios" "Só BIOS      (Legacy, gravado no início do disco)")
 
 	dlg --stdout \
 		--default-item "$MODE" \
@@ -1095,8 +1119,7 @@ dialog_select_mode() {
 		--ok-label "Selecionar" \
 		--cancel-label "Voltar" \
 		--menu "${aviso}Escolha o modo de boot:" 14 70 2 \
-		"uefi" "UEFI + BIOS  (NVRAM com efibootmgr e início do disco)" \
-		"bios" "Só BIOS      (Legacy, gravado no início do disco)"
+		"${items[@]}"
 }
 
 # Formulário principal; repete até os campos estarem válidos
@@ -1169,7 +1192,7 @@ dialog_form() {
 			continue
 		fi
 		# Modo vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
-		if [[ ! "$mode" =~ ^(uefi|bios)$ ]]; then
+		if [[ ! "$mode" =~ ^(uefi|bios)$ ]] || { [[ "$mode" == "uefi" ]] && ! is_efi_boot; }; then
 			mode=$(dialog_select_mode "$mode") || mode="$MODE"
 			continue
 		fi
@@ -1230,7 +1253,7 @@ usage() {
 	echo -e "   ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
 	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
 	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
-	echo -e "   ${orange}--mode ${yellow}<uefi|bios>      ${cyan}Modo de boot (padrão: uefi = UEFI + BIOS; bios = só BIOS)"
+	echo -e "   ${orange}--mode ${yellow}<uefi|bios>      ${cyan}Modo de boot (padrão: detecta; uefi = UEFI + BIOS, bios = só BIOS)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
 	echo -e "   ${orange}-D, --dialog            ${yellow}${cyan}Interface com dialog (padrão quando rodado sem argumentos)"
 	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
@@ -1311,6 +1334,7 @@ main() {
 		USE_DIALOG=true
 	fi
 	parse_args "$@"
+	[[ -z "$MODE" ]] && detect_mode
 
 	# Opções da linha de comando (se houver) já vêm preenchidas no formulário
 	if $USE_DIALOG; then
