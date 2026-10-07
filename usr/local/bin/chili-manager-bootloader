@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # shellcheck shell=bash disable=SC1091,SC2039,SC2166
 #
-#  chili-manager-efi
+#  chili-manager-bootloader
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
 #  Updated: ter 07 out 2025 23:47:10 -04
@@ -32,7 +32,7 @@
 ##############################################################################
 #export LANGUAGE=pt_BR
 export TEXTDOMAINDIR=/usr/share/locale
-export TEXTDOMAIN=chili-manager-efi
+export TEXTDOMAIN=chili-manager-bootloader
 
 #debug
 : "${red=$(tput bold)$(tput setaf 196)}"
@@ -297,6 +297,19 @@ is_efi_boot() {
 	[[ -d /sys/firmware/efi ]]
 }
 
+# Nome do modo para exibir: uefi instala UEFI e BIOS, então aparece "uefi/bios"
+mode_label() {
+	[[ "${1:-$MODE}" == "uefi" ]] && echo "uefi/bios" || echo "bios"
+}
+
+# Converte o que foi digitado para o valor interno (uefi | bios); vazio se inválido
+parse_mode() {
+	case "${1,,}" in
+	uefi/bios | uefi) echo "uefi" ;;
+	bios) echo "bios" ;;
+	esac
+}
+
 # Modo padrão: UEFI (+ BIOS) se o sistema iniciou em UEFI; senão, só BIOS
 detect_mode() {
 	if is_efi_boot; then
@@ -555,7 +568,7 @@ confirm_parts() {
 		msg "${cyan}EFI_PART    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
 	fi
 	msg "${cyan}NICK        ==> ${yellow}${NICK:-<não informado>}"
-	msg "${cyan}MODO        ==> ${yellow}${MODE}"
+	msg "${cyan}MODO        ==> ${yellow}$(mode_label)"
 	msg "${cyan}BOOTLOADER  ==> ${yellow}${BOOTLOADER}"
 	msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
 	replicate
@@ -1105,8 +1118,8 @@ dialog_select_mode() {
 
 	if is_efi_boot; then
 		[[ -n "$digitado" ]] && aviso="${BOLD}${RED}Modo inválido: '${digitado}'${RESET}\n\n"
-		items+=("uefi" "UEFI + BIOS  (NVRAM com efibootmgr e início do disco)")
-	elif [[ "$digitado" == "uefi" ]]; then
+		items+=("uefi/bios" "UEFI + BIOS  (NVRAM com efibootmgr e início do disco)")
+	elif [[ "$(parse_mode "$digitado")" == "uefi" ]]; then
 		aviso="${BOLD}${RED}O sistema não foi iniciado em UEFI: só o modo BIOS está disponível.${RESET}\n\n"
 	elif [[ -n "$digitado" ]]; then
 		aviso="${BOLD}${RED}Modo inválido: '${digitado}'${RESET}\n\n"
@@ -1114,7 +1127,7 @@ dialog_select_mode() {
 	items+=("bios" "Só BIOS      (Legacy, gravado no início do disco)")
 
 	dlg --stdout \
-		--default-item "$MODE" \
+		--default-item "$(mode_label)" \
 		--title "MODO" \
 		--ok-label "Selecionar" \
 		--cancel-label "Voltar" \
@@ -1125,7 +1138,7 @@ dialog_select_mode() {
 # Formulário principal; repete até os campos estarem válidos
 dialog_form() {
 	local -a vals
-	local disk efi nick boot guid mode rc
+	local disk efi nick boot guid mode modo_digitado rc
 
 	disk="$DISK"
 	efi="$EFI_PART"
@@ -1144,7 +1157,7 @@ dialog_form() {
 				"Nick:"               3 1 "$nick" 3 22 44 0 \
 				"Bootloader:"         4 1 "$boot" 4 22 10 0 \
 				"Alterar GUID (s/n):" 5 1 "$guid" 5 22 3 0 \
-				"Modo (uefi/bios):"   6 1 "$mode" 6 22 10 0
+				"Modo:"               6 1 "$(mode_label "$mode")" 6 22 10 0
 			echo "rc=$?"
 		)
 		rc="${vals[-1]#rc=}"
@@ -1162,7 +1175,8 @@ dialog_form() {
 		nick=$(trim "${vals[2]}")
 		boot=$(trim "${vals[3],,}")
 		guid=$(trim "${vals[4],,}")
-		mode=$(trim "${vals[5],,}")
+		modo_digitado=$(trim "${vals[5],,}")
+		mode=$(parse_mode "$modo_digitado")
 
 		# Disco vazio: busca os discos e volta ao formulário com o escolhido
 		if [[ -z "$disk" ]]; then
@@ -1192,8 +1206,9 @@ dialog_form() {
 			continue
 		fi
 		# Modo vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
-		if [[ ! "$mode" =~ ^(uefi|bios)$ ]] || { [[ "$mode" == "uefi" ]] && ! is_efi_boot; }; then
-			mode=$(dialog_select_mode "$mode") || mode="$MODE"
+		if [[ -z "$mode" ]] || { [[ "$mode" == "uefi" ]] && ! is_efi_boot; }; then
+			mode=$(parse_mode "$(dialog_select_mode "$modo_digitado")") || mode=""
+			[[ -z "$mode" ]] && mode="$MODE"
 			continue
 		fi
 		break
@@ -1226,7 +1241,7 @@ ${BOLD}${CYAN}DISCO      ${RESET} ${DISK}  [$(get_disk_info "$DISK")]\n\
 ${BOLD}${CYAN}ROOT_PART  ${RESET} ${ROOT_PART:-<não detectada>}\n\
 ${BOLD}${CYAN}EFI_PART   ${RESET} ${EFI_PART:-<não detectada>} (${origem_efi})\n\
 ${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n\
-${BOLD}${CYAN}MODO       ${RESET} ${MODE}\n\
+${BOLD}${CYAN}MODO       ${RESET} $(mode_label)\n\
 ${BOLD}${CYAN}BOOTLOADER ${RESET} ${BOOTLOADER}\n\
 ${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n\n\
 ${BOLD}${RED}Deseja continuar com esses parâmetros?${RESET}" 16 74; then
@@ -1253,7 +1268,7 @@ usage() {
 	echo -e "   ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
 	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
 	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
-	echo -e "   ${orange}--mode ${yellow}<uefi|bios>      ${cyan}Modo de boot (padrão: detecta; uefi = UEFI + BIOS, bios = só BIOS)"
+	echo -e "   ${orange}--mode ${yellow}<uefi/bios|bios> ${cyan}Modo de boot (padrão: detecta; uefi/bios = UEFI + BIOS, bios = só BIOS)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
 	echo -e "   ${orange}-D, --dialog            ${yellow}${cyan}Interface com dialog (padrão quando rodado sem argumentos)"
 	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
@@ -1298,8 +1313,8 @@ parse_args() {
 			;;
 		--mode)
 			need_arg "$1" "$2"
-			MODE="${2,,}"
-			[[ "$MODE" =~ ^(uefi|bios)$ ]] || die "Modo inválido: $2 (use uefi ou bios)"
+			MODE=$(parse_mode "$2")
+			[[ -n "$MODE" ]] || die "Modo inválido: $2 (use uefi/bios ou bios)"
 			shift 2
 			;;
 		--change-guid)
