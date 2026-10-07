@@ -265,6 +265,7 @@ BOOTLOADER="grub"                              # grub | limine
 MODE="uefi"                                    # uefi | bios
 MNT_ROOT=""                                    # montagem da raiz do disco alternativo (GRUB BIOS)
 MNT_TMP_MOUNTED=false                          # true se a ESP foi montada por este script
+BIOS_SOFT=false                                # true no modo UEFI: falha no BIOS só avisa (UEFI já feito)
 LIMINE_BIOS_SRC="/usr/share/limine/limine-bios.sys" # stage 3 do Limine para BIOS
 BIOS_BOOT_GUID="21686148-6449-6e6f-744e-656564454649" # tipo da partição "BIOS boot" (ef02)
 LIMINE_EFI_SRC="/usr/share/limine/BOOTX64.EFI" # .efi instalado pelo pacote limine
@@ -762,6 +763,16 @@ create_entry_limine() {
 # ===================================================================
 # Modo BIOS (Legacy)
 # ===================================================================
+# No modo BIOS a falha é fatal; no modo UEFI (BIOS como extra) só avisa e pula
+bios_fail() {
+	if $BIOS_SOFT; then
+		log_warn "$*"
+		log_warn "Instalação BIOS ignorada (a UEFI já foi feita)."
+		return 1
+	fi
+	die "$*"
+}
+
 get_pttype() {
 	lsblk -dno PTTYPE "$1" 2>/dev/null | tr -d '[:space:]'
 }
@@ -786,13 +797,15 @@ check_bios_table() {
 	gpt)
 		bbp=$(find_bios_boot_part "$disk")
 		if [[ -z "$bbp" ]]; then
-			die "Disco GPT sem partição BIOS boot (tipo ef02).\nCrie uma de 1 MiB, ex: sgdisk -n 0:0:+1M -t 0:ef02 $disk"
+			bios_fail "Disco GPT sem partição BIOS boot (tipo ef02).\nCrie uma de 1 MiB, ex: sgdisk -n 0:0:+1M -t 0:ef02 $disk"
+			return 1
 		fi
 		log_ok_tab "Tabela GPT com partição BIOS boot: $bbp"
 		BIOS_BOOT_PART="$bbp"
 		;;
 	*)
-		die "$disk não tem tabela de partições (MBR ou GPT)"
+		bios_fail "$disk não tem tabela de partições (MBR ou GPT)"
+		return 1
 		;;
 	esac
 }
@@ -830,7 +843,7 @@ umount_root_part() {
 install_grub_bios() {
 	replicate '-'
 	msg "Instalando o ${yellow}GRUB${reset} em modo ${yellow}BIOS${reset} no disco $DISK..."
-	check_bios_table "$DISK"
+	check_bios_table "$DISK" || return 0
 
 	if $IS_ROOT_DISK; then
 		BIOS_BOOTDIR="/boot"
@@ -838,8 +851,10 @@ install_grub_bios() {
 		mount_root_part
 	fi
 
-	run_cmd "grub-install --target=i386-pc --boot-directory=$BIOS_BOOTDIR --recheck $DISK" ||
-		die "Falha na instalação do GRUB BIOS no disco $DISK!"
+	if ! run_cmd "grub-install --target=i386-pc --boot-directory=$BIOS_BOOTDIR --recheck $DISK"; then
+		$IS_ROOT_DISK || umount_root_part
+		bios_fail "Falha na instalação do GRUB BIOS no disco $DISK!" || return 0
+	fi
 	log_ok_tab "GRUB BIOS instalado em $DISK (módulos em $BIOS_BOOTDIR/grub)"
 
 	if [[ ! -f "$BIOS_BOOTDIR/grub/grub.cfg" ]]; then
@@ -855,10 +870,10 @@ install_limine_bios() {
 
 	replicate '-'
 	msg "Instalando o ${yellow}Limine${reset} em modo ${yellow}BIOS${reset} no disco $DISK..."
-	command -v limine >/dev/null 2>&1 || die "Comando limine não encontrado. Instale o pacote limine."
-	[[ -f "$LIMINE_BIOS_SRC" ]] || die "Não achei ${LIMINE_BIOS_SRC}. Instale o pacote limine."
-	[[ -n "$EFI_PART" ]] || die "O Limine BIOS precisa de uma partição FAT no disco (informe com --efi_part)"
-	check_bios_table "$DISK"
+	command -v limine >/dev/null 2>&1 || { bios_fail "Comando limine não encontrado. Instale o pacote limine." || return 0; }
+	[[ -f "$LIMINE_BIOS_SRC" ]] || { bios_fail "Não achei ${LIMINE_BIOS_SRC}. Instale o pacote limine." || return 0; }
+	[[ -n "$EFI_PART" ]] || { bios_fail "O Limine BIOS precisa de uma partição FAT no disco (informe com --efi_part)" || return 0; }
+	check_bios_table "$DISK" || return 0
 
 	# limine-bios.sys vai para o mesmo diretório do limine.conf (boot/limine, boot, limine ou raiz)
 	for dir in boot/limine boot limine .; do
@@ -873,14 +888,14 @@ install_limine_bios() {
 	fi
 	dest_dir="${dest_dir%/.}"
 
-	run_cmd "mkdir -p $dest_dir" || die "Falha ao criar diretório $dest_dir"
+	run_cmd "mkdir -p $dest_dir" || { bios_fail "Falha ao criar diretório $dest_dir" || return 0; }
 	msg_tab "Copiando ${LIMINE_BIOS_SRC} para ${dest_dir}/limine-bios.sys"
 	run_cmd "cp -f ${LIMINE_BIOS_SRC} ${dest_dir}/limine-bios.sys" ||
-		die "Falha ao copiar ${LIMINE_BIOS_SRC} para ${dest_dir}"
+		{ bios_fail "Falha ao copiar ${LIMINE_BIOS_SRC} para ${dest_dir}" || return 0; }
 
 	# GPT: o stage 2 vai na partição BIOS boot (número 1-based)
 	[[ -n "$BIOS_BOOT_PART" ]] && num=$(get_part_num "$BIOS_BOOT_PART")
-	run_cmd "limine bios-install $DISK $num" || die "Falha no limine bios-install em $DISK!"
+	run_cmd "limine bios-install $DISK $num" || { bios_fail "Falha no limine bios-install em $DISK!" || return 0; }
 	log_ok_tab "Limine BIOS instalado em $DISK"
 }
 
@@ -1080,8 +1095,8 @@ dialog_select_mode() {
 		--ok-label "Selecionar" \
 		--cancel-label "Voltar" \
 		--menu "${aviso}Escolha o modo de boot:" 14 70 2 \
-		"uefi" "UEFI  (entrada na NVRAM com efibootmgr)" \
-		"bios" "BIOS  (Legacy, gravado no início do disco)"
+		"uefi" "UEFI + BIOS  (NVRAM com efibootmgr e início do disco)" \
+		"bios" "Só BIOS      (Legacy, gravado no início do disco)"
 }
 
 # Formulário principal; repete até os campos estarem válidos
@@ -1215,7 +1230,7 @@ usage() {
 	echo -e "   ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
 	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
 	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
-	echo -e "   ${orange}--mode ${yellow}<uefi|bios>      ${cyan}Modo de boot (padrão: uefi)"
+	echo -e "   ${orange}--mode ${yellow}<uefi|bios>      ${cyan}Modo de boot (padrão: uefi = UEFI + BIOS; bios = só BIOS)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
 	echo -e "   ${orange}-D, --dialog            ${yellow}${cyan}Interface com dialog (padrão quando rodado sem argumentos)"
 	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
@@ -1369,15 +1384,6 @@ main() {
 			msg "Criando diretório $MNT_TMP/EFI/$NICK para o GRUB..."
 			run_cmd "mkdir -p $MNT_TMP/EFI/$NICK" || die "Falha ao criar diretório $MNT_TMP/EFI/$NICK"
 
-			if ! $HAS_MBR; then
-				# === Instalar o GRUB na MBR ===
-				msg "Instalando GRUB no MBR do disco $DISK..."
-				if ! run_cmd "grub-install --target=i386-pc --recheck $DISK"; then
-					die "Falha na instalação do GRUB na MBR do disco $DISK!"
-				fi
-				log_ok "GRUB instalado com sucesso na MBR do disco $DISK!"
-			fi
-
 			if ! $HAS_UEFI || $IS_GUID_DUPLICADO; then
 				# === Instalar o GRUB na pasta escolhida ===
 				msg "Instalando GRUB no diretório $MNT_TMP/EFI/$NICK..."
@@ -1397,6 +1403,14 @@ main() {
 
 	#remover entrada
 	#efibootmgr -b 0011 -B
+
+	# Modo UEFI instala também em BIOS (boot híbrido); falha no BIOS só avisa
+	BIOS_SOFT=true
+	if [[ "$BOOTLOADER" == "limine" ]]; then
+		install_limine_bios
+	else
+		install_grub_bios
+	fi
 
 	finish_main
 }
