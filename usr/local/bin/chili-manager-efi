@@ -60,6 +60,10 @@ cleanup() {
 			run_cmd "umount -R $MNT_TMP" 2>/dev/null || true
 		fi
 	fi
+	if [[ -n "$MNT_ROOT" ]] && mount | grep -q " $MNT_ROOT "; then
+		umount -R "$MNT_ROOT" 2>/dev/null || true
+		rmdir "$MNT_ROOT" 2>/dev/null || true
+	fi
 	# Desfaz o mapeamento das partições da LV, senão ela fica "em uso"
 	# (trava lvremove/migração no Proxmox)
 	if [[ "$DM_MAPPED" == true ]]; then
@@ -258,6 +262,11 @@ dialogRcFile="$HOME/.dialogrc"                 # tema do dialog (criado se não 
 APPURL="https://github.com/chililinux/chili"
 ccabec=""                                      # cabeçalho do dialog
 BOOTLOADER="grub"                              # grub | limine
+MODE="uefi"                                    # uefi | bios
+MNT_ROOT=""                                    # montagem da raiz do disco alternativo (GRUB BIOS)
+MNT_TMP_MOUNTED=false                          # true se a ESP foi montada por este script
+LIMINE_BIOS_SRC="/usr/share/limine/limine-bios.sys" # stage 3 do Limine para BIOS
+BIOS_BOOT_GUID="21686148-6449-6e6f-744e-656564454649" # tipo da partição "BIOS boot" (ef02)
 LIMINE_EFI_SRC="/usr/share/limine/BOOTX64.EFI" # .efi instalado pelo pacote limine
 LIMINE_FILE_EFI=""
 
@@ -491,7 +500,11 @@ detect_parts() {
 		done
 	fi
 	[[ -z "$ROOT_PART" ]] && die "Não foi possível detectar partição ROOT em $disk"
-	[[ -z "$EFI_PART" ]] && die "Não foi detectada partição EFI (FAT) em $disk. Informe com --efi_part"
+	if [[ -z "$EFI_PART" ]]; then
+		# no modo BIOS a partição FAT só é necessária para o Limine (verificado depois)
+		[[ "$MODE" == "uefi" ]] && die "Não foi detectada partição EFI (FAT) em $disk. Informe com --efi_part"
+		log_warn "Não foi detectada partição FAT em $disk"
+	fi
 	return 0
 }
 
@@ -527,6 +540,7 @@ confirm_parts() {
 		msg "${cyan}EFI_PART    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
 	fi
 	msg "${cyan}NICK        ==> ${yellow}${NICK:-<não informado>}"
+	msg "${cyan}MODO        ==> ${yellow}${MODE}"
 	msg "${cyan}BOOTLOADER  ==> ${yellow}${BOOTLOADER}"
 	msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
 	replicate
@@ -710,6 +724,7 @@ mount_efi_part() {
 	if ! run_cmd "mount ${EFI_PART} $MNT_TMP"; then
 		die "Não foi possível montar a partição EFI!"
 	fi
+	MNT_TMP_MOUNTED=true
 }
 
 create_entry_limine() {
@@ -742,6 +757,131 @@ create_entry_limine() {
 	run_cmd "efibootmgr --quiet --create --disk $DISK --part $(get_part_num $EFI_PART) --label $NICK --loader '\\EFI\\$NICK\\BOOTX64.EFI' >/dev/null" ||
 		die "Falha ao criar a entrada UEFI '$NICK'"
 	log_ok_tab "Entrada ${yellow}'$NICK' ${reset}(Limine) criada com sucesso!"
+}
+
+# ===================================================================
+# Modo BIOS (Legacy)
+# ===================================================================
+get_pttype() {
+	lsblk -dno PTTYPE "$1" 2>/dev/null | tr -d '[:space:]'
+}
+
+# Partição "BIOS boot" (ef02) do disco, necessária em GPT para GRUB e Limine
+find_bios_boot_part() {
+	lsblk -lnp -o NAME,PARTTYPE "$1" 2>/dev/null |
+		awk -v g="$BIOS_BOOT_GUID" 'tolower($2)==g {print $1; exit}'
+}
+
+# Confere a tabela de partições para BIOS; em GPT devolve a partição BIOS boot
+check_bios_table() {
+	local disk="$1"
+	local pttype bbp
+
+	pttype=$(get_pttype "$disk")
+	case "$pttype" in
+	dos)
+		log_ok_tab "Tabela MBR (dos) em $disk"
+		BIOS_BOOT_PART=""
+		;;
+	gpt)
+		bbp=$(find_bios_boot_part "$disk")
+		if [[ -z "$bbp" ]]; then
+			die "Disco GPT sem partição BIOS boot (tipo ef02).\nCrie uma de 1 MiB, ex: sgdisk -n 0:0:+1M -t 0:ef02 $disk"
+		fi
+		log_ok_tab "Tabela GPT com partição BIOS boot: $bbp"
+		BIOS_BOOT_PART="$bbp"
+		;;
+	*)
+		die "$disk não tem tabela de partições (MBR ou GPT)"
+		;;
+	esac
+}
+
+# Monta a raiz do disco alternativo e devolve o /boot dela em BIOS_BOOTDIR
+mount_root_part() {
+	[[ -b "$ROOT_PART" ]] || die "Partição raiz inválida: '${ROOT_PART}'"
+
+	MNT_ROOT="/mnt/${APP}-root-$(date +'%H%M%S')"
+	msg "Montando a partição raiz ${ROOT_PART} em $MNT_ROOT"
+	run_cmd "mkdir -p $MNT_ROOT" || die "Falha ao criar diretório $MNT_ROOT"
+	run_cmd "mount ${ROOT_PART} $MNT_ROOT" || die "Não foi possível montar a partição raiz!"
+
+	# btrfs com subvolume @ (padrão do VoidBR) ou raiz comum
+	if [[ -d "$MNT_ROOT/@/boot" ]]; then
+		BIOS_BOOTDIR="$MNT_ROOT/@/boot"
+	elif [[ -d "$MNT_ROOT/boot" ]]; then
+		BIOS_BOOTDIR="$MNT_ROOT/boot"
+	else
+		die "Não achei o /boot em ${ROOT_PART} (procurei /boot e /@/boot)"
+	fi
+}
+
+umount_root_part() {
+	[[ -n "$MNT_ROOT" ]] || return 0
+	msg "Desmontando a partição raiz..."
+	if run_cmd "umount $MNT_ROOT"; then
+		run_cmd "rmdir $MNT_ROOT"
+		MNT_ROOT=""
+	else
+		log_warn "Não foi possível desmontar $MNT_ROOT; o diretório foi mantido."
+	fi
+}
+
+install_grub_bios() {
+	replicate '-'
+	msg "Instalando o ${yellow}GRUB${reset} em modo ${yellow}BIOS${reset} no disco $DISK..."
+	check_bios_table "$DISK"
+
+	if $IS_ROOT_DISK; then
+		BIOS_BOOTDIR="/boot"
+	else
+		mount_root_part
+	fi
+
+	run_cmd "grub-install --target=i386-pc --boot-directory=$BIOS_BOOTDIR --recheck $DISK" ||
+		die "Falha na instalação do GRUB BIOS no disco $DISK!"
+	log_ok_tab "GRUB BIOS instalado em $DISK (módulos em $BIOS_BOOTDIR/grub)"
+
+	if [[ ! -f "$BIOS_BOOTDIR/grub/grub.cfg" ]]; then
+		log_warn "Não existe $BIOS_BOOTDIR/grub/grub.cfg; gere com grub-mkconfig no sistema desse disco."
+	fi
+
+	$IS_ROOT_DISK || umount_root_part
+}
+
+install_limine_bios() {
+	local dir dest_dir=""
+	local num=""
+
+	replicate '-'
+	msg "Instalando o ${yellow}Limine${reset} em modo ${yellow}BIOS${reset} no disco $DISK..."
+	command -v limine >/dev/null 2>&1 || die "Comando limine não encontrado. Instale o pacote limine."
+	[[ -f "$LIMINE_BIOS_SRC" ]] || die "Não achei ${LIMINE_BIOS_SRC}. Instale o pacote limine."
+	[[ -n "$EFI_PART" ]] || die "O Limine BIOS precisa de uma partição FAT no disco (informe com --efi_part)"
+	check_bios_table "$DISK"
+
+	# limine-bios.sys vai para o mesmo diretório do limine.conf (boot/limine, boot, limine ou raiz)
+	for dir in boot/limine boot limine .; do
+		if [[ -f "$MNT_TMP/$dir/limine.conf" ]]; then
+			dest_dir="$MNT_TMP/$dir"
+			break
+		fi
+	done
+	if [[ -z "$dest_dir" ]]; then
+		dest_dir="$MNT_TMP/limine"
+		log_warn "limine.conf não encontrado em ${EFI_PART}; crie ${dest_dir#"$MNT_TMP"}/limine.conf antes de reiniciar."
+	fi
+	dest_dir="${dest_dir%/.}"
+
+	run_cmd "mkdir -p $dest_dir" || die "Falha ao criar diretório $dest_dir"
+	msg_tab "Copiando ${LIMINE_BIOS_SRC} para ${dest_dir}/limine-bios.sys"
+	run_cmd "cp -f ${LIMINE_BIOS_SRC} ${dest_dir}/limine-bios.sys" ||
+		die "Falha ao copiar ${LIMINE_BIOS_SRC} para ${dest_dir}"
+
+	# GPT: o stage 2 vai na partição BIOS boot (número 1-based)
+	[[ -n "$BIOS_BOOT_PART" ]] && num=$(get_part_num "$BIOS_BOOT_PART")
+	run_cmd "limine bios-install $DISK $num" || die "Falha no limine bios-install em $DISK!"
+	log_ok_tab "Limine BIOS instalado em $DISK"
 }
 
 # ===================================================================
@@ -927,27 +1067,46 @@ dialog_select_bootloader() {
 		"limine" "Limine (copia o BOOTX64.EFI do pacote limine)"
 }
 
+# Lista os modos válidos e devolve o escolhido em stdout (status 1 = Voltar)
+dialog_select_mode() {
+	local digitado="$1"
+	local aviso=""
+
+	[[ -n "$digitado" ]] && aviso="${BOLD}${RED}Modo inválido: '${digitado}'${RESET}\n\n"
+
+	dlg --stdout \
+		--default-item "$MODE" \
+		--title "MODO" \
+		--ok-label "Selecionar" \
+		--cancel-label "Voltar" \
+		--menu "${aviso}Escolha o modo de boot:" 14 70 2 \
+		"uefi" "UEFI  (entrada na NVRAM com efibootmgr)" \
+		"bios" "BIOS  (Legacy, gravado no início do disco)"
+}
+
 # Formulário principal; repete até os campos estarem válidos
 dialog_form() {
 	local -a vals
-	local disk efi nick boot guid rc
+	local disk efi nick boot guid mode rc
 
 	disk="$DISK"
 	efi="$EFI_PART"
 	nick="$NICK"
 	boot="$BOOTLOADER"
+	mode="$MODE"
 	$CHANGE_GUID && guid="s" || guid="n"
 
 	while true; do
 		mapfile -t vals < <(
 			dlg --stdout --title "ENTRADA UEFI" \
 				--ok-label "Continuar" --cancel-label "Sair" \
-				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}Partição EFI${WHITE} vazia para detectar automaticamente.${RESET}\n" 17 72 5 \
+				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}Partição EFI${WHITE} vazia para detectar automaticamente.${RESET}\n" 18 72 6 \
 				"Disco:"              1 1 "$disk" 1 22 44 0 \
 				"Partição EFI:"       2 1 "$efi"  2 22 44 0 \
 				"Nick:"               3 1 "$nick" 3 22 44 0 \
 				"Bootloader:"         4 1 "$boot" 4 22 10 0 \
-				"Alterar GUID (s/n):" 5 1 "$guid" 5 22 3 0
+				"Alterar GUID (s/n):" 5 1 "$guid" 5 22 3 0 \
+				"Modo (uefi/bios):"   6 1 "$mode" 6 22 10 0
 			echo "rc=$?"
 		)
 		rc="${vals[-1]#rc=}"
@@ -965,6 +1124,7 @@ dialog_form() {
 		nick=$(trim "${vals[2]}")
 		boot=$(trim "${vals[3],,}")
 		guid=$(trim "${vals[4],,}")
+		mode=$(trim "${vals[5],,}")
 
 		# Disco vazio: busca os discos e volta ao formulário com o escolhido
 		if [[ -z "$disk" ]]; then
@@ -993,6 +1153,11 @@ dialog_form() {
 			dialog_msg "Alterar GUID" "Responda s ou n."
 			continue
 		fi
+		# Modo vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
+		if [[ ! "$mode" =~ ^(uefi|bios)$ ]]; then
+			mode=$(dialog_select_mode "$mode") || mode="$MODE"
+			continue
+		fi
 		break
 	done
 
@@ -1006,6 +1171,7 @@ dialog_form() {
 	fi
 	NICK="$nick"
 	BOOTLOADER="$boot"
+	MODE="$mode"
 	[[ "$guid" == "s" ]] && CHANGE_GUID=true || CHANGE_GUID=false
 	return 0
 }
@@ -1022,6 +1188,7 @@ ${BOLD}${CYAN}DISCO      ${RESET} ${DISK}  [$(get_disk_info "$DISK")]\n\
 ${BOLD}${CYAN}ROOT_PART  ${RESET} ${ROOT_PART:-<não detectada>}\n\
 ${BOLD}${CYAN}EFI_PART   ${RESET} ${EFI_PART:-<não detectada>} (${origem_efi})\n\
 ${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n\
+${BOLD}${CYAN}MODO       ${RESET} ${MODE}\n\
 ${BOLD}${CYAN}BOOTLOADER ${RESET} ${BOOTLOADER}\n\
 ${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n\n\
 ${BOLD}${RED}Deseja continuar com esses parâmetros?${RESET}" 16 74; then
@@ -1039,6 +1206,8 @@ usage() {
 	echo -e "${yellow}     ${APP} --disk /dev/sdX --efi_part /dev/sdX2 --nick UEFI${rst}"
 	echo -e "${cyan}     ${APP} --disk /dev/sdX --bootloader grub --nick VoidBR${rst}"
 	echo -e "${cyan}     ${APP} --disk /dev/nvme0n1 --efi_part /dev/nvme0n1p1 --bootloader limine --nick VoidBR${rst}"
+	echo -e "${cyan}     ${APP} --disk /dev/sdX --mode bios --bootloader grub${rst}"
+	echo -e "${cyan}     ${APP} --disk /dev/sdX --mode bios --bootloader limine${rst}"
 	echo -e "${cyan}     ${APP} --dialog${rst}"
 	echo
 	echo -e "${yellow}Opções:${reset}"
@@ -1046,6 +1215,7 @@ usage() {
 	echo -e "   ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
 	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
 	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
+	echo -e "   ${orange}--mode ${yellow}<uefi|bios>      ${cyan}Modo de boot (padrão: uefi)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
 	echo -e "   ${orange}-D, --dialog            ${yellow}${cyan}Interface com dialog (padrão quando rodado sem argumentos)"
 	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
@@ -1088,6 +1258,12 @@ parse_args() {
 			[[ "$BOOTLOADER" =~ ^(grub|limine)$ ]] || die "Bootloader inválido: $2 (use grub ou limine)"
 			shift 2
 			;;
+		--mode)
+			need_arg "$1" "$2"
+			MODE="${2,,}"
+			[[ "$MODE" =~ ^(uefi|bios)$ ]] || die "Modo inválido: $2 (use uefi ou bios)"
+			shift 2
+			;;
 		--change-guid)
 			CHANGE_GUID=true
 			shift
@@ -1128,6 +1304,9 @@ main() {
 		dialog_form
 	fi
 
+	# Entrada na NVRAM só é possível com o sistema iniciado em UEFI
+	[[ "$MODE" == "uefi" ]] && verificar_uefi
+
 	[[ -z "$DISK" ]] && die "Disco (--disk) é obrigatório. Use -h para ajuda"
 	[[ ! -b "$DISK" ]] && die "$DISK não é um disco válido"
 
@@ -1140,7 +1319,10 @@ main() {
 		ROOT_PART=$(get_root_part "$DISK")
 		IS_ROOT_DISK=true
 		if ! detect_root_esp; then
-			die "ESP do disco raiz não está montada (procurei em /boot/efi, /efi e /boot). Monte-a e rode de novo."
+			# BIOS + GRUB não precisa de ESP; os outros casos precisam da FAT montada
+			if [[ "$MODE" == "uefi" || "$BOOTLOADER" == "limine" ]]; then
+				die "Partição FAT/ESP do disco raiz não está montada (procurei em /boot/efi, /efi e /boot). Monte-a e rode de novo."
+			fi
 		fi
 	else
 		msg "Disco alternativo detectado: ${yellow}${DISK}${reset}"
@@ -1149,6 +1331,20 @@ main() {
 		IS_ROOT_DISK=false
 	fi
 	confirm_parts # <- CONFIRMAÇÃO ANTES DE INSTALAR
+
+	if [[ "$MODE" == "bios" ]]; then
+		if [[ "$BOOTLOADER" == "limine" ]]; then
+			[[ -n "$EFI_PART" ]] || die "O Limine BIOS precisa de uma partição FAT no disco para o limine-bios.sys e o limine.conf (informe com --efi_part)"
+			if ! $IS_ROOT_DISK; then
+				mount_efi_part
+			fi
+			install_limine_bios
+		else
+			install_grub_bios
+		fi
+		finish_main
+		return 0
+	fi
 
 	if $CHANGE_GUID; then
 		IS_GUID_DUPLICADO=false
@@ -1202,7 +1398,12 @@ main() {
 	#remover entrada
 	#efibootmgr -b 0011 -B
 
-	if ! $IS_ROOT_DISK; then
+	finish_main
+}
+
+# Desmonta a ESP (se este script montou) e encerra
+finish_main() {
+	if $MNT_TMP_MOUNTED; then
 		# === Desmontar a partição EFI após a instalação ===
 		msg "Desmontando a partição EFI..."
 		if run_cmd "umount $MNT_TMP"; then
@@ -1216,7 +1417,6 @@ main() {
 	fi
 	replicate '-'
 	msg "Pronto!"
-
 }
 
 # ===================================================================
@@ -1224,5 +1424,4 @@ main() {
 # ===================================================================
 set_varcolors
 sh_checkroot "$@"
-verificar_uefi
 main "$@"
