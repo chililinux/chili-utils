@@ -257,6 +257,7 @@ HAS_MBR=false
 GRUB_FILE_EFI=""
 CHANGE_GUID=false
 IS_GUID_DUPLICADO=false
+ASSUME_YES=false                               # --yes: não pede confirmação (só na CLI)
 USE_DIALOG=false                               # --dialog (ou sem argumentos)
 DIALOG_UI=false                                # true enquanto as telas do dialog estão ativas
 dialogRcFile="$HOME/.dialogrc"                 # tema do dialog (criado se não existir)
@@ -578,6 +579,11 @@ confirm_parts() {
 
 	if $USE_DIALOG; then
 		dialog_confirm
+		return 0
+	fi
+
+	if $ASSUME_YES; then
+		msg "Continuando instalação (--yes)..."
 		return 0
 	fi
 
@@ -1301,6 +1307,7 @@ usage() {
 	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
 	echo -e "   ${orange}--mode ${yellow}<uefi/bios|bios> ${cyan}Modo de boot (padrão: detecta; uefi/bios = UEFI + BIOS, bios = só BIOS)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
+	echo -e "   ${orange}-y, --yes               ${yellow}${cyan}Não pede confirmação (só na linha de comando)"
 	echo -e "   ${orange}-D, --dialog            ${yellow}${cyan}Interface com dialog (padrão quando rodado sem argumentos)"
 	echo -e "   ${orange}-V, --version           ${yellow}${cyan}Exibe a versão do app"
 	echo -e "   ${orange}-h, --help              ${yellow}${cyan}Exibe esta ajuda${rst}"
@@ -1351,6 +1358,10 @@ parse_args() {
 			;;
 		--change-guid)
 			CHANGE_GUID=true
+			shift
+			;;
+		-y | --yes)
+			ASSUME_YES=true
 			shift
 			;;
 		-D | --dialog)
