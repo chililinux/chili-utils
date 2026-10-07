@@ -245,6 +245,7 @@ die() {
 
 ##########################################################################################################
 NICK="UEFI"
+NICK_USER=false                                # true se --nick foi informado
 ROOT_PART=""
 IS_ROOT_PART_USER=false
 EFI_PART=""
@@ -562,15 +563,17 @@ confirm_parts() {
 	else
 		msg "${cyan}ROOT_PART   ==> ${yellow}${ROOT_PART:-<não detectada>} ${black}(auto detectada)"
 	fi
+	local lbl_efi="EFI_PART"
+	[[ "$MODE" == "bios" ]] && lbl_efi="FAT_PART"
 	if $IS_EFI_PART_USER; then
-		msg "${cyan}EFI_PART    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(informada pelo usuário)"
+		msg "${cyan}${lbl_efi}    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(informada pelo usuário)"
 	else
-		msg "${cyan}EFI_PART    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
+		msg "${cyan}${lbl_efi}    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
 	fi
-	msg "${cyan}NICK        ==> ${yellow}${NICK:-<não informado>}"
+	[[ "$MODE" == "uefi" ]] && msg "${cyan}NICK        ==> ${yellow}${NICK:-<não informado>}"
 	msg "${cyan}MODO        ==> ${yellow}$(mode_label)"
 	msg "${cyan}BOOTLOADER  ==> ${yellow}${BOOTLOADER}"
-	msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
+	[[ "$MODE" == "uefi" ]] && msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
 	replicate
 
 	if $USE_DIALOG; then
@@ -1037,7 +1040,7 @@ is_nested_lvm() {
 			[[ "${_kname_type[$grandparent]}" == "lvm" ]] && return 0
 		fi
 		parent="${_kname_pkname[$parent]}"
-		((depth++))
+		depth=$((depth + 1))
 	done
 	return 1
 }
@@ -1135,10 +1138,11 @@ dialog_select_mode() {
 		"${items[@]}"
 }
 
-# Formulário principal; repete até os campos estarem válidos
+# Formulário principal; repete até os campos estarem válidos.
+# No modo BIOS não há entrada na NVRAM: Nick e Alterar GUID não aparecem.
 dialog_form() {
-	local -a vals
-	local disk efi nick boot guid mode modo_digitado rc
+	local -a vals fields
+	local disk efi nick boot guid mode modo_digitado shown_mode rc i n lbl_part
 
 	disk="$DISK"
 	efi="$EFI_PART"
@@ -1148,16 +1152,26 @@ dialog_form() {
 	$CHANGE_GUID && guid="s" || guid="n"
 
 	while true; do
+		shown_mode="$mode"
+		fields=()
+		n=0
+		if [[ "$mode" == "uefi" ]]; then
+			lbl_part="Partição EFI"
+		else
+			lbl_part="Partição FAT"
+		fi
+		fields+=("Disco:"              $((++n)) 1 "$disk" "$n" 22 44 0)
+		fields+=("${lbl_part}:"        $((++n)) 1 "$efi"  "$n" 22 44 0)
+		[[ "$mode" == "uefi" ]] && fields+=("Nick:" $((++n)) 1 "$nick" "$n" 22 44 0)
+		fields+=("Bootloader:"         $((++n)) 1 "$boot" "$n" 22 10 0)
+		[[ "$mode" == "uefi" ]] && fields+=("Alterar GUID (s/n):" $((++n)) 1 "$guid" "$n" 22 3 0)
+		fields+=("Modo:"               $((++n)) 1 "$(mode_label "$mode")" "$n" 22 10 0)
+
 		mapfile -t vals < <(
-			dlg --stdout --title "ENTRADA UEFI" \
+			dlg --stdout --title "ENTRADA DE BOOT" \
 				--ok-label "Continuar" --cancel-label "Sair" \
-				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}Partição EFI${WHITE} vazia para detectar automaticamente.${RESET}\n" 18 72 6 \
-				"Disco:"              1 1 "$disk" 1 22 44 0 \
-				"Partição EFI:"       2 1 "$efi"  2 22 44 0 \
-				"Nick:"               3 1 "$nick" 3 22 44 0 \
-				"Bootloader:"         4 1 "$boot" 4 22 10 0 \
-				"Alterar GUID (s/n):" 5 1 "$guid" 5 22 3 0 \
-				"Modo:"               6 1 "$(mode_label "$mode")" 6 22 10 0
+				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}${lbl_part}${WHITE} vazia para detectar automaticamente.${RESET}\n" $((n + 12)) 72 "$n" \
+				"${fields[@]}"
 			echo "rc=$?"
 		)
 		rc="${vals[-1]#rc=}"
@@ -1170,13 +1184,28 @@ dialog_form() {
 		fi
 
 		# tira só os espaços das pontas (espaço no meio continua inválido)
-		disk=$(trim "${vals[0]}")
-		efi=$(trim "${vals[1]}")
-		nick=$(trim "${vals[2]}")
-		boot=$(trim "${vals[3],,}")
-		guid=$(trim "${vals[4],,}")
-		modo_digitado=$(trim "${vals[5],,}")
+		# (o índice avança fora do $( ), senão o i++ se perde no subshell)
+		i=0
+		disk=$(trim "${vals[i]}"); i=$((i + 1))
+		efi=$(trim "${vals[i]}"); i=$((i + 1))
+		if [[ "$shown_mode" == "uefi" ]]; then
+			nick=$(trim "${vals[i]}"); i=$((i + 1))
+		fi
+		boot=$(trim "${vals[i],,}"); i=$((i + 1))
+		if [[ "$shown_mode" == "uefi" ]]; then
+			guid=$(trim "${vals[i],,}"); i=$((i + 1))
+		fi
+		modo_digitado=$(trim "${vals[i],,}")
 		mode=$(parse_mode "$modo_digitado")
+
+		# Modo vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
+		if [[ -z "$mode" ]] || { [[ "$mode" == "uefi" ]] && ! is_efi_boot; }; then
+			mode=$(parse_mode "$(dialog_select_mode "$modo_digitado")") || mode=""
+			[[ -z "$mode" ]] && mode="$shown_mode"
+			continue
+		fi
+		# Mudou o modo: mostra de novo com os campos desse modo
+		[[ "$mode" != "$shown_mode" ]] && continue
 
 		# Disco vazio: busca os discos e volta ao formulário com o escolhido
 		if [[ -z "$disk" ]]; then
@@ -1189,10 +1218,10 @@ dialog_form() {
 			continue
 		fi
 		if [[ -n "$efi" ]] && { [[ ! -b "$efi" ]] || ! is_valid_efi_fs "$efi"; }; then
-			dialog_msg "Partição EFI" "'$efi' não é uma partição EFI válida (precisa ser FAT32)."
+			dialog_msg "$lbl_part" "'$efi' não é uma partição válida (precisa ser FAT32)."
 			continue
 		fi
-		if [[ ! "$nick" =~ ^[A-Za-z0-9._-]+$ ]]; then
+		if [[ "$mode" == "uefi" && ! "$nick" =~ ^[A-Za-z0-9._-]+$ ]]; then
 			dialog_msg "Nick" "Nick inválido: '$nick'\nUse só letras, números, ponto, _ e -."
 			continue
 		fi
@@ -1201,14 +1230,8 @@ dialog_form() {
 			boot=$(dialog_select_bootloader "$boot") || boot="$BOOTLOADER"
 			continue
 		fi
-		if [[ ! "$guid" =~ ^[sn]$ ]]; then
+		if [[ "$mode" == "uefi" && ! "$guid" =~ ^[sn]$ ]]; then
 			dialog_msg "Alterar GUID" "Responda s ou n."
-			continue
-		fi
-		# Modo vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
-		if [[ -z "$mode" ]] || { [[ "$mode" == "uefi" ]] && ! is_efi_boot; }; then
-			mode=$(parse_mode "$(dialog_select_mode "$modo_digitado")") || mode=""
-			[[ -z "$mode" ]] && mode="$MODE"
 			continue
 		fi
 		break
@@ -1225,25 +1248,33 @@ dialog_form() {
 	NICK="$nick"
 	BOOTLOADER="$boot"
 	MODE="$mode"
-	[[ "$guid" == "s" ]] && CHANGE_GUID=true || CHANGE_GUID=false
+	[[ "$mode" == "uefi" && "$guid" == "s" ]] && CHANGE_GUID=true || CHANGE_GUID=false
 	return 0
 }
 
 # Confirmação final no dialog (substitui o readconf)
 dialog_confirm() {
 	local origem_efi="auto detectada"
+	local linha_nick="" linha_guid="" lbl_efi="EFI_PART"
+	[[ "$MODE" == "bios" ]] && lbl_efi="FAT_PART"
 	$IS_EFI_PART_USER && origem_efi="informada pelo usuário"
+
+	# Nick e GUID só existem na entrada UEFI
+	if [[ "$MODE" == "uefi" ]]; then
+		linha_nick="${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n"
+		linha_guid="${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n"
+	fi
 
 	if dlg --title "CONFIRMAR" \
 		--yes-label "Continuar" --no-label "Cancelar" --defaultno \
 		--yesno "\n\
 ${BOLD}${CYAN}DISCO      ${RESET} ${DISK}  [$(get_disk_info "$DISK")]\n\
 ${BOLD}${CYAN}ROOT_PART  ${RESET} ${ROOT_PART:-<não detectada>}\n\
-${BOLD}${CYAN}EFI_PART   ${RESET} ${EFI_PART:-<não detectada>} (${origem_efi})\n\
-${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n\
+${BOLD}${CYAN}${lbl_efi}   ${RESET} ${EFI_PART:-<não detectada>} (${origem_efi})\n\
+${linha_nick}\
 ${BOLD}${CYAN}MODO       ${RESET} $(mode_label)\n\
 ${BOLD}${CYAN}BOOTLOADER ${RESET} ${BOOTLOADER}\n\
-${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n\n\
+${linha_guid}\n\
 ${BOLD}${RED}Deseja continuar com esses parâmetros?${RESET}" 16 74; then
 		DIALOG_UI=false
 		clear
@@ -1300,6 +1331,7 @@ parse_args() {
 			;;
 		--nick)
 			need_arg "$1" "$2"
+			NICK_USER=true
 			# vira nome de pasta na ESP e label da NVRAM: sem espaços nem caracteres especiais
 			[[ "$2" =~ ^[A-Za-z0-9._-]+$ ]] || die "Nick inválido: '$2' (use só letras, números, ponto, _ e -)"
 			NICK="$2"
@@ -1350,6 +1382,10 @@ main() {
 	fi
 	parse_args "$@"
 	[[ -z "$MODE" ]] && detect_mode
+	if [[ "$MODE" == "bios" ]] && ! $USE_DIALOG && { $NICK_USER || $CHANGE_GUID; }; then
+		log_warn "No modo BIOS não há entrada UEFI: --nick e --change-guid são ignorados."
+		CHANGE_GUID=false
+	fi
 
 	# Opções da linha de comando (se houver) já vêm preenchidas no formulário
 	if $USE_DIALOG; then
