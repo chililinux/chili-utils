@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: seg 27 jul 2026 00:00:00 -04
+#  Updated: qua 07 out 2026 20:16:00 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -33,6 +33,27 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
 #  CHANGELOG:
+#
+#  v0.08.01 - 2026-10-07
+#    - Adicionado: suporte ao Limine na ativação/remoção do zswap (/etc/default/limine,
+#                 LIMINE_CMDLINE_LINUX_DEFAULT, regenerado com update-limine)
+#    - Refatorado: configure_zswap() dividido em sh_zswap_bootloaders() (add|remove),
+#                 sh_zswap_cmdline() e sh_cmdline_value(); GRUB e Limine só são alterados
+#                 se existir o conjunto arquivo + comando (update-grub/grub-mkconfig,
+#                 update-limine), senão erro e arquivo intacto
+#    - Corrigido: ${current//zswap.enabled=*/} apagava tudo após o zswap na cmdline
+#                 (resume=, splash, etc.)
+#    - Corrigido: leitura/escrita da cmdline via sed/xargs quebrava ou duplicava a linha
+#                 (aspas simples, '&', linhas duplicadas/indentadas, comentário no fim,
+#                 expansão de glob); agora lê via /bin/sh e grava uma única linha via awk
+#    - Corrigido: sh_uninstall() removia o zswap só do GRUB; agora GRUB e Limine
+#                 (sh_zswap_bootloaders remove)
+#    - Corrigido: sh_check_zswap_lifecycle() verificava só o GRUB e contava linha
+#                 comentada como ativa; agora verifica GRUB e Limine pelo valor efetivo
+#    - Adicionado: aBoot_Files (grub, grub.cfg, limine, limine.conf) incluído em
+#                 aCritic_Files (checkpoint/rollback cobrem o Limine)
+#    - Alterado: sh_check_files_critic() trata arquivos de bootloader como opcionais;
+#                 erro só se não existir nenhum
 #
 #  v0.08.00 - 2026-07-27
 #    - Corrigido: trap ERR duplicado que anulava o rollback interativo
@@ -92,7 +113,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.08.00-20260727"
+declare _VERSION_="0.08.01-20261007"
 declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
@@ -100,10 +121,16 @@ declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
 declare quiet=false
 declare use_color=true
 declare -i errors=0
-declare -a aCritic_Files=(
-	"/etc/fstab"
+# Arquivos de bootloader: opcionais (só existem os do bootloader instalado)
+declare -a aBoot_Files=(
 	"/etc/default/grub"
 	"/boot/grub/grub.cfg"
+	"/etc/default/limine"
+	"/boot/efi/limine/limine.conf"
+)
+declare -a aCritic_Files=(
+	"/etc/fstab"
+	"${aBoot_Files[@]}"
 )
 declare -A ASERVICES=(
 	['thp-systemd']='/etc/systemd/system/chili-thp.service'
@@ -329,7 +356,7 @@ debug() {
 run_cmd() {
 	# LIMITAÇÃO: comandos com pipes de sed ('|' como delimitador), chaves multi-linha
 	# ou aspas complexas NÃO sobrevivem à reconstrução "$*" + eval abaixo. Por isso os
-	# `sed -i` usados em configure_zswap()/sh_uninstall() rodam diretos, fora do run_cmd.
+	# `sed -i` usados em sh_uninstall() rodam diretos, fora do run_cmd.
 	local cmd="$*"
 
 	if [[ $DRYRUN -eq 1 ]]; then
@@ -663,47 +690,122 @@ configure_sysctl() {
 	changed=true
 }
 
-configure_zswap() {
-	local cfile
-	cfile="/etc/default/grub"
-	msg "Ativando parametros do zswap no GRUB..."
+# Lê a cmdline do kernel exatamente como o grub-mkconfig/update-limine (/bin/sh)
+# vão ver: respeita aspas simples/duplas, comentários e a última atribuição vence.
+# Uso: sh_cmdline_value <arquivo> <variável> <default se a variável não existir>
+sh_cmdline_value() {
+	__zdef="$3" sh -c '. "$1" >/dev/null 2>&1; eval "printf %s \"\${$2-\$__zdef}\""' _ "$1" "$2"
+}
 
-	[[ -f "${cfile}" ]] || {
-		log_err_tab "${red}Arquivo ${cfile} ${cmsg_Nao_encontrado} ${rst}"
+# Adiciona ou remove os parâmetros do zswap na cmdline do kernel do bootloader.
+# Retorno: 0 = alterou | 1 = nada a fazer | 2 = falha
+sh_zswap_cmdline() {
+	local action="$1"  # add | remove
+	local label="$2"   # nome amigável ("GRUB", "Limine")
+	local cfile="$3"   # arquivo de configuração (/etc/default/...)
+	local var="$4"     # variável da cmdline do kernel
+	local default="$5" # valor usado pelo bootloader quando a variável não existe
+	local current new tmp tok
+	local -a atoks anew=()
+
+	if [[ "$action" == "add" ]]; then
+		msg "Ativando parametros do zswap no ${label} ${cyan}(${cfile})${rst}..."
+	else
+		msg "Removendo parametros do zswap do ${label} ${cyan}(${cfile})${rst}..."
+	fi
+
+	current=$(sh_cmdline_value "${cfile}" "${var}" "${default}")
+
+	# remove só os tokens zswap (sem glob, sem xargs), preservando o resto
+	read -ra atoks <<<"$current"
+	for tok in "${atoks[@]}"; do
+		[[ $tok == zswap.enabled=* || $tok == zswap.max_pool_percent=* ]] && continue
+		anew+=("$tok")
+	done
+	[[ "$action" == "add" ]] && anew+=(zswap.enabled=1 zswap.max_pool_percent=25)
+	new="${anew[*]}"
+
+	if [[ "$current" == "$new" ]]; then
+		if [[ "$action" == "add" ]]; then
+			msg_tab "${green}zswap já configurado (${label}).${rst}"
+		else
+			msg_tab "${green}zswap não está configurado (${label}).${rst}"
+		fi
+		return 1
+	fi
+
+	# uma única linha: substitui a 1a atribuição no lugar, remove as demais,
+	# acrescenta no fim se não existir nenhuma. Valor via ENVIRON (sem regex).
+	tmp=$(mktemp) || {
+		log_err_tab "${red}Falha ao criar arquivo temporário${rst}"
+		((++errors))
+		return 2
+	}
+	VAR="$var" NEWVAL="$new" awk '
+		BEGIN { line = ENVIRON["VAR"] "=\"" ENVIRON["NEWVAL"] "\"" }
+		{
+			l = $0
+			sub(/^[[:space:]]+/, "", l)
+			if (index(l, ENVIRON["VAR"] "=") == 1) {
+				if (!done) { print line; done = 1 }
+				next
+			}
+			print
+		}
+		END { if (!done) print line }
+	' "${cfile}" >"${tmp}" && cat "${tmp}" >"${cfile}"
+	rm -f "${tmp}"
+	changed=true
+	return 0
+}
+
+# Aplica sh_zswap_cmdline (add|remove) no GRUB e no Limine.
+# Cada bootloader só é alterado se existir o conjunto arquivo + comando.
+sh_zswap_bootloaders() {
+	local action="$1" # add | remove
+	local found=false
+	local grub_cmd=""
+	local limine_cmd=""
+
+	# comando de regeneração de cada bootloader (vazio = ausente)
+	if has_command update-grub; then
+		grub_cmd="update-grub"
+	elif has_command grub-mkconfig; then
+		grub_cmd="grub-mkconfig -o /boot/grub/grub.cfg"
+	fi
+	has_command update-limine && limine_cmd="update-limine"
+
+	# GRUB
+	if [[ -f /etc/default/grub ]]; then
+		found=true
+		if [[ -z "$grub_cmd" ]]; then
+			log_err_tab "${red}update-grub/grub-mkconfig ${cmsg_Nao_encontrado} — /etc/default/grub não alterado${rst}"
+			((++errors))
+		elif sh_zswap_cmdline "$action" "GRUB" /etc/default/grub GRUB_CMDLINE_LINUX ""; then
+			run_cmd "${grub_cmd}"
+		fi
+	fi
+
+	# Limine
+	if [[ -f /etc/default/limine ]]; then
+		found=true
+		if [[ -z "$limine_cmd" ]]; then
+			log_err_tab "${red}update-limine ${cmsg_Nao_encontrado} — /etc/default/limine não alterado${rst}"
+			((++errors))
+		elif sh_zswap_cmdline "$action" "Limine" /etc/default/limine LIMINE_CMDLINE_LINUX_DEFAULT "rw loglevel=4"; then
+			run_cmd "${limine_cmd}"
+		fi
+	fi
+
+	if ! $found; then
+		log_err_tab "${red}/etc/default/grub e /etc/default/limine ${cmsg_Nao_encontrado}${rst}"
 		((++errors))
 		return 1
-	}
-
-	# garante linha
-	grep -q '^GRUB_CMDLINE_LINUX=' "${cfile}" ||
-		echo 'GRUB_CMDLINE_LINUX=""' >>"${cfile}"
-
-	# pega conteúdo atual
-	current=$(sed -n 's/^GRUB_CMDLINE_LINUX="\([^"]*\)"/\1/p' "${cfile}")
-
-	# remove params antigos
-	current="${current//zswap.enabled=*/}"
-	current="${current//zswap.max_pool_percent=*/}"
-
-	# normaliza espaços
-	current="$(echo "$current" | xargs)"
-
-	# adiciona correto
-	new="$current zswap.enabled=1 zswap.max_pool_percent=25"
-	new="$(echo "$new" | xargs)"
-
-	# só altera se mudou
-	if ! grep -q "GRUB_CMDLINE_LINUX=\"$new\"" "${cfile}"; then
-		sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"$new\"|" "${cfile}"
-		if has_command update-grub; then
-			run_cmd update-grub
-		else
-			run_cmd grub-mkconfig -o /boot/grub/grub.cfg
-		fi
-		changed=true
-	else
-		msg_tab "${green}zswap já configurado.${rst}"
 	fi
+}
+
+configure_zswap() {
+	sh_zswap_bootloaders add
 }
 
 sh_create_service() {
@@ -897,16 +999,27 @@ sh_check_zswap_lifecycle() {
 		((++errors))
 	fi
 
-	cmsg="$(gettext 'Param boot grub')"
-	if [[ -f /etc/default/grub ]]; then
-		if grep -q "zswap.enabled=1" /etc/default/grub; then
-			msg_tab "${cmsg}   : ${green}OK ${cyan}(Ativado no /etc/default/grub)${rst}"
+	# arquivos de configuração do bootloader (GRUB e/ou Limine)
+	local boot_found=false
+	local -a aboot=(
+		"$(gettext 'Param boot grub')|/etc/default/grub|GRUB_CMDLINE_LINUX|"
+		"$(gettext 'Param boot limine')|/etc/default/limine|LIMINE_CMDLINE_LINUX_DEFAULT|rw loglevel=4"
+	)
+	local item bfile bvar bdef
+	for item in "${aboot[@]}"; do
+		IFS='|' read -r cmsg bfile bvar bdef <<<"$item"
+		[[ -f "$bfile" ]] || continue
+		boot_found=true
+		if [[ " $(sh_cmdline_value "$bfile" "$bvar" "$bdef") " == *" zswap.enabled=1 "* ]]; then
+			msg_tab "$(printf '%-18s' "$cmsg"): ${green}OK ${cyan}(Ativado no ${bfile})${rst}"
 		else
-			log_err_tab "${cmsg}   : ${red}Ausente (Verifique seu /etc/default/grub)${rst}"
+			log_err_tab "$(printf '%-18s' "$cmsg"): ${red}Ausente (Verifique seu ${bfile})${rst}"
 			((++errors))
 		fi
-	else
-		log_err_tab "${cmsg}   : ${cyan}/etc/default/grub ${red}${cmsg_Nao_encontrado}${rst}"
+	done
+	if ! $boot_found; then
+		cmsg="$(gettext 'Param boot')"
+		log_err_tab "$(printf '%-18s' "$cmsg"): ${cyan}/etc/default/grub /etc/default/limine ${red}${cmsg_Nao_encontrado}${rst}"
 		((++errors))
 	fi
 
@@ -1151,22 +1264,8 @@ sh_uninstall() {
 	# zram blacklist
 	run_cmd rm -f /etc/modprobe.d/disable-zram.conf
 
-	# zswap (GRUB)
-	if [ -f /etc/default/grub ]; then
-		sed -i '/^GRUB_CMDLINE_LINUX="/{
-      s/\<zswap.enabled=[^ "]*\>//g
-      s/\<zswap.max_pool_percent=[^ "]*\>//g
-      s/  */ /g
-      s/=" */="/
-      s/ *"$/"/
-    }' /etc/default/grub
-
-		if has_command update-grub; then
-			run_cmd update-grub
-		else
-			run_cmd grub-mkconfig -o /boot/grub/grub.cfg
-		fi
-	fi
+	# zswap (GRUB/Limine)
+	sh_zswap_bootloaders remove
 
 	# limpeza por init
 	case "$init" in
@@ -1293,16 +1392,27 @@ check_system_status() {
 }
 
 sh_check_files_critic() {
+	local boot_found=false
+
 	msg "$(gettext 'Validação dos arquivos críticos de configuração')"
 
 	for f in "${aCritic_Files[@]}"; do
 		if [[ -f "$f" ]]; then
 			log_ok_tab "Config: ${green}$f ${cyan}encontrado${rst}"
+			[[ " ${aBoot_Files[*]} " == *" $f "* ]] && boot_found=true
+		elif [[ " ${aBoot_Files[*]} " == *" $f "* ]]; then
+			# arquivo de bootloader é opcional: só existem os do bootloader instalado
+			msg_tab "Config: ${cyan}$f ${yellow}ausente (opcional)${rst}"
 		else
 			log_err_tab "Config: ${yellow}$f ${red}${cmsg_Nao_encontrado}${rst}"
 			((errors++))
 		fi
 	done
+
+	if ! $boot_found; then
+		log_err_tab "Config: ${red}nenhum arquivo de bootloader (GRUB/Limine) ${cmsg_Nao_encontrado}${rst}"
+		((errors++))
+	fi
 }
 
 sh_check_services() {
