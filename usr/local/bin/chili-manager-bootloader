@@ -5,7 +5,7 @@
 #  chili-manager-bootloader
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
-#  Updated: ter 07 out 2025 23:47:10 -04
+#  Updated: dom 11 out 2026 13:55:44 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -46,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.10.07-20251007"
+declare _VERSION_="1.10.11-20251011"
 declare APPDESC="$APP - Wraper for efibootmgr, grub-install e limine"
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput efibootmgr grub-install lsblk sgdisk)
@@ -226,6 +226,37 @@ readconf() {
 }
 
 msg() { echo -e "${INFO} ${*}${reset}"; }
+
+# Pergunta sim/não no dialog ou no terminal; com --yes responde sim sozinho.
+# 3º argumento: resposta padrão ("s" ou "n", padrão "s")
+ask_yes_no() {
+	local titulo="$1"
+	local pergunta="$2"
+	local padrao="${3:-s}"
+	local resp rc
+
+	if $USE_DIALOG; then
+		local -a opt_no=()
+		[[ "$padrao" == "n" ]] && opt_no=(--defaultno)
+		dlg --title "${titulo^^}" --yes-label "Sim" --no-label "Não" "${opt_no[@]}" \
+			--yesno "\n${pergunta}" 12 74
+		rc=$?
+		clear
+		return "$rc"
+	fi
+	if $ASSUME_YES; then
+		log_warn "${pergunta} ${yellow}(--yes: sim)"
+		return 0
+	fi
+	log_warn "${pergunta}"
+	if [[ "$padrao" == "n" ]]; then
+		read -r -p "${red}Confirma? [s/N] :${reset}" resp
+	else
+		read -r -p "${red}Confirma? [S/n] :${reset}" resp
+	fi
+	resp="${resp:-$padrao}"
+	[[ "${resp,,}" =~ ^[sy] ]]
+}
 log_ok() { echo -e "${TICK} ${*}${reset}"; }
 log_err() { echo -e "${CROSS} ${*}${reset}"; }
 msg_tab() { echo -e "  ${INFO} ${*}${reset}"; }
@@ -267,6 +298,7 @@ BOOTLOADER="grub"                              # grub | limine
 MODE=""                                        # uefi | bios (vazio = detecta pelo modo em que o sistema iniciou)
 MNT_ROOT=""                                    # montagem da raiz do disco alternativo (GRUB BIOS)
 MNT_TMP_MOUNTED=false                          # true se a ESP foi montada por este script
+SKIP_BIOS=false                                # true se faltar o necessário para a parte BIOS (modo UEFI)
 BIOS_SOFT=false                                # true no modo UEFI: falha no BIOS só avisa (UEFI já feito)
 LIMINE_BIOS_SRC="/usr/share/limine/limine-bios.sys" # stage 3 do Limine para BIOS
 BIOS_BOOT_GUID="21686148-6449-6e6f-744e-656564454649" # tipo da partição "BIOS boot" (ef02)
@@ -719,33 +751,33 @@ remove_entry_by_label() {
 	return 0
 }
 
+# Copia um grub*.efi já existente na ESP para EFI/$NICK e cria a entrada na NVRAM.
+# O .efi é conferido e copiado ANTES de criar a entrada, para nunca deixar
+# uma entrada apontando para um arquivo que não existe.
 create_entry_efibootmgr() {
 	replicate '-'
+
+	GRUB_FILE_EFI=$(find "$MNT_TMP/EFI/" -maxdepth 2 -type f -iname "grub*.efi" \
+		! -path "$MNT_TMP/EFI/$NICK/grubx64.efi" -print -quit 2>/dev/null)
+
+	# Se o único grub .efi já é o do próprio $NICK, usa ele mesmo
+	if [[ -z "$GRUB_FILE_EFI" && -f "$MNT_TMP/EFI/$NICK/grubx64.efi" ]]; then
+		msg_tab "Usando o ${MNT_TMP}/EFI/${NICK}/grubx64.efi existente"
+	elif [[ -z "$GRUB_FILE_EFI" ]]; then
+		die "Nenhum GRUB .efi encontrado em $MNT_TMP/EFI."
+	else
+		run_cmd "mkdir -p $MNT_TMP/EFI/$NICK" || die "Falha ao criar diretório $MNT_TMP/EFI/$NICK"
+		msg_tab "Copiando ${GRUB_FILE_EFI} para ${MNT_TMP}/EFI/${NICK}/grubx64.efi"
+		run_cmd "cp -f ${GRUB_FILE_EFI} ${MNT_TMP}/EFI/${NICK}/grubx64.efi" ||
+			die "Falha ao copiar ${GRUB_FILE_EFI} para ${MNT_TMP}/EFI/${NICK}/grubx64.efi"
+	fi
+
 	# === Criar a entrada UEFI com efibootmgr ===
 	msg "Criando a entrada UEFI com o efibootmgr..."
 	remove_entry_by_label "$NICK"
-	if run_cmd "efibootmgr --quiet --create --disk $DISK --part $(get_part_num $EFI_PART) --label $NICK --loader '\\EFI\\$NICK\\grubx64.efi' >/dev/null"; then
-		log_ok_tab "Entrada ${yellow}'$NICK' ${reset}criada com sucesso!"
-
-		#    	msg "Criando binario UEFI grubx64.efi..."
-		#     run_cmd "grub-mkimage -O x86_64-efi -o $MNT_TMP/EFI/$NICK/grubx64.efi -p /EFI/$NICK part_gpt part_msdos fat ext2 normal chain linux configfile search echo"
-
-		GRUB_FILE_EFI=$(find "$MNT_TMP/EFI/" -maxdepth 2 -type f -iname "grub*.efi" \
-			! -path "$MNT_TMP/EFI/$NICK/grubx64.efi" -print -quit)
-
-		# falha se não encontrou nenhum outro .efi
-		if [[ -z "$GRUB_FILE_EFI" ]]; then
-			die "Nenhum GRUB .efi encontrado em $MNT_TMP/EFI (excluído $MNT_TMP/EFI/$NICK/grubx64.efi)."
-		fi
-
-		# garante diretório destino (falha se mkdir falhar)
-		run_cmd "mkdir -p $MNT_TMP/EFI/$NICK" || die "Falha ao criar diretório $MNT_TMP/EFI/$NICK"
-
-		# copia e falha se cp falhar
-		msg_tab "Copiando ${GRUB_FILE_EFI} para ${MNT_TMP}/EFI/${NICK}/grubx64.efi"
-		run_cmd "cp -f ${GRUB_FILE_EFI} ${MNT_TMP}/EFI/${NICK}/grubx64.efi" ||
-			die "Falha ao copiar ${GRUB_FILE_EFI} para ${MNT_TMP}/EFI/${NICK}/grubx64"
-	fi
+	run_cmd "efibootmgr --quiet --create --disk $DISK --part $(get_part_num $EFI_PART) --label $NICK --loader '\\EFI\\$NICK\\grubx64.efi' >/dev/null" ||
+		die "Falha ao criar a entrada UEFI '$NICK'"
+	log_ok_tab "Entrada ${yellow}'$NICK' ${reset}criada com sucesso!"
 }
 
 # Monta a ESP em $MNT_TMP (disco alternativo)
@@ -797,6 +829,137 @@ create_entry_limine() {
 }
 
 # ===================================================================
+# Checagem prévia: pacotes/arquivos necessários (antes de qualquer alteração)
+# ===================================================================
+# Diretório de módulos do GRUB para o alvo (x86_64-efi, i386-pc); vazio se não houver
+grub_moddir() {
+	local target="$1" d
+	for d in /usr/lib/grub /usr/lib64/grub /usr/share/grub; do
+		if [[ -f "$d/$target/modinfo.sh" ]]; then
+			echo "$d/$target"
+			return 0
+		fi
+	done
+	return 1
+}
+
+has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# Gerenciador de pacotes da distro: void (xbps) | arch (pacman) | vazio (desconhecido)
+detect_distro() {
+	if has_cmd xbps-install; then
+		echo "void"
+	elif has_cmd pacman; then
+		echo "arch"
+	fi
+}
+
+# Nome do pacote que fornece cada item, conforme a distro
+#   Void: pacotes do VoidBR (trazem o necessário como dependência)
+#   Arch: pacotes oficiais
+pkg_name() {
+	local item="$1"
+	case "$(detect_distro):$item" in
+	void:grub) echo "voidbr-grub-theme" ;;
+	void:limine) echo "voidbr-limine-config" ;;
+	arch:grub) echo "grub" ;;
+	arch:limine) echo "limine" ;;
+	*) echo "$item" ;; # efibootmgr, dialog: mesmo nome nas duas
+	esac
+}
+
+# Instala pacotes com o gerenciador da distro
+pkg_install() {
+	case "$(detect_distro)" in
+	void) run_cmd "xbps-install -Sy $*" ;;
+	arch) run_cmd "pacman -S --needed --noconfirm $*" ;;
+	*) return 1 ;;
+	esac
+}
+
+# Pergunta se instala o pacote; devolve 0 se instalou
+offer_install() {
+	local pkg="$1"
+	local faltando="$2"
+
+	if [[ -z "$(detect_distro)" ]]; then
+		log_warn "Gerenciador de pacotes não reconhecido; instale o pacote ${pkg} manualmente."
+		return 1
+	fi
+	ask_yes_no "Pacote faltando" "Não encontrado:\n${faltando}\nDeseja instalar o pacote ${pkg} agora?" "s" || return 1
+	pkg_install "$pkg" || { log_err "Não foi possível instalar o pacote ${pkg}."; return 1; }
+}
+
+# Lista o que falta para o bootloader escolhido. Saída: "o|r|descrição" por linha
+#   o = obrigatório  |  b = só da parte BIOS (no modo UEFI, falta só pula o BIOS)
+list_missing() {
+	if [[ "$BOOTLOADER" == "grub" ]]; then
+		has_cmd grub-install || echo "o|o comando grub-install"
+		if [[ "$MODE" == "uefi" ]]; then
+			grub_moddir x86_64-efi >/dev/null || echo "o|os módulos UEFI do GRUB (x86_64-efi)"
+			grub_moddir i386-pc >/dev/null || echo "b|os módulos BIOS do GRUB (i386-pc)"
+		else
+			grub_moddir i386-pc >/dev/null || echo "o|os módulos BIOS do GRUB (i386-pc)"
+		fi
+	else
+		has_cmd limine || echo "o|o comando limine"
+		if [[ "$MODE" == "uefi" ]]; then
+			[[ -f "$LIMINE_EFI_SRC" ]] || echo "o|o ${LIMINE_EFI_SRC}"
+			[[ -f "$LIMINE_BIOS_SRC" ]] || echo "b|o ${LIMINE_BIOS_SRC}"
+		else
+			[[ -f "$LIMINE_BIOS_SRC" ]] || echo "o|o ${LIMINE_BIOS_SRC}"
+		fi
+	fi
+	return 0
+}
+
+# Confere tudo ANTES de qualquer alteração. Se faltar algo, pergunta se quer
+# instalar o pacote do VoidBR do bootloader escolhido (que traz o necessário).
+check_requirements() {
+	local pkg linhas item faltando=""
+	local -a falta_o=() falta_b=()
+
+	pkg=$(pkg_name "$BOOTLOADER")
+
+	replicate '-'
+	msg "Conferindo os pacotes necessários para o ${yellow}${BOOTLOADER}${reset}..."
+
+	linhas=$(list_missing)
+	if [[ -n "$linhas" ]]; then
+		while IFS= read -r item; do
+			faltando+="  - ${item#*|}\n"
+		done <<<"$linhas"
+
+		offer_install "$pkg" "$faltando" && linhas=$(list_missing)
+	fi
+
+	while IFS= read -r item; do
+		[[ -z "$item" ]] && continue
+		case "${item%%|*}" in
+		o) falta_o+=("${item#*|}") ;;
+		b) falta_b+=("${item#*|}") ;;
+		esac
+	done <<<"$linhas"
+
+	if ((${#falta_o[@]})); then
+		die "Não encontrado: $(IFS=,; echo "${falta_o[*]}").\nInstale o pacote ${pkg} e rode de novo."
+	fi
+	if ((${#falta_b[@]})); then
+		log_warn "Não encontrado: $(IFS=,; echo "${falta_b[*]}"). A parte BIOS será ignorada; só a UEFI será instalada."
+		SKIP_BIOS=true
+	fi
+
+	# efibootmgr grava a entrada na NVRAM (só no modo UEFI)
+	if [[ "$MODE" == "uefi" ]] && ! has_cmd efibootmgr; then
+		offer_install "$(pkg_name efibootmgr)" "  - o comando efibootmgr\n" || true
+		has_cmd efibootmgr || die "Não encontrado: o comando efibootmgr. Instale o pacote efibootmgr e rode de novo."
+	fi
+
+	log_ok "Pacotes conferidos."
+	return 0
+}
+
+# ===================================================================
 # Modo BIOS (Legacy)
 # ===================================================================
 # No modo BIOS a falha é fatal; no modo UEFI (BIOS como extra) só avisa e pula
@@ -807,6 +970,15 @@ bios_fail() {
 		return 1
 	fi
 	die "$*"
+}
+
+# Usuário respondeu "Não": no modo UEFI só pula a parte BIOS; no modo BIOS encerra
+bios_skip() {
+	if $BIOS_SOFT; then
+		log_warn "$* Parte BIOS ignorada (a UEFI já foi feita)."
+		return 0
+	fi
+	die "$* Nada foi gravado no disco."
 }
 
 get_pttype() {
@@ -846,6 +1018,38 @@ check_bios_table() {
 	esac
 }
 
+# Código de boot gravado no MBR (primeiros 440 bytes não zerados)
+has_boot_code() {
+	[[ -n "$(dd if="$1" bs=440 count=1 2>/dev/null | tr -d '\0')" ]]
+}
+
+# Nome do bootloader encontrado no MBR (GRUB, Limine ou "outro")
+mbr_bootloader_name() {
+	local txt
+	txt=$(dd if="$1" bs=512 count=1 2>/dev/null | strings)
+	if grep -q GRUB <<<"$txt"; then
+		echo "GRUB"
+	elif grep -qi limine <<<"$txt"; then
+		echo "Limine"
+	else
+		echo "outro bootloader"
+	fi
+}
+
+# Avisa e pergunta antes de gravar no MBR.
+# Sem bootloader: padrão Sim. Já existe um: padrão Não (não sobrescrever por engano).
+confirm_bios_write() {
+	local nome="$1"
+	local atual
+
+	if has_boot_code "$DISK"; then
+		atual=$(mbr_bootloader_name "$DISK")
+		ask_yes_no "${nome} BIOS" "Já existe ${atual} no MBR de ${DISK}.\nDeseja sobrescrever com o ${nome} BIOS?" "n"
+	else
+		ask_yes_no "${nome} BIOS" "Não há bootloader no MBR de ${DISK}.\nDeseja instalar o ${nome} BIOS agora?" "s"
+	fi
+}
+
 # Monta a raiz do disco alternativo e devolve o /boot dela em BIOS_BOOTDIR
 mount_root_part() {
 	[[ -b "$ROOT_PART" ]] || die "Partição raiz inválida: '${ROOT_PART}'"
@@ -880,6 +1084,10 @@ install_grub_bios() {
 	replicate '-'
 	msg "Instalando o ${yellow}GRUB${reset} em modo ${yellow}BIOS${reset} no disco $DISK..."
 	check_bios_table "$DISK" || return 0
+	if ! confirm_bios_write "GRUB"; then
+		bios_skip "GRUB BIOS não instalado."
+		return 0
+	fi
 
 	if $IS_ROOT_DISK; then
 		BIOS_BOOTDIR="/boot"
@@ -910,6 +1118,10 @@ install_limine_bios() {
 	[[ -f "$LIMINE_BIOS_SRC" ]] || { bios_fail "Não achei ${LIMINE_BIOS_SRC}. Instale o pacote limine." || return 0; }
 	[[ -n "$EFI_PART" ]] || { bios_fail "O Limine BIOS precisa de uma partição FAT no disco (informe com --efi_part)" || return 0; }
 	check_bios_table "$DISK" || return 0
+	if ! confirm_bios_write "Limine"; then
+		bios_skip "Limine BIOS não instalado."
+		return 0
+	fi
 
 	# limine-bios.sys vai para o mesmo diretório do limine.conf (boot/limine, boot, limine ou raiz)
 	for dir in boot/limine boot limine .; do
@@ -939,7 +1151,15 @@ install_limine_bios() {
 # Modo dialog
 # ===================================================================
 check_dialog() {
-	command -v dialog >/dev/null 2>&1 || die "O dialog não está instalado (xbps-install -S dialog)"
+	if ! has_cmd dialog; then
+		# sem dialog, a pergunta só pode ser feita no terminal
+		USE_DIALOG=false
+		DIALOG_UI=false
+		offer_install "$(pkg_name dialog)" "  - o comando dialog\n" || true
+		has_cmd dialog || die "O dialog não está instalado. Instale o pacote $(pkg_name dialog) ou use a linha de comando (-h)."
+		USE_DIALOG=true
+		DIALOG_UI=true
+	fi
 	setup_dialog
 }
 
@@ -1431,7 +1651,8 @@ main() {
 		detect_parts "$DISK"
 		IS_ROOT_DISK=false
 	fi
-	confirm_parts # <- CONFIRMAÇÃO ANTES DE INSTALAR
+	check_requirements # <- PACOTES NECESSÁRIOS, ANTES DE QUALQUER ALTERAÇÃO
+	confirm_parts      # <- CONFIRMAÇÃO ANTES DE INSTALAR
 
 	if [[ "$MODE" == "bios" ]]; then
 		if [[ "$BOOTLOADER" == "limine" ]]; then
@@ -1481,8 +1702,20 @@ main() {
 				# === Criar a entrada UEFI com efibootmgr ===
 				create_entry_efibootmgr
 			fi
+		elif ! $HAS_UEFI || $IS_GUID_DUPLICADO; then
+			# === Disco do sistema sem GRUB UEFI: avisa e pergunta antes de instalar ===
+			if ! ask_yes_no "GRUB UEFI" "Não há GRUB UEFI instalado em ${MNT_TMP}/EFI.\nDeseja instalar agora com grub-install (usa o /boot deste sistema)?"; then
+				die "GRUB UEFI não instalado. Nada foi alterado na NVRAM."
+			fi
+			replicate '-'
+			msg "Instalando GRUB UEFI em $MNT_TMP/EFI/$NICK..."
+			run_cmd "grub-install --target=x86_64-efi --efi-directory=$MNT_TMP --bootloader-id=$NICK --recheck" ||
+				die "Falha na instalação do GRUB UEFI!"
+			log_ok "GRUB UEFI instalado com sucesso!"
+			[[ -f /boot/grub/grub.cfg ]] ||
+				log_warn "Não existe /boot/grub/grub.cfg; gere com: grub-mkconfig -o /boot/grub/grub.cfg"
 		else
-			# === Criar a entrada UEFI com efibootmgr ===
+			# === Já tem GRUB UEFI na ESP: copia para EFI/$NICK e cria a entrada ===
 			create_entry_efibootmgr
 		fi
 	fi
@@ -1492,7 +1725,9 @@ main() {
 
 	# Modo UEFI instala também em BIOS (boot híbrido); falha no BIOS só avisa
 	BIOS_SOFT=true
-	if [[ "$BOOTLOADER" == "limine" ]]; then
+	if $SKIP_BIOS; then
+		log_warn "Parte BIOS ignorada (faltam os arquivos do ${BOOTLOADER} para BIOS)."
+	elif [[ "$BOOTLOADER" == "limine" ]]; then
 		install_limine_bios
 	else
 		install_grub_bios
