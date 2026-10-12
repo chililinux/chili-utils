@@ -5,7 +5,7 @@
 #  chili-manager-bootloader
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
-#  Updated: dom 11 out 2026 13:55:44 -04
+#  Updated: seg 12 out 2026 16:55:00 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -46,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.10.11-20251011"
+declare _VERSION_="1.10.12-20261012"
 declare APPDESC="$APP - Wraper for efibootmgr, grub-install e limine"
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput efibootmgr grub-install lsblk sgdisk)
@@ -294,7 +294,9 @@ DIALOG_UI=false                                # true enquanto as telas do dialo
 dialogRcFile="$HOME/.dialogrc"                 # tema do dialog (criado se não existir)
 APPURL="https://github.com/chililinux/chili"
 ccabec=""                                      # cabeçalho do dialog
-BOOTLOADER="grub"                              # grub | limine
+BOOTLOADER="grub"                              # --bootloader: padrão das duas partes (grub | limine)
+BOOT_UEFI=""                                   # bootloader da parte UEFI (grub | limine | nenhum)
+BOOT_BIOS=""                                   # bootloader da parte BIOS (grub | limine | nenhum)
 MODE=""                                        # uefi | bios (vazio = detecta pelo modo em que o sistema iniciou)
 MNT_ROOT=""                                    # montagem da raiz do disco alternativo (GRUB BIOS)
 MNT_TMP_MOUNTED=false                          # true se a ESP foi montada por este script
@@ -329,6 +331,38 @@ sh_version() {
 # Sistema iniciado em UEFI? (sem isso não há NVRAM para o efibootmgr)
 is_efi_boot() {
 	[[ -d /sys/firmware/efi ]]
+}
+
+# Normaliza o bootloader digitado: grub | limine | nenhum ("none" também vale); vazio se inválido
+parse_bootloader() {
+	case "${1,,}" in
+	grub) echo "grub" ;;
+	limine) echo "limine" ;;
+	nenhum | none) echo "nenhum" ;;
+	esac
+}
+
+# Precisa de partição FAT? (UEFI sempre usa a ESP; Limine BIOS guarda o limine-bios.sys nela)
+need_fat() {
+	[[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] || [[ "$BOOT_BIOS" == "limine" ]]
+}
+
+# Preenche BOOT_UEFI/BOOT_BIOS a partir do --bootloader e valida a combinação
+resolve_bootloaders() {
+	BOOT_UEFI="${BOOT_UEFI:-$BOOTLOADER}"
+	BOOT_BIOS="${BOOT_BIOS:-$BOOTLOADER}"
+	# no modo BIOS não existe parte UEFI
+	[[ "$MODE" == "bios" ]] && BOOT_UEFI="nenhum"
+	# na CLI a combinação já vale; no dialog o formulário valida e pede de novo
+	if ! $USE_DIALOG; then
+		if [[ "$MODE" == "bios" && "$BOOT_BIOS" == "nenhum" ]]; then
+			die "No modo BIOS o bootloader BIOS não pode ser 'nenhum'."
+		fi
+		if [[ "$BOOT_UEFI" == "nenhum" && "$BOOT_BIOS" == "nenhum" ]]; then
+			die "UEFI e BIOS estão como 'nenhum': não há nada para instalar."
+		fi
+	fi
+	return 0
 }
 
 # Nome do modo para exibir: uefi instala UEFI e BIOS, então aparece "uefi/bios"
@@ -383,6 +417,14 @@ run_cmd() {
 		return 1
 	fi
 	return 0
+}
+
+# Disco físico onde está a raiz do sistema em uso (sobe a árvore: partição, LVM, LUKS...)
+get_system_disk() {
+	local root_part
+	root_part=$(get_root_part)
+	[[ -b "$root_part" ]] || return 1
+	lsblk -slpno NAME,TYPE "$root_part" 2>/dev/null | awk '$2=="disk"{print $1; exit}'
 }
 
 # Detecta se o disco passado contém a raiz montada
@@ -564,7 +606,7 @@ detect_parts() {
 	[[ -z "$ROOT_PART" ]] && die "Não foi possível detectar partição ROOT em $disk"
 	if [[ -z "$EFI_PART" ]]; then
 		# no modo BIOS a partição FAT só é necessária para o Limine (verificado depois)
-		[[ "$MODE" == "uefi" ]] && die "Não foi detectada partição EFI (FAT) em $disk. Informe com --efi_part"
+		[[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] && die "Não foi detectada partição EFI (FAT) em $disk. Informe com --efi_part"
 		log_warn "Não foi detectada partição FAT em $disk"
 	fi
 	return 0
@@ -603,10 +645,12 @@ confirm_parts() {
 	else
 		msg "${cyan}${lbl_efi}    ==> ${yellow}${EFI_PART:-<não detectada>} ${black}(auto detectada)"
 	fi
-	[[ "$MODE" == "uefi" ]] && msg "${cyan}NICK        ==> ${yellow}${NICK:-<não informado>}"
+	[[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] && msg "${cyan}NICK        ==> ${yellow}${NICK:-<não informado>}"
 	msg "${cyan}MODO        ==> ${yellow}$(mode_label)"
-	msg "${cyan}BOOTLOADER  ==> ${yellow}${BOOTLOADER}"
-	[[ "$MODE" == "uefi" ]] && msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
+	detect_current "$DISK"
+	[[ "$MODE" == "uefi" ]] && msg "${cyan}BOOT UEFI   ==> ${yellow}${BOOT_UEFI} ${black}(atual: ${CUR_UEFI})"
+	msg "${cyan}BOOT BIOS   ==> ${yellow}${BOOT_BIOS} ${black}(atual: ${CUR_BIOS})"
+	[[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] && msg "${cyan}CHANGE-GUID ==> ${yellow}${CHANGE_GUID:-<não informado>}"
 	replicate
 
 	if $USE_DIALOG; then
@@ -886,71 +930,81 @@ offer_install() {
 		log_warn "Gerenciador de pacotes não reconhecido; instale o pacote ${pkg} manualmente."
 		return 1
 	fi
-	ask_yes_no "Pacote faltando" "Não encontrado:\n${faltando}\nDeseja instalar o pacote ${pkg} agora?" "s" || return 1
+	ask_yes_no "Pacote faltando" "Não encontrado:\n${faltando}\nDeseja instalar ${pkg// / e } agora?" "s" || return 1
 	pkg_install "$pkg" || { log_err "Não foi possível instalar o pacote ${pkg}."; return 1; }
 }
 
-# Lista o que falta para o bootloader escolhido. Saída: "o|r|descrição" por linha
-#   o = obrigatório  |  b = só da parte BIOS (no modo UEFI, falta só pula o BIOS)
+# Lista o que falta. Saída: "tipo|pacote|descrição" por linha
+#   o = obrigatório  |  b = só da parte BIOS no modo UEFI (falta: pula o BIOS)
 list_missing() {
-	if [[ "$BOOTLOADER" == "grub" ]]; then
-		has_cmd grub-install || echo "o|o comando grub-install"
-		if [[ "$MODE" == "uefi" ]]; then
-			grub_moddir x86_64-efi >/dev/null || echo "o|os módulos UEFI do GRUB (x86_64-efi)"
-			grub_moddir i386-pc >/dev/null || echo "b|os módulos BIOS do GRUB (i386-pc)"
-		else
-			grub_moddir i386-pc >/dev/null || echo "o|os módulos BIOS do GRUB (i386-pc)"
-		fi
-	else
-		has_cmd limine || echo "o|o comando limine"
-		if [[ "$MODE" == "uefi" ]]; then
-			[[ -f "$LIMINE_EFI_SRC" ]] || echo "o|o ${LIMINE_EFI_SRC}"
-			[[ -f "$LIMINE_BIOS_SRC" ]] || echo "b|o ${LIMINE_BIOS_SRC}"
-		else
-			[[ -f "$LIMINE_BIOS_SRC" ]] || echo "o|o ${LIMINE_BIOS_SRC}"
-		fi
+	local tb="o"
+	# no modo UEFI com UEFI ativa, a parte BIOS é extra: falta nela só pula o BIOS
+	[[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] && tb="b"
+
+	if [[ "$MODE" == "uefi" ]]; then
+		case "$BOOT_UEFI" in
+		grub)
+			has_cmd grub-install || echo "o|$(pkg_name grub)|o comando grub-install"
+			grub_moddir x86_64-efi >/dev/null || echo "o|$(pkg_name grub)|os módulos UEFI do GRUB (x86_64-efi)"
+			;;
+		limine)
+			[[ -f "$LIMINE_EFI_SRC" ]] || echo "o|$(pkg_name limine)|o ${LIMINE_EFI_SRC}"
+			;;
+		esac
 	fi
+
+	case "$BOOT_BIOS" in
+	grub)
+		has_cmd grub-install || echo "${tb}|$(pkg_name grub)|o comando grub-install"
+		grub_moddir i386-pc >/dev/null || echo "${tb}|$(pkg_name grub)|os módulos BIOS do GRUB (i386-pc)"
+		;;
+	limine)
+		has_cmd limine || echo "${tb}|$(pkg_name limine)|o comando limine"
+		[[ -f "$LIMINE_BIOS_SRC" ]] || echo "${tb}|$(pkg_name limine)|o ${LIMINE_BIOS_SRC}"
+		;;
+	esac
 	return 0
 }
 
 # Confere tudo ANTES de qualquer alteração. Se faltar algo, pergunta se quer
-# instalar o pacote do VoidBR do bootloader escolhido (que traz o necessário).
+# instalar os pacotes dos bootloaders escolhidos (que trazem o necessário).
 check_requirements() {
-	local pkg linhas item faltando=""
+	local linhas item faltando="" pkgs=""
 	local -a falta_o=() falta_b=()
 
-	pkg=$(pkg_name "$BOOTLOADER")
-
 	replicate '-'
-	msg "Conferindo os pacotes necessários para o ${yellow}${BOOTLOADER}${reset}..."
+	msg "Conferindo os pacotes necessários..."
 
 	linhas=$(list_missing)
 	if [[ -n "$linhas" ]]; then
-		while IFS= read -r item; do
-			faltando+="  - ${item#*|}\n"
+		while IFS='|' read -r _ pkg desc; do
+			faltando+="  - ${desc}\n"
+			[[ " $pkgs " == *" $pkg "* ]] || pkgs+="${pkgs:+ }${pkg}"
 		done <<<"$linhas"
 
-		offer_install "$pkg" "$faltando" && linhas=$(list_missing)
+		offer_install "$pkgs" "$faltando" && linhas=$(list_missing)
 	fi
 
-	while IFS= read -r item; do
-		[[ -z "$item" ]] && continue
-		case "${item%%|*}" in
-		o) falta_o+=("${item#*|}") ;;
-		b) falta_b+=("${item#*|}") ;;
+	pkgs=""
+	while IFS='|' read -r tipo pkg desc; do
+		[[ -z "$tipo" ]] && continue
+		[[ " $pkgs " == *" $pkg "* ]] || pkgs+="${pkgs:+ }${pkg}"
+		case "$tipo" in
+		o) falta_o+=("$desc") ;;
+		b) falta_b+=("$desc") ;;
 		esac
 	done <<<"$linhas"
 
 	if ((${#falta_o[@]})); then
-		die "Não encontrado: $(IFS=,; echo "${falta_o[*]}").\nInstale o pacote ${pkg} e rode de novo."
+		die "Não encontrado: $(IFS=,; echo "${falta_o[*]}").\nInstale o(s) pacote(s) ${pkgs} e rode de novo."
 	fi
 	if ((${#falta_b[@]})); then
 		log_warn "Não encontrado: $(IFS=,; echo "${falta_b[*]}"). A parte BIOS será ignorada; só a UEFI será instalada."
 		SKIP_BIOS=true
 	fi
 
-	# efibootmgr grava a entrada na NVRAM (só no modo UEFI)
-	if [[ "$MODE" == "uefi" ]] && ! has_cmd efibootmgr; then
+	# efibootmgr grava a entrada na NVRAM (só quando há parte UEFI)
+	if [[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] && ! has_cmd efibootmgr; then
 		offer_install "$(pkg_name efibootmgr)" "  - o comando efibootmgr\n" || true
 		has_cmd efibootmgr || die "Não encontrado: o comando efibootmgr. Instale o pacote efibootmgr e rode de novo."
 	fi
@@ -1034,6 +1088,129 @@ mbr_bootloader_name() {
 	else
 		echo "outro bootloader"
 	fi
+}
+
+# ===================================================================
+# Bootloader atualmente instalado (mostrado no formulário e na confirmação)
+# ===================================================================
+CUR_DISK=""   # disco já examinado (cache)
+CUR_UEFI=""   # bootloader UEFI atual desse disco
+CUR_BIOS=""   # bootloader BIOS atual desse disco
+
+# Parte BIOS: o que está gravado no MBR (o Limine grava "LIMINE" no setor de boot)
+detect_current_bios() {
+	local disk="$1"
+	if ! has_boot_code "$disk"; then
+		echo "nenhum"
+		return 0
+	fi
+	case "$(mbr_bootloader_name "$disk")" in
+	GRUB) echo "grub" ;;
+	Limine) echo "limine" ;;
+	*) echo "outro" ;;
+	esac
+}
+
+# Qual bootloader é um arquivo .efi (pelo conteúdo)
+classify_efi() {
+	local f="$1"
+	if grep -qa "Limine" "$f" 2>/dev/null; then
+		echo "limine"
+	elif grep -qai "grub" "$f" 2>/dev/null; then
+		echo "grub"
+	else
+		echo "outro"
+	fi
+}
+
+# Partição FAT/ESP do disco (a informada, ou a primeira vfat)
+find_disk_esp() {
+	local disk="$1" p
+	if [[ -n "$EFI_PART" && "$EFI_PART" == "$disk"* ]]; then
+		echo "$EFI_PART"
+		return 0
+	fi
+	for p in $(lsblk -lnp -o NAME,TYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
+		if is_valid_efi_fs "$p"; then
+			echo "$p"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Parte UEFI: entrada da NVRAM que aponta para a ESP do disco (a primeira na ordem de boot);
+# sem entrada, o que houver em EFI/*/ na ESP. Monta a ESP só leitura se precisar.
+detect_current_uefi() {
+	local disk="$1"
+	local esp mnt tmp="" puuid order num line guid path file found="" b
+	declare -A loader=()
+
+	esp=$(find_disk_esp "$disk") || { echo "nenhum"; return 0; }
+
+	mnt=$(findmnt -n -o TARGET -S "$esp" 2>/dev/null | head -n1)
+	if [[ -z "$mnt" ]]; then
+		tmp=$(mktemp -d)
+		mount -o ro "$esp" "$tmp" 2>/dev/null || { rmdir "$tmp"; echo "?"; return 0; }
+		mnt="$tmp"
+	fi
+
+	# NVRAM: entradas que apontam para esta ESP, na ordem de boot
+	if is_efi_boot && has_cmd efibootmgr; then
+		puuid=$(lsblk -dno PARTUUID "$esp" 2>/dev/null | tr -d '[:space:]')
+		while IFS= read -r line; do
+			if [[ "$line" =~ ^BootOrder:\ *(.*)$ ]]; then
+				order="${BASH_REMATCH[1]//,/ }"
+			elif [[ "$line" =~ ^Boot([0-9A-Fa-f]{4})\*?.*HD\([0-9]+,GPT,([0-9A-Fa-f-]+),[^\)]*\)/(File\()?([^\)[:space:]]+) ]]; then
+				num="${BASH_REMATCH[1]}"
+				guid="${BASH_REMATCH[2]}"
+				path="${BASH_REMATCH[4]}"
+				[[ -n "$puuid" && "${guid,,}" == "${puuid,,}" ]] && loader[$num]="$path"
+			fi
+		done < <(efibootmgr -v 2>/dev/null)
+		for num in $order; do
+			path="${loader[$num]:-}"
+			[[ -z "$path" ]] && continue
+			# \EFI\X\grubx64.efi -> EFI/X/grubx64.efi (FAT não diferencia maiúsculas)
+			path="${path//\\//}"
+			path="${path#/}"
+			file=$(find "$mnt" -ipath "$mnt/$path" -print -quit 2>/dev/null)
+			if [[ -n "$file" ]]; then
+				found=$(classify_efi "$file")
+				break
+			fi
+		done
+	fi
+
+	# Sem entrada na NVRAM: o que estiver instalado na ESP
+	if [[ -z "$found" ]]; then
+		while IFS= read -r -d '' file; do
+			b=$(classify_efi "$file")
+			[[ ",$found," == *",$b,"* ]] || found+="${found:+,}$b"
+		done < <(find "$mnt/EFI" -mindepth 2 -maxdepth 2 -type f -iname "*.efi" -print0 2>/dev/null)
+	fi
+
+	if [[ -n "$tmp" ]]; then
+		umount "$tmp" 2>/dev/null
+		rmdir "$tmp" 2>/dev/null
+	fi
+	found="${found//,/, }"
+	echo "${found:-nenhum}"
+}
+
+# Atualiza o cache CUR_UEFI/CUR_BIOS para o disco (só examina de novo se o disco mudou)
+detect_current() {
+	local disk="$1"
+	[[ -b "$disk" ]] || { CUR_DISK=""; CUR_UEFI=""; CUR_BIOS=""; return 0; }
+	[[ "$disk" == "$CUR_DISK" ]] && return 0
+	CUR_DISK="$disk"
+	CUR_BIOS=$(detect_current_bios "$disk")
+	if is_efi_boot || [[ -n "$(find_disk_esp "$disk")" ]]; then
+		CUR_UEFI=$(detect_current_uefi "$disk")
+	else
+		CUR_UEFI="nenhum"
+	fi
+	return 0
 }
 
 # Avisa e pergunta antes de gravar no MBR.
@@ -1321,21 +1498,37 @@ $(printf "%${nlen}s$sep%-4s$sep%-6s$sep%6s$sep%-6s$sep%-30s" "DEVICE" "SIS" "TRA
 		24 0 2 "${items[@]}"
 }
 
-# Lista os bootloaders válidos e devolve o escolhido em stdout (status 1 = Voltar)
+# Lista os bootloaders válidos de uma parte e devolve o escolhido em stdout (status 1 = Voltar)
+#   $1 parte (uefi | bios)  $2 o que foi digitado  $3 valor atual  $4 aceita "nenhum" (true/false)
 dialog_select_bootloader() {
-	local digitado="$1"
-	local aviso=""
+	local parte="$1" digitado="$2" atual="$3" com_nenhum="${4:-true}"
+	local aviso="" nome
+	local -a items=()
 
-	[[ -n "$digitado" ]] && aviso="${BOLD}${RED}Bootloader inválido: '${digitado}'${RESET}\n\n"
+	[[ "$parte" == "uefi" ]] && nome="UEFI" || nome="BIOS"
+	if [[ "$(parse_bootloader "$digitado")" == "nenhum" ]] && ! $com_nenhum; then
+		aviso="${BOLD}${RED}No modo BIOS a parte BIOS é a única: 'nenhum' não é opção.${RESET}\n\n"
+	elif [[ -n "$digitado" ]]; then
+		aviso="${BOLD}${RED}Bootloader ${nome} inválido: '${digitado}'${RESET}\n\n"
+	fi
+
+	if [[ "$parte" == "uefi" ]]; then
+		items+=("grub"   "GRUB 2  (grub-install / grubx64.efi)")
+		items+=("limine" "Limine  (copia o BOOTX64.EFI do pacote limine)")
+		$com_nenhum && items+=("nenhum" "Não instalar a parte UEFI")
+	else
+		items+=("grub"   "GRUB 2  (grub-install --target=i386-pc)")
+		items+=("limine" "Limine  (limine bios-install)")
+		$com_nenhum && items+=("nenhum" "Não instalar a parte BIOS")
+	fi
 
 	dlg --stdout \
-		--default-item "$BOOTLOADER" \
-		--title "BOOTLOADER" \
+		--default-item "${atual:-grub}" \
+		--title "BOOTLOADER ${nome}" \
 		--ok-label "Selecionar" \
 		--cancel-label "Voltar" \
-		--menu "${aviso}Escolha o bootloader da entrada UEFI:" 14 70 2 \
-		"grub"   "GRUB 2  (grub-install / grubx64.efi)" \
-		"limine" "Limine (copia o BOOTX64.EFI do pacote limine)"
+		--menu "${aviso}Escolha o bootloader da parte ${nome}:" 15 70 3 \
+		"${items[@]}"
 }
 
 # Lista os modos válidos e devolve o escolhido em stdout (status 1 = Voltar)
@@ -1365,20 +1558,25 @@ dialog_select_mode() {
 }
 
 # Formulário principal; repete até os campos estarem válidos.
-# No modo BIOS não há entrada na NVRAM: Nick e Alterar GUID não aparecem.
+# No modo BIOS não há entrada na NVRAM: Nick, Alterar GUID e Bootloader UEFI não aparecem.
 dialog_form() {
 	local -a vals fields
-	local disk efi nick boot guid mode modo_digitado shown_mode rc i n lbl_part
+	local disk efi nick buefi bbios guid mode modo_digitado shown_mode rc i n lbl_part tmp
 
 	disk="$DISK"
+	# Sem --disk: já abre com o disco do sistema, para mostrar o "(atual: …)" de cara
+	[[ -z "$disk" ]] && disk=$(get_system_disk 2>/dev/null)
 	efi="$EFI_PART"
 	nick="$NICK"
-	boot="$BOOTLOADER"
+	buefi="$BOOT_UEFI"
+	bbios="$BOOT_BIOS"
 	mode="$MODE"
 	$CHANGE_GUID && guid="s" || guid="n"
 
 	while true; do
 		shown_mode="$mode"
+		[[ -z "$buefi" ]] && buefi="$BOOTLOADER"
+
 		fields=()
 		n=0
 		if [[ "$mode" == "uefi" ]]; then
@@ -1389,7 +1587,14 @@ dialog_form() {
 		fields+=("Disco:"              $((++n)) 1 "$disk" "$n" 22 44 0)
 		fields+=("${lbl_part}:"        $((++n)) 1 "$efi"  "$n" 22 44 0)
 		[[ "$mode" == "uefi" ]] && fields+=("Nick:" $((++n)) 1 "$nick" "$n" 22 44 0)
-		fields+=("Bootloader:"         $((++n)) 1 "$boot" "$n" 22 10 0)
+		# o que já está instalado no disco aparece ao lado (texto fixo, não é campo)
+		detect_current "$disk"
+		if [[ "$mode" == "uefi" ]]; then
+			fields+=("Bootloader UEFI:" $((++n)) 1 "$buefi" "$n" 22 10 0)
+			[[ -n "$CUR_DISK" ]] && fields+=("" "$n" 34 "(atual: ${CUR_UEFI})" "$n" 34 0 0)
+		fi
+		fields+=("Bootloader BIOS:"    $((++n)) 1 "$bbios" "$n" 22 10 0)
+		[[ -n "$CUR_DISK" ]] && fields+=("" "$n" 34 "(atual: ${CUR_BIOS})" "$n" 34 0 0)
 		[[ "$mode" == "uefi" ]] && fields+=("Alterar GUID (s/n):" $((++n)) 1 "$guid" "$n" 22 3 0)
 		fields+=("Modo:"               $((++n)) 1 "$(mode_label "$mode")" "$n" 22 10 0)
 
@@ -1416,8 +1621,9 @@ dialog_form() {
 		efi=$(trim "${vals[i]}"); i=$((i + 1))
 		if [[ "$shown_mode" == "uefi" ]]; then
 			nick=$(trim "${vals[i]}"); i=$((i + 1))
+			buefi=$(trim "${vals[i],,}"); i=$((i + 1))
 		fi
-		boot=$(trim "${vals[i],,}"); i=$((i + 1))
+		bbios=$(trim "${vals[i],,}"); i=$((i + 1))
 		if [[ "$shown_mode" == "uefi" ]]; then
 			guid=$(trim "${vals[i],,}"); i=$((i + 1))
 		fi
@@ -1431,7 +1637,11 @@ dialog_form() {
 			continue
 		fi
 		# Mudou o modo: mostra de novo com os campos desse modo
-		[[ "$mode" != "$shown_mode" ]] && continue
+		if [[ "$mode" != "$shown_mode" ]]; then
+			# de bios para uefi/bios: a parte UEFI volta ao padrão
+			[[ "$mode" == "uefi" && "$buefi" == "nenhum" ]] && buefi="$BOOTLOADER"
+			continue
+		fi
 
 		# Disco vazio: busca os discos e volta ao formulário com o escolhido
 		if [[ -z "$disk" ]]; then
@@ -1447,13 +1657,36 @@ dialog_form() {
 			dialog_msg "$lbl_part" "'$efi' não é uma partição válida (precisa ser FAT32)."
 			continue
 		fi
-		if [[ "$mode" == "uefi" && ! "$nick" =~ ^[A-Za-z0-9._-]+$ ]]; then
-			dialog_msg "Nick" "Nick inválido: '$nick'\nUse só letras, números, ponto, _ e -."
+
+		# Bootloaders vazios ou digitados errado: abre a lista dos válidos e volta ao formulário
+		if [[ "$mode" == "uefi" ]]; then
+			tmp=$(parse_bootloader "$buefi")
+			if [[ -z "$tmp" ]]; then
+				buefi=$(dialog_select_bootloader uefi "$buefi" "$BOOTLOADER" true) || buefi="$BOOTLOADER"
+				continue
+			fi
+			buefi="$tmp"
+		else
+			buefi="nenhum"
+		fi
+		tmp=$(parse_bootloader "$bbios")
+		if [[ -z "$tmp" ]] || [[ "$mode" == "bios" && "$tmp" == "nenhum" ]]; then
+			# no modo BIOS a parte BIOS é a única: "nenhum" não é opção
+			if [[ "$mode" == "bios" ]]; then
+				bbios=$(dialog_select_bootloader bios "$bbios" "$BOOTLOADER" false) || bbios="$BOOTLOADER"
+			else
+				bbios=$(dialog_select_bootloader bios "$bbios" "$BOOTLOADER" true) || bbios="$BOOTLOADER"
+			fi
 			continue
 		fi
-		# Bootloader vazio ou digitado errado: abre a lista dos válidos e volta ao formulário
-		if [[ ! "$boot" =~ ^(grub|limine)$ ]]; then
-			boot=$(dialog_select_bootloader "$boot") || boot="$BOOTLOADER"
+		bbios="$tmp"
+		if [[ "$buefi" == "nenhum" && "$bbios" == "nenhum" ]]; then
+			dialog_msg "Bootloader" "UEFI e BIOS estão como 'nenhum'.\nEscolha um bootloader para pelo menos uma das partes."
+			continue
+		fi
+
+		if [[ "$mode" == "uefi" && "$buefi" != "nenhum" && ! "$nick" =~ ^[A-Za-z0-9._-]+$ ]]; then
+			dialog_msg "Nick" "Nick inválido: '$nick'\nUse só letras, números, ponto, _ e -."
 			continue
 		fi
 		if [[ "$mode" == "uefi" && ! "$guid" =~ ^[sn]$ ]]; then
@@ -1472,23 +1705,27 @@ dialog_form() {
 		IS_EFI_PART_USER=false
 	fi
 	NICK="$nick"
-	BOOTLOADER="$boot"
+	BOOT_UEFI="$buefi"
+	BOOT_BIOS="$bbios"
 	MODE="$mode"
-	[[ "$mode" == "uefi" && "$guid" == "s" ]] && CHANGE_GUID=true || CHANGE_GUID=false
+	[[ "$mode" == "uefi" && "$buefi" != "nenhum" && "$guid" == "s" ]] && CHANGE_GUID=true || CHANGE_GUID=false
 	return 0
 }
 
 # Confirmação final no dialog (substitui o readconf)
 dialog_confirm() {
 	local origem_efi="auto detectada"
-	local linha_nick="" linha_guid="" lbl_efi="EFI_PART"
+	local linha_nick="" linha_guid="" linha_boot_uefi="" lbl_efi="EFI_PART"
 	[[ "$MODE" == "bios" ]] && lbl_efi="FAT_PART"
 	$IS_EFI_PART_USER && origem_efi="informada pelo usuário"
 
 	# Nick e GUID só existem na entrada UEFI
 	if [[ "$MODE" == "uefi" ]]; then
-		linha_nick="${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n"
-		linha_guid="${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n"
+		linha_boot_uefi="${BOLD}${CYAN}BOOT UEFI  ${RESET} ${BOOT_UEFI}  (atual: ${CUR_UEFI:-?})\n"
+		if [[ "$BOOT_UEFI" != "nenhum" ]]; then
+			linha_nick="${BOLD}${CYAN}NICK       ${RESET} ${NICK}\n"
+			linha_guid="${BOLD}${CYAN}CHANGE-GUID${RESET} ${CHANGE_GUID}\n"
+		fi
 	fi
 
 	if dlg --title "CONFIRMAR" \
@@ -1499,9 +1736,10 @@ ${BOLD}${CYAN}ROOT_PART  ${RESET} ${ROOT_PART:-<não detectada>}\n\
 ${BOLD}${CYAN}${lbl_efi}   ${RESET} ${EFI_PART:-<não detectada>} (${origem_efi})\n\
 ${linha_nick}\
 ${BOLD}${CYAN}MODO       ${RESET} $(mode_label)\n\
-${BOLD}${CYAN}BOOTLOADER ${RESET} ${BOOTLOADER}\n\
+${linha_boot_uefi}\
+${BOLD}${CYAN}BOOT BIOS  ${RESET} ${BOOT_BIOS}  (atual: ${CUR_BIOS:-?})\n\
 ${linha_guid}\n\
-${BOLD}${RED}Deseja continuar com esses parâmetros?${RESET}" 16 74; then
+${BOLD}${RED}Deseja continuar com esses parâmetros?${RESET}" 17 74; then
 		DIALOG_UI=false
 		clear
 		msg "Continuando instalação..."
@@ -1518,13 +1756,16 @@ usage() {
 	echo -e "${cyan}     ${APP} --disk /dev/nvme0n1 --efi_part /dev/nvme0n1p1 --bootloader limine --nick VoidBR${rst}"
 	echo -e "${cyan}     ${APP} --disk /dev/sdX --mode bios --bootloader grub${rst}"
 	echo -e "${cyan}     ${APP} --disk /dev/sdX --mode bios --bootloader limine${rst}"
+	echo -e "${cyan}     ${APP} --disk /dev/sdX --uefi-bootloader limine --bios-bootloader grub${rst}"
 	echo -e "${cyan}     ${APP} --dialog${rst}"
 	echo
 	echo -e "${yellow}Opções:${reset}"
 	echo -e "   ${orange}--disk ${yellow}<dispositivo>    ${yellow}${cyan}Disco onde está a partição EFI (ex: /dev/nvme0n1)"
 	echo -e "   ${orange}--efi_part ${yellow}<EFI_PART>   ${yellow}${cyan}Partição efi do disco  (ex: /dev/sda2 - padrão: autodetect)${rst}"
 	echo -e "   ${orange}--nick ${yellow}<nome>           ${yellow}${cyan}Nome/label para a entrada EFI (padrão: UEFI)"
-	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader da entrada EFI (padrão: grub)"
+	echo -e "   ${orange}--bootloader ${yellow}<grub|limine> ${cyan}Bootloader das partes UEFI e BIOS (padrão: grub)"
+	echo -e "   ${orange}--uefi-bootloader ${yellow}<grub|limine|nenhum> ${cyan}Bootloader só da parte UEFI"
+	echo -e "   ${orange}--bios-bootloader ${yellow}<grub|limine|nenhum> ${cyan}Bootloader só da parte BIOS"
 	echo -e "   ${orange}--mode ${yellow}<uefi/bios|bios> ${cyan}Modo de boot (padrão: detecta; uefi/bios = UEFI + BIOS, bios = só BIOS)"
 	echo -e "   ${orange}--change-guid           ${yellow}${cyan}Alterar GUID da partição EFI se duplicada (padrão: Não altera)"
 	echo -e "   ${orange}-y, --yes               ${yellow}${cyan}Não pede confirmação (só na linha de comando)"
@@ -1570,6 +1811,18 @@ parse_args() {
 			[[ "$BOOTLOADER" =~ ^(grub|limine)$ ]] || die "Bootloader inválido: $2 (use grub ou limine)"
 			shift 2
 			;;
+		--uefi-bootloader)
+			need_arg "$1" "$2"
+			BOOT_UEFI=$(parse_bootloader "$2")
+			[[ -n "$BOOT_UEFI" ]] || die "Bootloader UEFI inválido: $2 (use grub, limine ou nenhum)"
+			shift 2
+			;;
+		--bios-bootloader)
+			need_arg "$1" "$2"
+			BOOT_BIOS=$(parse_bootloader "$2")
+			[[ -n "$BOOT_BIOS" ]] || die "Bootloader BIOS inválido: $2 (use grub, limine ou nenhum)"
+			shift 2
+			;;
 		--mode)
 			need_arg "$1" "$2"
 			MODE=$(parse_mode "$2")
@@ -1613,6 +1866,7 @@ main() {
 	fi
 	parse_args "$@"
 	[[ -z "$MODE" ]] && detect_mode
+	resolve_bootloaders
 	if [[ "$MODE" == "bios" ]] && ! $USE_DIALOG && { $NICK_USER || $CHANGE_GUID; }; then
 		log_warn "No modo BIOS não há entrada UEFI: --nick e --change-guid são ignorados."
 		CHANGE_GUID=false
@@ -1641,7 +1895,7 @@ main() {
 		IS_ROOT_DISK=true
 		if ! detect_root_esp; then
 			# BIOS + GRUB não precisa de ESP; os outros casos precisam da FAT montada
-			if [[ "$MODE" == "uefi" || "$BOOTLOADER" == "limine" ]]; then
+			if need_fat; then
 				die "Partição FAT/ESP do disco raiz não está montada (procurei em /boot/efi, /efi e /boot). Monte-a e rode de novo."
 			fi
 		fi
@@ -1654,16 +1908,10 @@ main() {
 	check_requirements # <- PACOTES NECESSÁRIOS, ANTES DE QUALQUER ALTERAÇÃO
 	confirm_parts      # <- CONFIRMAÇÃO ANTES DE INSTALAR
 
-	if [[ "$MODE" == "bios" ]]; then
-		if [[ "$BOOTLOADER" == "limine" ]]; then
-			[[ -n "$EFI_PART" ]] || die "O Limine BIOS precisa de uma partição FAT no disco para o limine-bios.sys e o limine.conf (informe com --efi_part)"
-			if ! $IS_ROOT_DISK; then
-				mount_efi_part
-			fi
-			install_limine_bios
-		else
-			install_grub_bios
-		fi
+	# Só BIOS (modo bios, ou modo UEFI com a parte UEFI = nenhum): falha no BIOS é fatal
+	if [[ "$MODE" == "bios" || "$BOOT_UEFI" == "nenhum" ]]; then
+		BIOS_SOFT=false
+		install_bios_part
 		finish_main
 		return 0
 	fi
@@ -1676,7 +1924,7 @@ main() {
 		fi
 	fi
 
-	if [[ "$BOOTLOADER" == "limine" ]]; then
+	if [[ "$BOOT_UEFI" == "limine" ]]; then
 		if ! $IS_ROOT_DISK; then
 			mount_efi_part
 		fi
@@ -1725,15 +1973,30 @@ main() {
 
 	# Modo UEFI instala também em BIOS (boot híbrido); falha no BIOS só avisa
 	BIOS_SOFT=true
-	if $SKIP_BIOS; then
-		log_warn "Parte BIOS ignorada (faltam os arquivos do ${BOOTLOADER} para BIOS)."
-	elif [[ "$BOOTLOADER" == "limine" ]]; then
+	if [[ "$BOOT_BIOS" == "nenhum" ]]; then
+		msg "Parte BIOS: nenhum (não instalada)."
+	elif $SKIP_BIOS; then
+		log_warn "Parte BIOS ignorada (faltam os arquivos do ${BOOT_BIOS} para BIOS)."
+	else
+		install_bios_part
+	fi
+
+	finish_main
+}
+
+# Instala a parte BIOS com o bootloader escolhido para ela
+install_bios_part() {
+	if [[ "$BOOT_BIOS" == "limine" ]]; then
+		if [[ -z "$EFI_PART" ]]; then
+			bios_fail "O Limine BIOS precisa de uma partição FAT no disco para o limine-bios.sys e o limine.conf (informe com --efi_part)" || return 0
+		fi
+		if ! $IS_ROOT_DISK && ! $MNT_TMP_MOUNTED; then
+			mount_efi_part
+		fi
 		install_limine_bios
 	else
 		install_grub_bios
 	fi
-
-	finish_main
 }
 
 # Desmonta a ESP (se este script montou) e encerra
