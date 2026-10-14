@@ -5,7 +5,7 @@
 #  chili-manager-bootloader
 #  Created: 2025/10/02 - 01:55
 #  Altered: 2025/10/02 - 01:55
-#  Updated: seg 12 out 2026 16:55:00 -04
+#  Updated: qua 14 out 2026 11:43:56 -04
 #
 #  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -46,7 +46,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="1.10.12-20261012"
+declare _VERSION_="1.10.14-20261014"
 declare APPDESC="$APP - Wraper for efibootmgr, grub-install e limine"
 declare distro="$(uname -n)"
 declare DEPENDENCIES=(tput efibootmgr grub-install lsblk sgdisk)
@@ -606,7 +606,6 @@ detect_parts() {
 	[[ -z "$ROOT_PART" ]] && die "Não foi possível detectar partição ROOT em $disk"
 	if [[ -z "$EFI_PART" ]]; then
 		# no modo BIOS a partição FAT só é necessária para o Limine (verificado depois)
-		[[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]] && die "Não foi detectada partição EFI (FAT) em $disk. Informe com --efi_part"
 		log_warn "Não foi detectada partição FAT em $disk"
 	fi
 	return 0
@@ -1123,6 +1122,51 @@ classify_efi() {
 	fi
 }
 
+# Primeira partição FAT do disco (sem olhar o --efi_part)
+disk_fat_part() {
+	local disk="$1" p
+	for p in $(lsblk -lnp -o NAME,TYPE "$disk" 2>/dev/null | awk '$2=="part"{print $1}'); do
+		if is_valid_efi_fs "$p"; then
+			echo "$p"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Disco sem partição FAT (CLI). Regras:
+#   UEFI pedida   -> não dá: pergunta "só BIOS?"; com --yes avisa e instala só BIOS
+#   Limine BIOS   -> não dá (precisa de /boot em FAT): pergunta "usar GRUB?"; com --yes avisa e para
+#   GRUB BIOS     -> funciona, não precisa de FAT
+# No dialog o formulário já resolveu isso antes (volta ao formulário com o ajuste).
+resolve_no_fat() {
+	[[ -n "$EFI_PART" ]] && return 0
+
+	if [[ "$MODE" == "uefi" && "$BOOT_UEFI" != "nenhum" ]]; then
+		local aviso="O disco ${DISK} não tem partição FAT/ESP: não dá para instalar a parte UEFI."
+		if [[ "$BOOT_BIOS" == "nenhum" ]]; then
+			die "${aviso}\nA parte BIOS está como 'nenhum': não há nada para instalar."
+		elif $ASSUME_YES; then
+			log_warn "${aviso} ${yellow}(--yes: instalando só a parte BIOS)"
+		elif ! ask_yes_no "Sem partição EFI" "${aviso}\nDeseja instalar só a parte BIOS?" "s"; then
+			die "Nada foi alterado."
+		fi
+		BOOT_UEFI="nenhum"
+	fi
+
+	if [[ "$BOOT_BIOS" == "limine" ]]; then
+		local aviso="O Limine BIOS precisa do /boot numa partição FAT, e o disco ${DISK} não tem."
+		if $ASSUME_YES; then
+			die "${aviso}\nUse --bios-bootloader grub para instalar o GRUB na parte BIOS."
+		elif ask_yes_no "Limine BIOS" "${aviso}\nDeseja usar o GRUB na parte BIOS?" "s"; then
+			BOOT_BIOS="grub"
+		else
+			die "Nada foi alterado."
+		fi
+	fi
+	return 0
+}
+
 # Partição FAT/ESP do disco (a informada, ou a primeira vfat)
 find_disk_esp() {
 	local disk="$1" p
@@ -1585,7 +1629,11 @@ dialog_form() {
 			lbl_part="Partição FAT"
 		fi
 		fields+=("Disco:"              $((++n)) 1 "$disk" "$n" 22 44 0)
-		fields+=("${lbl_part}:"        $((++n)) 1 "$efi"  "$n" 22 44 0)
+		fields+=("${lbl_part}:"        $((++n)) 1 "$efi"  "$n" 22 30 64)
+		# disco sem partição FAT: avisa ao lado do campo
+		if [[ -z "$efi" && -b "$disk" ]] && ! disk_fat_part "$disk" >/dev/null; then
+			fields+=("" "$n" 53 "(nenhuma no disco)" "$n" 53 0 0)
+		fi
 		[[ "$mode" == "uefi" ]] && fields+=("Nick:" $((++n)) 1 "$nick" "$n" 22 44 0)
 		# o que já está instalado no disco aparece ao lado (texto fixo, não é campo)
 		detect_current "$disk"
@@ -1601,7 +1649,7 @@ dialog_form() {
 		mapfile -t vals < <(
 			dlg --stdout --title "ENTRADA DE BOOT" \
 				--ok-label "Continuar" --cancel-label "Sair" \
-				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}${lbl_part}${WHITE} vazia para detectar automaticamente.${RESET}\n" $((n + 12)) 72 "$n" \
+				--form "\n${BOLD}${WHITE}Deixe o ${YELLOW}Disco${WHITE} vazio para escolher numa lista.\nDeixe a ${YELLOW}${lbl_part}${WHITE} vazia para detectar automaticamente.${RESET}\n" $((n + 12)) 78 "$n" \
 				"${fields[@]}"
 			echo "rc=$?"
 		)
@@ -1680,6 +1728,20 @@ dialog_form() {
 			continue
 		fi
 		bbios="$tmp"
+		# Disco sem partição FAT: ajusta o que não dá para instalar e volta ao formulário
+		if [[ -z "$efi" ]] && ! disk_fat_part "$disk" >/dev/null; then
+			if [[ "$mode" == "uefi" && "$buefi" != "nenhum" ]]; then
+				buefi="nenhum"
+				[[ "$bbios" == "nenhum" ]] && bbios="grub"
+				dialog_msg "Sem partição EFI" "O disco ${disk} não tem partição FAT/ESP:\nnão dá para instalar a parte UEFI.\n\nBootloader UEFI trocado para 'nenhum'. Confira e continue."
+				continue
+			fi
+			if [[ "$bbios" == "limine" ]]; then
+				bbios="grub"
+				dialog_msg "Limine BIOS" "O Limine BIOS precisa do /boot numa partição FAT,\ne o disco ${disk} não tem.\n\nBootloader BIOS trocado para 'grub'. Confira e continue."
+				continue
+			fi
+		fi
 		if [[ "$buefi" == "nenhum" && "$bbios" == "nenhum" ]]; then
 			dialog_msg "Bootloader" "UEFI e BIOS estão como 'nenhum'.\nEscolha um bootloader para pelo menos uma das partes."
 			continue
@@ -1894,10 +1956,11 @@ main() {
 		ROOT_PART=$(get_root_part "$DISK")
 		IS_ROOT_DISK=true
 		if ! detect_root_esp; then
-			# BIOS + GRUB não precisa de ESP; os outros casos precisam da FAT montada
-			if need_fat; then
+			# Existe partição FAT no disco, mas não montada: pede para montar
+			if need_fat && disk_fat_part "$DISK" >/dev/null; then
 				die "Partição FAT/ESP do disco raiz não está montada (procurei em /boot/efi, /efi e /boot). Monte-a e rode de novo."
 			fi
+			# Sem partição FAT nenhuma: resolve_no_fat decide o que dá para fazer
 		fi
 	else
 		msg "Disco alternativo detectado: ${yellow}${DISK}${reset}"
@@ -1905,6 +1968,7 @@ main() {
 		detect_parts "$DISK"
 		IS_ROOT_DISK=false
 	fi
+	resolve_no_fat     # <- DISCO SEM PARTIÇÃO FAT: AJUSTA O QUE DÁ PARA INSTALAR
 	check_requirements # <- PACOTES NECESSÁRIOS, ANTES DE QUALQUER ALTERAÇÃO
 	confirm_parts      # <- CONFIRMAÇÃO ANTES DE INSTALAR
 
