@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: qua 18 nov 2026 04:12:09 -04
+#  Updated: qua 18 nov 2026 04:32:16 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -33,6 +33,17 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
 #  CHANGELOG:
+#
+#  v0.11.19 - 2026-11-18
+#    - Corrigido: no instalador o mkswap recusava o /swapfile do destino quando a máquina
+#                 que roda o void-install tem um /swapfile ativo ("is mounted"); agora
+#                 cria como /swapfile.new e renomeia depois do mkswap
+#    - Alterado: no instalador não regenera GRUB/Limine (o update-limine falhava sem
+#                 initramfs); os hooks do kernel no xbps-reconfigure do void-install fazem
+#    - Corrigido: distro "voidbr" sem gerenciador de pacotes (preload não instalava)
+#    - Corrigido: mkswap com falha deixava o /swapfile sem formato no fstab, o que trava
+#                 o boot (04-swap.sh abre o shell de emergência); agora apaga o arquivo,
+#                 não grava no fstab e conta o erro
 #
 #  v0.11.18 - 2026-11-18
 #    - Adicionado: modo instalador (VOIDBR_INSTALLER=true ou rodando em chroot). Só grava
@@ -126,7 +137,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.11.18-20261118"
+declare _VERSION_="0.11.19-20261118"
 declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
@@ -194,6 +205,7 @@ declare -A PACKAGEDEP=(
 declare -A DISTRO_PKGS=(
 	["void"]="gettext rsync parted curl xz lvm2"
 	["void-live"]="gettext rsync parted curl xz lvm2"
+	["voidbr"]="gettext rsync parted curl xz lvm2"
 	["voidlinux"]="gettext rsync parted curl xz lvm2"
 	["chili"]="gettext rsync parted curl xz"
 	["chililinux"]="gettext rsync parted curl xz"
@@ -207,6 +219,7 @@ declare -A DISTRO_PKGS=(
 declare -A DISTRO_MGR=(
 	["void"]="xbps-install -y --ignore-file-conflicts"
 	["void-live"]="xbps-install -y --ignore-file-conflicts"
+	["voidbr"]="xbps-install -y --ignore-file-conflicts"
 	["voidlinux"]="xbps-install -y --ignore-file-conflicts"
 	["chili"]="pacman -S --needed --noconfirm"
 	["chililinux"]="pacman -S --needed --noconfirm"
@@ -670,29 +683,47 @@ configure_swapfile() {
 
 		# 2. Desativa e remove o antigo se existir
 		if [ -f /swapfile ]; then
-			run_cmd swapoff /swapfile
+			$installer || run_cmd swapoff /swapfile
 			run_cmd rm -f /swapfile
 		fi
+
+		# No instalador o /proc/swaps é o da máquina que roda o void-install: se ela
+		# tiver um /swapfile ativo, o mkswap recusa o /swapfile do destino ("is
+		# mounted", nem com -f). Cria com outro nome e renomeia depois do mkswap.
+		local sfile=/swapfile
+		$installer && sfile=/swapfile.new
 
 		msg "Criando swapfile de ${swap_gb}G no $root_fs..."
 		case "$root_fs" in
 		btrfs)
 			if has_command btrfs && btrfs filesystem --help 2>&1 | grep -q "mkswapfile"; then
-				run_cmd btrfs filesystem mkswapfile --size "${swap_gb}"g /swapfile
+				run_cmd btrfs filesystem mkswapfile --size "${swap_gb}"g "$sfile"
 			else
-				run_cmd truncate -s 0 /swapfile
-				run_cmd chattr +C /swapfile
-				run_cmd btrfs property set /swapfile compression none
-				run_cmd fallocate -l "${swap_gb}"G /swapfile || run_cmd dd if=/dev/zero of=/swapfile bs=1G count="${swap_gb}" status=progress oflag=direct
+				run_cmd truncate -s 0 "$sfile"
+				run_cmd chattr +C "$sfile"
+				run_cmd btrfs property set "$sfile" compression none
+				run_cmd fallocate -l "${swap_gb}"G "$sfile" || run_cmd dd if=/dev/zero of="$sfile" bs=1G count="${swap_gb}" status=progress oflag=direct
 			fi
 			;;
 		*)
-			run_cmd fallocate -l "${swap_gb}"G /swapfile || run_cmd dd if=/dev/zero of=/swapfile bs=1G count="${swap_gb}" status=progress oflag=direct
+			run_cmd fallocate -l "${swap_gb}"G "$sfile" || run_cmd dd if=/dev/zero of="$sfile" bs=1G count="${swap_gb}" status=progress oflag=direct
 			;;
 		esac
 
-		run_cmd chmod 600 /swapfile
-		run_cmd mkswap /swapfile
+		run_cmd chmod 600 "$sfile"
+		# swapfile sem formato no fstab trava o boot (04-swap.sh abre o shell de
+		# emergência): se o mkswap falhar, apaga o arquivo e não grava no fstab
+		if ! run_cmd mkswap "$sfile"; then
+			log_err_tab "${red}mkswap falhou: /swapfile não criado e fstab não alterado${rst}"
+			run_cmd rm -f "$sfile"
+			((++errors))
+			return 1
+		fi
+		if [[ "$sfile" != /swapfile ]] && ! run_cmd mv -f "$sfile" /swapfile; then
+			run_cmd rm -f "$sfile"
+			((++errors))
+			return 1
+		fi
 		changed=true
 	fi
 
@@ -793,6 +824,17 @@ sh_zswap_cmdline() {
 	return 0
 }
 
+# Regenera a configuração do bootloader. No instalador não: o initramfs ainda não
+# existe (o update-limine falha) e o xbps-reconfigure do fim do void-install roda os
+# hooks do kernel (50-grub, 90-limine), que já leem a cmdline nova.
+sh_regen_bootloader() {
+	if $installer; then
+		msg_tab "${green}Regenerado pelo instalador (hooks do kernel no xbps-reconfigure).${rst}"
+		return 0
+	fi
+	run_cmd "$1"
+}
+
 # Aplica sh_zswap_cmdline (add|remove) no GRUB e no Limine.
 # Cada bootloader só é alterado se existir o conjunto arquivo + comando.
 sh_zswap_bootloaders() {
@@ -816,7 +858,7 @@ sh_zswap_bootloaders() {
 			log_err_tab "${red}update-grub/grub-mkconfig ${cmsg_Nao_encontrado} — /etc/default/grub não alterado${rst}"
 			((++errors))
 		elif sh_zswap_cmdline "$action" "GRUB" /etc/default/grub GRUB_CMDLINE_LINUX ""; then
-			run_cmd "${grub_cmd}"
+			sh_regen_bootloader "${grub_cmd}"
 		fi
 	fi
 
@@ -827,7 +869,7 @@ sh_zswap_bootloaders() {
 			log_err_tab "${red}update-limine ${cmsg_Nao_encontrado} — /etc/default/limine não alterado${rst}"
 			((++errors))
 		elif sh_zswap_cmdline "$action" "Limine" /etc/default/limine LIMINE_CMDLINE_LINUX_DEFAULT "rw loglevel=4"; then
-			run_cmd "${limine_cmd}"
+			sh_regen_bootloader "${limine_cmd}"
 		fi
 	fi
 
@@ -1160,6 +1202,11 @@ calculate_swap() {
 	# 5. Verifica se o /swapfile está ativo
 	# Usamos tail -n +2 para pular o cabeçalho de forma compatível
 	local active_info
+	# no instalador o /proc/swaps é o da máquina que roda o void-install, não o do destino
+	if $installer; then
+		msg_tab "Swap ativo       : ${cyan}no primeiro boot (instalador)${reset}"
+		return 0
+	fi
 	active_info=$(swapon --show=NAME,TYPE,SIZE,PRIO | grep "^/swapfile ")
 
 	if [[ -n "$active_info" ]]; then
