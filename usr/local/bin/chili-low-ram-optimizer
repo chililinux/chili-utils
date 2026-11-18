@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: qua 07 out 2026 20:16:00 -04
+#  Updated: qua 18 nov 2026 04:12:09 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -33,6 +33,19 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##############################################################################
 #  CHANGELOG:
+#
+#  v0.11.18 - 2026-11-18
+#    - Adicionado: modo instalador (VOIDBR_INSTALLER=true ou rodando em chroot). Só grava
+#                 no disco do sistema instalado: swapfile + fstab, sysctl.d, blacklist do
+#                 zram, zswap na cmdline do GRUB/Limine, THP/scheduler e preload. Não mexe
+#                 no sistema em execução (o live): sem swapon, sem sysctl --system, sem
+#                 swapoff/modprobe -r do zram, sem montar debugfs e sem escrever em /sys.
+#                 Também não pergunta nada (readconf responde "não"), para não travar
+#                 o instalador.
+#    - Corrigido: no instalador o preload é habilitado em /etc/runit/runsvdir/default
+#                 (no chroot o /var/service aponta para /run, que não existe no destino)
+#    - Alterado: no instalador o init é detectado pelo sistema de destino, não pelo
+#                 PID 1 do live
 #
 #  v0.08.01 - 2026-10-07
 #    - Adicionado: suporte ao Limine na ativação/remoção do zswap (/etc/default/limine,
@@ -113,12 +126,21 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.08.01-20261007"
+declare _VERSION_="0.11.18-20261118"
 declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
 declare sysctl_conf_runit="/etc/sysctl.d/99-voidbr-memory-tuning.conf"
 declare quiet=false
+# modo instalador: rodando pelo void-install (que exporta VOIDBR_INSTALLER=true) ou
+# dentro de um chroot. Grava só no disco; o que é aplicado em tempo de execução
+# (swapon, sysctl, /sys, zram) acontece no primeiro boot do sistema instalado.
+declare installer=false
+if [[ "${VOIDBR_INSTALLER:-}" == "true" ]]; then
+	installer=true
+elif [[ -e /proc/1/root ]] && [[ "$(stat -c %d:%i / 2>/dev/null)" != "$(stat -c %d:%i /proc/1/root/. 2>/dev/null)" ]]; then
+	installer=true
+fi
 declare use_color=true
 declare -i errors=0
 # Arquivos de bootloader: opcionais (só existem os do bootloader instalado)
@@ -326,6 +348,9 @@ readconf() {
 	local msg="$1"
 	local color="${2:-${yellow}}"
 
+	# no instalador não há ninguém para responder: assume "não"
+	$installer && return 1
+
 	echo -n -e "$color"
 	if [[ $LC_DEFAULT -eq 0 ]]; then
 		read -r -p "$msg [N/s] :"
@@ -502,6 +527,14 @@ changed=false
 detect_init() {
 	local init_system
 	init_system=$(ps -p 1 -o comm=)
+	# no instalador o PID 1 é o do live: o que vale é o init do sistema de destino
+	if $installer; then
+		if [[ -x /usr/bin/runit || -x /sbin/runit ]]; then
+			init_system="runit"
+		elif [[ -x /usr/lib/systemd/systemd || -x /lib/systemd/systemd ]]; then
+			init_system="systemd"
+		fi
+	fi
 	case "$init_system" in
 	systemd) init="systemd" ;;
 	runit) init="runit" ;;
@@ -580,7 +613,7 @@ supports_hibernation() {
 }
 
 remove_zram() {
-	if grep -q "^zram" /proc/modules; then
+	if ! $installer && grep -q "^zram" /proc/modules; then
 		msg "Removendo zram..."
 		if has_command zramctl; then
 			for dev in $(zramctl -n -o NAME 2>/dev/null); do
@@ -686,7 +719,8 @@ configure_sysctl() {
 		done
 	} >"${cfile}"
 
-	run_cmd sysctl --system
+	# no instalador vale a partir do primeiro boot (não altera o kernel do live)
+	$installer || run_cmd sysctl --system
 	changed=true
 }
 
@@ -918,6 +952,10 @@ is_swapfile_active() {
 }
 
 enable_swap() {
+	if $installer; then
+		msg "Swap no /etc/fstab: ativado no primeiro boot (instalador)"
+		return 0
+	fi
 	msg "Ativando swap"
 
 	if detect_is_live; then
@@ -952,9 +990,13 @@ enable_preload() {
 		fi
 	elif [[ "$init" == "runit" ]]; then
 		# No runit, verificamos o link simbólico em /var/service
-		if [ ! -L /var/service/preload ]; then
+		# /var/service aponta para /run/runit/runsvdir/current, que só existe com o
+		# runit rodando; no instalador (chroot) o link vai direto no runsvdir default
+		local svdir=/var/service
+		$installer && svdir=/etc/runit/runsvdir/default
+		if [ ! -L "${svdir}/preload" ]; then
 			msg "Ativando serviço preload (runit)..."
-			run_cmd ln -sf /etc/sv/preload /var/service/
+			run_cmd ln -sf /etc/sv/preload "${svdir}/"
 			changed=true
 		fi
 	fi
@@ -971,6 +1013,8 @@ disable_preload() {
 }
 
 ensure_debugfs() {
+	# no instalador o /sys é o do live: montar o debugfs nele prenderia o umount do destino
+	$installer && return 0
 	if ! mountpoint -q /sys/kernel/debug; then
 		msg "Montando debugfs..."
 		run_cmd mount -t debugfs none /sys/kernel/debug
@@ -1065,6 +1109,10 @@ disable_zswap() {
 }
 
 enable_zswap() {
+	if $installer; then
+		msg "zswap na cmdline do bootloader: ativado no primeiro boot (instalador)"
+		return 0
+	fi
 	msg "Ativando zswap..."
 	run_cmd 'echo 1 > /sys/module/zswap/parameters/enabled'
 }
@@ -1230,7 +1278,7 @@ sh_install() {
 	enable_swap
 	enable_preload
 	enable_zswap
-	sh_check_zswap_lifecycle
+	$installer || sh_check_zswap_lifecycle
 	#	summary
 	# sh_health_check
 
