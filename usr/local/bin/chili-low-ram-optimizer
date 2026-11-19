@@ -5,7 +5,7 @@
 #  chili-low-ram-optimizer
 #  Otimização automática para máquinas com pouca RAM
 #  Created: qua 11 mar 2026 11:53:16 -04
-#  Updated: qua 18 nov 2026 04:32:16 -04
+#  Updated: qui 19 nov 2026 00:44:04 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  Copyright (c) 2019-2026, ChiliLinux Development Team <https://chililinux.com> <https://github.com/chililinux>
@@ -34,7 +34,20 @@
 ##############################################################################
 #  CHANGELOG:
 #
-#  v0.11.19 - 2026-11-18
+#  v0.11.19 - 2026-11-19
+#    - Corrigido: o scheduler era decidido uma vez, pelo disco detectado na instalação, e
+#                 aplicado a todos os discos no boot. No instalador o detect_disk caía no
+#                 primeiro disco do host (ex: sda) quando a raiz estava num dm. Agora o
+#                 script de boot decide por disco: SSD/NVMe -> mq-deadline, HDD -> bfq
+#    - Corrigido: no systemd o $d do ExecStart era expandido pelo próprio systemd (vazio);
+#                 agora usa $$d
+#    - Alterado: o "Modo detectado" mostrava "low RAM" sempre que não havia hibernação,
+#                 mesmo com muita RAM; agora mostra "sem hibernação"
+#    - Alterado: swap limitado a 8 GB em qualquer modo (antes, com hibernação, era
+#                 RAM + 4 GB, e no instalador a RAM lida é a do host)
+#    - Alterado: sh_create_service reescreve o arquivo quando o conteúdo mudou (antes só
+#                 criava se não existisse, e a correção acima nunca chegava aos sistemas
+#                 já instalados)
 #    - Corrigido: no instalador o mkswap recusava o /swapfile do destino quando a máquina
 #                 que roda o void-install tem um /swapfile ativo ("is mounted"); agora
 #                 cria como /swapfile.new e renomeia depois do mkswap
@@ -137,7 +150,7 @@ shopt -s extglob
 
 #system
 declare APP="${0##*/}"
-declare _VERSION_="0.11.19-20261118"
+declare _VERSION_="0.11.19-20261119"
 declare APPDESC="$APP - Wraper for "
 declare bkp_dir="/var/backups/${APP}"
 declare sysctl_conf="/etc/sysctl.d/99-chili-memory-tuning.conf"
@@ -890,7 +903,7 @@ sh_create_service() {
 	local label="$3"    # nome amigável para mensagens ("THP", "Scheduler")
 	local svc_name="$4" # nome do serviço systemd (vazio no runit)
 
-	if [[ -f "$cfile" ]]; then
+	if [[ -f "$cfile" ]] && [[ "$(<"$cfile")" == "$content" ]]; then
 		msg_tab "${green}${label} já configurado.${rst}"
 		return 0
 	fi
@@ -912,10 +925,13 @@ configure_scheduler() {
 	if [[ "$init" == "runit" ]]; then
 		cfile="${ASERVICES['bfq-runit']}"
 		content=$(
-			cat <<INNEREOF
+			cat <<'INNEREOF'
 #!/bin/sh
+# Scheduler por disco, decidido no boot: SSD/NVMe -> mq-deadline, HDD -> bfq.
 for d in /sys/block/*; do
-	[ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null
+	[ -e "$d/queue/scheduler" ] || continue
+	if [ "$(cat "$d/queue/rotational" 2>/dev/null)" = 1 ]; then s=bfq; else s=mq-deadline; fi
+	echo "$s" > "$d/queue/scheduler" 2>/dev/null
 done
 INNEREOF
 		)
@@ -925,10 +941,10 @@ INNEREOF
 		content=$(
 			cat <<INNEREOF
 [Unit]
-Description=Set ${scheduler} IO Scheduler (Chili)
+Description=Set IO Scheduler per disk (Chili)
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'for d in /sys/block/*; do [ -e "\$d/queue/scheduler" ] && echo "$scheduler" > "\$d/queue/scheduler" 2>/dev/null; done'
+ExecStart=/bin/sh -c 'for d in /sys/block/*; do [ -e "\$\$d/queue/scheduler" ] || continue; if [ "\$\$(cat "\$\$d/queue/rotational" 2>/dev/null)" = 1 ]; then s=bfq; else s=mq-deadline; fi; echo "\$\$s" > "\$\$d/queue/scheduler" 2>/dev/null; done'
 RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
@@ -1163,7 +1179,7 @@ calculate_swap() {
 	msg "Análise de Swap"
 
 	# 1. Detecção de Modo (Hibernação vs Low RAM)
-	local mode_label="${cyan}low RAM${reset}"
+	local mode_label="${cyan}sem hibernação${reset}"
 	local is_hibernation=false
 	if grep -q "resume=" /proc/cmdline; then
 		is_hibernation=true
@@ -1184,6 +1200,9 @@ calculate_swap() {
 			swap_gb=$ram_gb
 		else swap_gb=8; fi
 	fi
+	# Teto de 8 GB em qualquer modo: no instalador a RAM lida é a da máquina que
+	# roda o void-install, que pode ser bem maior que a do sistema instalado.
+	if ((swap_gb > 8)); then swap_gb=8; fi
 
 	# 3. Coleta de dados físicos do arquivo /swapfile
 	local current_gb=0
