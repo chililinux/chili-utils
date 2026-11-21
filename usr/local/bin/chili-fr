@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: ter 15 set 2026 08:40:00 -04
+#  Updated: sex 20 nov 2026 23:52:51 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -48,7 +48,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.09.15-20260915'
+readonly VERSION='3.11.20-20261120'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -154,6 +154,18 @@ declare -a qemu_options=()
 declare -a avdisk_names=()
 declare -a aimages=()
 declare LPARAM_AUDIO=false
+declare LPARAM_MEM=false
+declare LPARAM_VIDEO=false
+declare LPARAM_UEFI=false
+#
+# perfis de máquina (-M|--machine)
+declare MACHINES_SYS_DIR='/usr/share/chili-fr/machines'
+declare MACHINES_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/chili-fr/machines"
+declare machine_name=''
+declare machine_file=''
+declare -A machine=()
+declare disk_bus='virtio' # virtio | sata | nvme
+declare -i disk_serial=0
 # garante que nunca ficam unset
 : "${GUEST_CID:=}"
 : "${HOST_FWD:=}"
@@ -1295,6 +1307,339 @@ detect_audio_serverOLD() {
 	echo "none"
 }
 
+#----------------------------------------------------------------------------
+# Perfis de máquina (-M|--machine)
+# Um perfil (.conf, formato chave="valor") define a identidade SMBIOS/DMI
+# (fabricante, modelo, BIOS, placa, chassi) e o hardware da VM (cpu, núcleos,
+# memória, vídeo, rede, barramento de disco, UEFI), para simular a instalação
+# do sistema em uma máquina específica.
+#----------------------------------------------------------------------------
+readonly -a MACHINE_KEYS=(
+	desc
+	vendor product version family sku serial uuid
+	board_vendor board_product board_version board_serial board_asset
+	bios_vendor bios_version bios_date
+	chassis_type chassis_vendor chassis_version chassis_serial chassis_asset chassis_sku
+	cpu cpu_name smp mem video net disk_bus uefi
+)
+
+# tipos de chassi SMBIOS (DMTF DSP0134 - System Enclosure Type)
+declare -A CHASSIS_TYPES=(
+	[other]=1 [desktop]=3 [lowprofile]=4 [minitower]=6 [tower]=7
+	[portable]=8 [laptop]=9 [notebook]=10 [handheld]=11 [allinone]=13
+	[subnotebook]=14 [spacesaving]=15 [tablet]=30 [convertible]=31
+	[detachable]=32 [minipc]=35 [stickpc]=36
+)
+
+chassis_type_num() {
+	local t="${1,,}"
+	t="${t//[-_ ]/}"
+	[[ -z "$t" ]] && return 1
+	if [[ -n "${CHASSIS_TYPES[$t]}" ]]; then
+		echo "${CHASSIS_TYPES[$t]}"
+		return 0
+	fi
+	if [[ "$t" =~ ^[0-9]+$ ]] && ((t >= 1 && t <= 36)); then
+		echo "$t"
+		return 0
+	fi
+	return 1
+}
+
+machine_find() {
+	local name="$1" f
+	local -a candidates=("$MACHINES_USER_DIR/$name.conf" "$MACHINES_SYS_DIR/$name.conf")
+	# caminho explícito para um arquivo de perfil
+	[[ "$name" == */* || "$name" == *.conf ]] && candidates=("$name")
+	for f in "${candidates[@]}"; do
+		if [[ -f "$f" ]]; then
+			echo "$f"
+			return 0
+		fi
+	done
+	return 1
+}
+
+machine_load() {
+	local file="$1" line key value
+	machine=()
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		line="${line#"${line%%[![:space:]]*}"}"
+		[[ -z "$line" || "$line" == \#* || "$line" != *=* ]] && continue
+		key="${line%%=*}"
+		key="${key%"${key##*[![:space:]]}"}"
+		value="${line#*=}"
+		value="${value#"${value%%[![:space:]]*}"}"
+		if [[ "$value" =~ ^\"([^\"]*)\" ]] || [[ "$value" =~ ^\'([^\']*)\' ]]; then
+			value="${BASH_REMATCH[1]}"
+		else
+			value="${value%%#*}"
+			value="${value%"${value##*[![:space:]]}"}"
+		fi
+		if [[ " ${MACHINE_KEYS[*]} " == *" $key "* ]]; then
+			machine[$key]="$value"
+		else
+			msg_warn "$(gettext 'perfil') ${cyan}${file##*/}${rst}: $(gettext 'chave desconhecida') ${yellow}${key}${rst} ($(gettext 'ignorada'))"
+		fi
+	done <"$file"
+}
+
+sh_list_machines() {
+	local dir f n found=false
+	for dir in "$MACHINES_USER_DIR" "$MACHINES_SYS_DIR"; do
+		[[ -d "$dir" ]] || continue
+		msg_info "${cyan}${dir}${rst}"
+		for f in "$dir"/*.conf; do
+			[[ -f "$f" ]] || continue
+			found=true
+			n="${f##*/}"
+			n="${n%.conf}"
+			machine_load "$f"
+			printf "  %s%-30s%s %s\n" "$yellow" "$n" "$rst" "${machine[desc]:-${machine[vendor]} ${machine[product]}}"
+		done
+	done
+	machine=()
+	$found || msg_warn "$(gettext 'Nenhum perfil de máquina encontrado.') $(gettext 'Crie um com') ${cyan}$APP --machine-from-host${rst}"
+}
+
+dmi_read() {
+	local f="/sys/class/dmi/id/$1"
+	[[ -r "$f" ]] || return 0
+	tr -d '\n"' <"$f" 2>/dev/null
+}
+
+sh_machine_from_host() {
+	local name="$1" out key val bus efi memgb cpu_name
+	local -a pairs
+
+	[[ -d /sys/class/dmi/id ]] || die "$(gettext 'DMI não disponível neste host') (/sys/class/dmi/id)"
+
+	[[ -z "$name" ]] && name="$(dmi_read sys_vendor)-$(dmi_read product_name)"
+	name="${name,,}"
+	name="${name//[^a-z0-9._-]/-}"
+	while [[ "$name" == *--* ]]; do name="${name//--/-}"; done
+	name="${name#-}"
+	name="${name%-}"
+	[[ -z "$name" ]] && name='host'
+
+	mkdir -p "$MACHINES_USER_DIR"
+	out="$MACHINES_USER_DIR/$name.conf"
+	if has_file "$out" && ! readconf "$(gettext 'Perfil já existe, sobrescrever?') ${out}"; then
+		exit 1
+	fi
+
+	cpu_name=$(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo)
+	cpu_name="${cpu_name//\"/}"
+	if compgen -G '/sys/block/nvme*' >/dev/null; then bus='nvme'; else bus='sata'; fi
+	[[ -d /sys/firmware/efi ]] && efi=true || efi=false
+	memgb=$(awk '/^MemTotal/{printf "%d", ($2/1048576)+0.999}' /proc/meminfo)
+
+	pairs=(
+		"desc=$(dmi_read sys_vendor) $(dmi_read product_name)"
+		"vendor=$(dmi_read sys_vendor)"
+		"product=$(dmi_read product_name)"
+		"version=$(dmi_read product_version)"
+		"family=$(dmi_read product_family)"
+		"sku=$(dmi_read product_sku)"
+		"serial=$(dmi_read product_serial)"
+		"uuid=$(dmi_read product_uuid)"
+		"board_vendor=$(dmi_read board_vendor)"
+		"board_product=$(dmi_read board_name)"
+		"board_version=$(dmi_read board_version)"
+		"board_serial=$(dmi_read board_serial)"
+		"board_asset=$(dmi_read board_asset_tag)"
+		"bios_vendor=$(dmi_read bios_vendor)"
+		"bios_version=$(dmi_read bios_version)"
+		"bios_date=$(dmi_read bios_date)"
+		"chassis_type=$(dmi_read chassis_type)"
+		"chassis_vendor=$(dmi_read chassis_vendor)"
+		"chassis_version=$(dmi_read chassis_version)"
+		"chassis_serial=$(dmi_read chassis_serial)"
+		"chassis_asset=$(dmi_read chassis_asset_tag)"
+		"cpu=host"
+		"cpu_name=$cpu_name"
+		"smp=$(nproc)"
+		"disk_bus=$bus"
+		"uefi=$efi"
+	)
+	# product_version costuma trazer o nome comercial (ex: Lenovo: "ThinkPad T14 Gen 2i")
+	val=$(dmi_read product_version)
+	[[ -n "$val" ]] && pairs[0]+=" - $val"
+
+	{
+		echo "# perfil de máquina gerado por $APP --machine-from-host em $(date '+%d/%m/%Y %H:%M')"
+		echo "# serial/uuid só são lidos quando executado como root"
+		for val in "${pairs[@]}"; do
+			key="${val%%=*}"
+			val="${val#*=}"
+			[[ -z "$val" ]] && continue
+			printf '%s="%s"\n' "$key" "$val"
+		done
+		echo "#mem=\"${memgb}G\"  # RAM real do host - descomente com cuidado"
+		echo "#video=\"virtio-vga-gl\""
+		echo "#net=\"e1000e\""
+	} >"$out"
+
+	msg_ok "$(gettext 'Perfil criado:') ${cyan}${out}${rst}"
+	cat "$out"
+	msg_ex_tab "$APP ${cyan}-M $name${rst} file.iso"
+	exit 0
+}
+
+smbios_escape() {
+	# no parser de opções do qemu a vírgula é escapada como ',,'
+	printf '%s' "${1//,/,,}"
+}
+
+smbios_add() {
+	# smbios_add <type> campo=valor ... (ignora campos vazios)
+	local type="$1" pair key val args
+	local -i n=0
+	shift
+	args="type=$type"
+	for pair in "$@"; do
+		key="${pair%%=*}"
+		val="${pair#*=}"
+		[[ -z "$val" ]] && continue
+		args+=",$key=$(smbios_escape "$val")"
+		((++n))
+	done
+	((n)) && qemu_options+=(-smbios "$args")
+}
+
+smbios_write_type3() {
+	# Gera a tabela SMBIOS type 3 (chassi) em binário, pois o '-smbios type=3'
+	# do qemu não permite definir o tipo do chassi (notebook, desktop, etc).
+	# smbios_write_type3 <arquivo> <tipo> <fabricante> <versao> <serial> <asset> <sku>
+	local out="$1" ctype="$2" s strs='' hdr i
+	local -i idx=0
+	local -a ref=(0 0 0 0 0)
+	local -a vals=("$3" "$4" "$5" "$6" "$7")
+
+	for i in "${!vals[@]}"; do
+		s="${vals[i]}"
+		[[ -z "$s" ]] && continue
+		((++idx))
+		ref[i]=$idx
+		strs+="${s//\\/\\\\}\\x00"
+	done
+	[[ -z "$strs" ]] && strs='\x00'
+
+	# type=3, length=0x16, handle=0x0300 (o mesmo que o qemu referencia no type 2)
+	# boot-up/power/thermal state=safe(3), security=none(3), altura=0, 1 cabo de força,
+	# 0 elementos contidos, sku por último
+	printf -v hdr '\\x03\\x16\\x00\\x03\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x03\\x03\\x03\\x03\\x00\\x00\\x00\\x00\\x00\\x01\\x00\\x00\\x%02x' \
+		"${ref[0]}" "$ctype" "${ref[1]}" "${ref[2]}" "${ref[3]}" "${ref[4]}"
+	printf '%b%b\x00' "$hdr" "$strs" >"$out"
+}
+
+disk_device() {
+	# disk_device <drive_id> <bootindex> - anexa o disco no barramento do perfil
+	case "$disk_bus" in
+	sata)
+		qemu_options+=(-device ide-hd,drive="$1",bootindex="$2")
+		;;
+	nvme)
+		local serial
+		((++disk_serial))
+		printf -v serial 'CHILIFR%04d' "$disk_serial"
+		qemu_options+=(-device nvme,drive="$1",serial="$serial",bootindex="$2")
+		;;
+	*)
+		qemu_options+=(-device virtio-blk,drive="$1",bootindex="$2")
+		;;
+	esac
+}
+
+main::apply_machine_profile() {
+	[[ -z "$machine_name" ]] && return
+	local v
+
+	if ! machine_file=$(machine_find "$machine_name"); then
+		sh_list_machines
+		die "$(gettext 'Perfil de máquina não encontrado:') ${yellow}${machine_name}"
+	fi
+	machine_load "$machine_file"
+	msg_tick "$(gettext 'Perfil de máquina:') ${bcyan}${machine[desc]:-$machine_name}${rst} (${machine_file})"
+
+	if [[ -n "${machine[mem]}" ]] && ! $LPARAM_MEM; then
+		[[ "${machine[mem]}" =~ ^[0-9]+[MGmg]$ ]] || die "$(gettext 'perfil: valor inválido para') mem: ${machine[mem]}"
+		xmem="${machine[mem]}"
+	fi
+	if [[ -n "${machine[video]}" ]] && ! $LPARAM_VIDEO; then
+		[[ " ${avideodevice[*]} " == *" ${machine[video]} "* ]] || die "$(gettext 'perfil: valor inválido para') video: ${machine[video]}"
+		videodevice="${machine[video]}"
+	fi
+	if [[ -n "${machine[net]}" ]] && ! $netchoosedriver; then
+		netdevice="${machine[net]}"
+	fi
+	if [[ -n "${machine[uefi]}" ]] && ! $LPARAM_UEFI; then
+		case "${machine[uefi],,}" in
+		true | yes | sim | on | 1) uefi=true ;;
+		false | no | nao | não | off | 0) uefi=false ;;
+		*) die "$(gettext 'perfil: valor inválido para') uefi: ${machine[uefi]}" ;;
+		esac
+	fi
+	if [[ -n "${machine[disk_bus]}" ]]; then
+		[[ "${machine[disk_bus]}" =~ ^(virtio|sata|nvme)$ ]] || die "$(gettext 'perfil: valor inválido para') disk_bus: ${machine[disk_bus]} (virtio|sata|nvme)"
+		disk_bus="${machine[disk_bus]}"
+	fi
+	if [[ -n "${machine[smp]}" && ! "${machine[smp]}" =~ ^[0-9]+$ ]]; then
+		die "$(gettext 'perfil: valor inválido para') smp: ${machine[smp]}"
+	fi
+	if [[ -n "${machine[chassis_type]}" ]]; then
+		v=$(chassis_type_num "${machine[chassis_type]}") || die "$(gettext 'perfil: valor inválido para') chassis_type: ${machine[chassis_type]}"
+		machine[chassis_type]="$v"
+	fi
+}
+
+main::configure_smbios() {
+	[[ -z "$machine_name" ]] && return
+	local t3bin base
+
+	smbios_add 0 \
+		"vendor=${machine[bios_vendor]}" \
+		"version=${machine[bios_version]}" \
+		"date=${machine[bios_date]}" \
+		"uefi=$($uefi && echo on)"
+	smbios_add 1 \
+		"manufacturer=${machine[vendor]}" \
+		"product=${machine[product]}" \
+		"version=${machine[version]}" \
+		"serial=${machine[serial]}" \
+		"uuid=${machine[uuid]}" \
+		"sku=${machine[sku]}" \
+		"family=${machine[family]}"
+	smbios_add 2 \
+		"manufacturer=${machine[board_vendor]}" \
+		"product=${machine[board_product]}" \
+		"version=${machine[board_version]}" \
+		"serial=${machine[board_serial]}" \
+		"asset=${machine[board_asset]}"
+
+	if [[ -n "${machine[chassis_type]}" ]]; then
+		base="${machine_file##*/}"
+		base="${base%.conf}"
+		mkdir -p "$HOME_DIR/smbios"
+		t3bin="$HOME_DIR/smbios/${base}-type3.bin"
+		smbios_write_type3 "$t3bin" "${machine[chassis_type]}" \
+			"${machine[chassis_vendor]:-${machine[vendor]}}" \
+			"${machine[chassis_version]}" \
+			"${machine[chassis_serial]}" \
+			"${machine[chassis_asset]}" \
+			"${machine[chassis_sku]}"
+		qemu_options+=(-smbios file="$t3bin")
+	else
+		smbios_add 3 \
+			"manufacturer=${machine[chassis_vendor]}" \
+			"version=${machine[chassis_version]}" \
+			"serial=${machine[chassis_serial]}" \
+			"asset=${machine[chassis_asset]}" \
+			"sku=${machine[chassis_sku]}"
+	fi
+	msg_info "$(gettext 'SMBIOS:') ${cyan}${machine[vendor]} ${machine[product]}${rst} - chassi ${yellow}${machine[chassis_type]:-default}${rst} - disco ${yellow}${disk_bus}${rst}"
+}
+
 sh_version() {
 	cat <<-EOF
 		${bold}${cyan}${0##*/} v${VERSION}${rst}
@@ -1325,6 +1670,9 @@ ${cyan}$(gettext 'Opções:')${reset}
     ${rst}   --remove_virbr_bridge ${orange}<name>        ${cyan}# $(gettext 'remover') virbr bridge - ex: --remove_virbr_bridge br0
     ${rst}-d|--drive ${orange}<device>                    ${cyan}# $(gettext 'anexa disco externo') - ex: -d /dev/sdX - (default: ${yellow}none${rst})
     ${rst}-m|--memory ${orange}<mem>                      ${cyan}# $(gettext 'memória inicial de convidado') - ex: -m 16G (default: ${yellow}8GB${rst})
+${red}new ${rst}-M|--machine ${orange}<perfil>                  ${cyan}# $(gettext 'simula uma máquina (fabricante/modelo/chassi/hardware)') - ex: -M dell-latitude-5420
+${red}new ${rst}   --list-machines                     ${cyan}# $(gettext 'lista os perfis de máquina disponíveis')
+${red}new ${rst}   --machine-from-host${orange}[=nome]          ${cyan}# $(gettext 'cria um perfil a partir desta máquina') (${yellow}sudo${cyan}: $(gettext 'inclui serial/uuid')${cyan})
     ${rst}-v|--vdisk ${orange}<filename.img|qcow2>        ${cyan}# $(gettext 'usa um disco virtual interno') - (default: ${yellow}none${rst})
     ${rst}   --cvdisk ${orange}<filename>                 ${cyan}# $(gettext 'cria um disco virtual para uso interno')
     ${rst}   --rvdisk ${orange}<filename>                 ${cyan}# $(gettext 'remove um disco virtual')
@@ -1352,6 +1700,7 @@ ${red}new ${rst}-C|--cache ${orange}<mode>                      ${cyan}# none,wr
     $ ${orange}$APP${reset} file.iso                    ${cyan}#$(gettext 'Execute uma imagem usando BIOS')${rst}
     $ ${orange}$APP${reset} -b file.img                 ${cyan}#$(gettext 'Execute uma imagem, em ponte, usando BIOS')${rst}
     $ ${orange}$APP${reset} -m 16G /dev/sdX             ${cyan}#$(gettext 'Execute uma device, 16GB memória, usando BIOS') ${rst}
+    $ ${orange}$APP${reset} -M dell-latitude-5420 file.iso sda.img  ${cyan}#$(gettext 'Simula a instalação num notebook Dell Latitude 5420') ${rst}
   ${bold}${cyan}$(gettext 'Uso mais comum:')${rst}
     $ ${orange}$APP${reset} [-u] /dev/sdX ${rst}
     $ ${orange}$APP${reset} [-u] filename.iso sda.img ${rst}
@@ -1730,9 +2079,12 @@ main::configure_uefi() {
 }
 
 main::build_base_qemu() {
+	local cpu="${machine[cpu]:-host}"
+	[[ -n "${machine[cpu_name]}" ]] && cpu+=",model-id=$(smbios_escape "${machine[cpu_name]}")"
+
 	qemu_options+=(-no-fd-bootchk)
-	qemu_options+=(-cpu host)
-	qemu_options+=(-smp "$(nproc)")
+	qemu_options+=(-cpu "$cpu")
+	qemu_options+=(-smp "${machine[smp]:-$(nproc)}")
 	qemu_options+=(-m "${xmem}")
 	qemu_options+=(-k pt-br)
 }
@@ -1749,7 +2101,7 @@ main::attach_primary_devices() {
 		elif [[ "$img" == *.qcow2 ]]; then
 			msg_info "$(gettext 'Anexando vdisk') ${yellow}#${bootindex}: ${bold}${cyan}${img}"
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+			disk_device "disk${bootindex}" "${bootindex}"
 
 		elif [[ -b "$img" ]]; then
 			msg_info "$(gettext 'Anexando device') ${yellow}#${bootindex}: ${bold}${cyan}${img} (cache=${cache_type})"
@@ -1761,12 +2113,12 @@ main::attach_primary_devices() {
 				#       -drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=directsync,aio=io_uring
 				-drive file="${img}",if=none,id=disk${bootindex},format=raw,media=disk,cache=${cache_type},aio=io_uring
 			)
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+			disk_device "disk${bootindex}" "${bootindex}"
 
 		else
 			msg_info "$(gettext 'Anexando vdisk') ${yellow}#${bootindex}: ${bold}${cyan}${img} (raw)"
 			qemu_options+=(-drive file="${img}",if=none,id=disk${bootindex},format=raw,cache=${cache_type})
-			qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+			disk_device "disk${bootindex}" "${bootindex}"
 		fi
 
 		((bootindex++))
@@ -1789,13 +2141,15 @@ main::attach_extra_vdisks() {
 			qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 		fi
 
-		qemu_options+=(-device virtio-blk,drive=disk${bootindex},bootindex=${bootindex})
+		disk_device "disk${bootindex}" "${bootindex}"
 		((bootindex++))
 	done
 }
 
 main::configure_name() {
-	qemu_options+=(-name "chili-fr")
+	local vmname="chili-fr"
+	[[ -n "$machine_file" ]] && vmname+=" [$(basename "$machine_file" .conf)]"
+	qemu_options+=(-name "$vmname")
 }
 
 main::configure_display_and_audio() {
@@ -1878,6 +2232,7 @@ main() {
 	main::process_devices
 	main::configure_uefi
 	main::build_base_qemu
+	main::configure_smbios
 	main::attach_primary_devices
 	main::attach_extra_vdisks
 	main::configure_name
@@ -1913,8 +2268,8 @@ fi
 sh_checkDependencies
 sh_checkVdiskFiles
 
-OPTIONS=:a:m:ub:Vnhd:stg:v:i:N:c:r:loqC:
-LONGOPTIONS=:audio:,memory:,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk:,list,output,quiet,share:,display:,cache:
+OPTIONS=:a:m:M:ub:Vnhd:stg:v:i:N:c:r:loqC:
+LONGOPTIONS=:audio:,memory:,machine:,list-machines,machine-from-host::,uefi,bridge:,version,nocolor,help,drive:,spice,tty,video:,image:,network:,create_virbr_bridge:,remove_virbr_bridge:,create_real_bridge:,remove_real_bridge:,cvdisk,rvdisk,vdisk:,list,output,quiet,share:,display:,cache:
 opts=($(getopt --options="$OPTIONS" --longoptions="$LONGOPTIONS" --name "$0" -- "$@"))
 #eval set -- "${opts[*]}"
 eval set -- "${opts[@]}"
@@ -1928,6 +2283,23 @@ while [ $# -gt 0 ]; do
 	-u | --uefi)
 		msg_info "$(gettext 'Parametro') ${yellow}--uefi${rst} $(gettext 'detectado: usando uefi') ${rst}"
 		uefi=true
+		LPARAM_UEFI=true
+		;;
+	-M | --machine)
+		if [[ -z "$2" || "$2" == "--" ]]; then
+			die "$(gettext 'Argumento inválido para') ${1}, $(gettext 'falta o nome do perfil') - $(gettext 'use') ${cyan}--list-machines${rst}" >&2
+		fi
+		machine_name="$2"
+		msg_info "$(gettext 'Parametro') ${yellow}--machine${rst} $(gettext 'detectado: usando perfil') ${cyan}'$2'${rst}"
+		shift
+		;;
+	--list-machines)
+		sh_list_machines
+		exit 0
+		;;
+	--machine-from-host)
+		sh_machine_from_host "$2"
+		exit $?
 		;;
 	-i | --image)
 		if [[ -z "$2" || "$2" == "--" ]]; then
@@ -2030,6 +2402,7 @@ while [ $# -gt 0 ]; do
 	-g | --video)
 		if [[ " ${avideodevice[*]} " =~ [[:space:]]${2}[[:space:]] ]]; then
 			videodevice="$2"
+			LPARAM_VIDEO=true
 			shift
 		else
 			die "${red}$(gettext 'Argumento inválido para') ${yellow}-g|--video${rst} $(gettext 'Use:') ${cyan}${avideodevice[@]}${rst}" >&2
@@ -2109,6 +2482,7 @@ while [ $# -gt 0 ]; do
 	-m | --memory)
 		if [[ $2 =~ ^[0-9]+[MGmg]$ ]]; then
 			xmem=$2
+			LPARAM_MEM=true
 			log_msg "$(gettext 'Parametro') ${yellow}$1 ${rst}$(gettext 'detectado:') ${cyan}$2${rst}"
 			shift
 		else
@@ -2129,6 +2503,9 @@ while [ $# -gt 0 ]; do
 	esac
 	shift
 done
+
+# perfil de máquina: aplicado depois das opções, que têm prioridade sobre ele
+main::apply_machine_profile
 
 audio="${audioserver:-$(detect_audio_server)}"
 if $LPARAM_AUDIO; then
