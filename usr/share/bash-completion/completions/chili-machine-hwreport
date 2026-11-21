@@ -1,0 +1,47 @@
+# bash completion para chili-machine-hwreport                  -*- shell-script -*-
+#
+#  Created: sáb 21 nov 2026 01:58:07 -04
+#  Updated: sáb 21 nov 2026 01:58:07 -04
+#
+#  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+
+_chili_machine_hwreport() {
+	local cur prev words cword
+	if declare -F _init_completion >/dev/null; then
+		_init_completion -n = || return
+	else
+		cur="${COMP_WORDS[COMP_CWORD]}"
+		prev="${COMP_WORDS[COMP_CWORD - 1]}"
+	fi
+
+	# nome sugerido: fabricante-modelo desta máquina (o mesmo padrão do script)
+	_chili_machine_hwreport_name() {
+		local n=''
+		if [[ -r /sys/class/dmi/id/sys_vendor ]]; then
+			n="$(cat /sys/class/dmi/id/sys_vendor)-$(cat /sys/class/dmi/id/product_name)"
+			n="${n,,}"
+			n="${n//[^a-z0-9._-]/-}"
+			while [[ "$n" == *--* ]]; do n="${n//--/-}"; done
+			n="${n#-}"
+			n="${n%-}"
+		fi
+		printf '%s' "$n"
+	}
+
+	case "$prev" in
+	-n | --name)
+		mapfile -t COMPREPLY < <(compgen -W "$(_chili_machine_hwreport_name)" -- "$cur")
+		return
+		;;
+	esac
+
+	if [[ "$cur" == --name=* ]]; then
+		mapfile -t COMPREPLY < <(compgen -P '--name=' -W "$(_chili_machine_hwreport_name)" -- "${cur#*=}")
+		return
+	fi
+
+	mapfile -t COMPREPLY < <(compgen -W "-n --name -s --save-only -y --yes --nocolor -V --version -h --help" -- "$cur")
+} &&
+	complete -F _chili_machine_hwreport chili-machine-hwreport
+
+# ex: filetype=sh
