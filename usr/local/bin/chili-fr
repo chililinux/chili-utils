@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 02:40:40 -04
+#  Updated: sáb 21 nov 2026 02:45:48 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -2007,9 +2007,16 @@ list_isos() {
 }
 
 sh_not_found() {
-	# sh_not_found <arquivo digitado> : erro primeiro, sugestões, discos e comando pronto
-	local img="$1" f w=4 first='' arg
+	# sh_not_found <arquivo digitado> : erro primeiro, sugestões, ISOs ou discos e comando pronto
+	local img="$1" f w=4 first='' arg kind
 	local -a sugs=() cmd=()
+
+	# mostra só o que é relativo ao que faltou: ISO -> ISOs, disco -> discos
+	case "${img,,}" in
+	*.iso) kind=iso ;;
+	*.qcow2 | *.img | *.raw) kind=disk ;;
+	*) kind=all ;;
+	esac
 
 	echo
 	log_msg false "${red}${img}${rst} $(gettext 'não encontrado')"
@@ -2030,7 +2037,7 @@ sh_not_found() {
 		while IFS= read -r f; do where+=("$(tilde_path "$f")"); done < <(iso_search_dirs)
 		msg_info_tab "$(gettext 'nenhum arquivo parecido em:') ${cyan}$(IFS=,; printf '%s' "${where[*]}" | sed 's/,/, /g')${rst}"
 		# sem nome parecido: mostra as ISOs que existem nesses lugares
-		while IFS= read -r f; do isos+=("$f"); done < <(list_isos)
+		[[ $kind != disk ]] && while IFS= read -r f; do isos+=("$f"); done < <(list_isos)
 		if ((${#isos[@]})); then
 			echo
 			msg_info "$(gettext 'ISOs disponíveis')"
@@ -2042,7 +2049,7 @@ sh_not_found() {
 		fi
 	fi
 
-	sh_list_vdisks
+	[[ $kind != iso ]] && sh_list_vdisks
 
 	if [[ -n "$first" ]]; then
 		for arg in "${orig_args[@]}"; do
