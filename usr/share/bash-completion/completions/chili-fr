@@ -1,0 +1,146 @@
+# bash completion para chili-fr                                -*- shell-script -*-
+#
+#  Created: sáb 21 nov 2026 01:58:07 -04
+#  Updated: sáb 21 nov 2026 01:58:07 -04
+#
+#  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+#
+#  As listas abaixo (vídeo, display, cache, rede, áudio) seguem as que o
+#  chili-fr aceita; ao mudar uma lá, mude aqui também.
+
+_chili_fr_machines() {
+	local dir f
+	for dir in "${XDG_CONFIG_HOME:-$HOME/.config}/chili-fr/machines" /usr/share/chili-fr/machines; do
+		[[ -d "$dir" ]] || continue
+		for f in "$dir"/*.conf; do
+			[[ -f "$f" ]] || continue
+			f="${f##*/}"
+			printf '%s\n' "${f%.conf}"
+		done
+	done | sort -u
+}
+
+_chili_fr_bridges() {
+	ip -o link show type bridge 2>/dev/null | awk -F': ' '{print $2}'
+}
+
+_chili_fr_vdisks() {
+	local dir="$HOME/.chili-fr/vdisk"
+	[[ -d "$dir" ]] || return
+	find "$dir" -maxdepth 1 -type f \( -name '*.img' -o -name '*.qcow2' \) -printf '%f\n' 2>/dev/null
+}
+
+_chili_fr_blockdevs() {
+	lsblk -dnpo NAME,TYPE 2>/dev/null | awk '$2 == "disk" || $2 == "loop" {print $1}'
+}
+
+_chili_fr() {
+	local cur prev words cword
+	shopt -q extglob || shopt -s extglob # filtros *.@(iso|img|...)
+	if declare -F _init_completion >/dev/null; then
+		_init_completion -n = || return
+	else
+		cur="${COMP_WORDS[COMP_CWORD]}"
+		prev="${COMP_WORDS[COMP_CWORD - 1]}"
+	fi
+
+	local opts="
+		-a --audio -b --bridge -c --create_real_bridge -r --remove_real_bridge
+		--create_virbr_bridge --remove_virbr_bridge -d --drive -m --memory
+		-M --machine --list-machines --machine-from-host= -v --vdisk --cvdisk --rvdisk
+		-g --video --display -C --cache -N --network -n --nocolor -s --spice
+		-t --tty -l --list -u --uefi -V --version -o --output -q --quiet
+		-i --image --share -h --help"
+
+	case "$prev" in
+	-M | --machine)
+		mapfile -t COMPREPLY < <(compgen -W "$(_chili_fr_machines)" -- "$cur")
+		# também aceita o caminho de um arquivo .conf
+		[[ "$cur" == */* || "$cur" == .* ]] && mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -f -X '!*.conf' -- "$cur")
+		return
+		;;
+	-b | --bridge | -r | --remove_real_bridge | --remove_virbr_bridge)
+		mapfile -t COMPREPLY < <(compgen -W "$(_chili_fr_bridges)" -- "$cur")
+		return
+		;;
+	-c | --create_real_bridge | --create_virbr_bridge)
+		mapfile -t COMPREPLY < <(compgen -W "br0 br1 br2" -- "$cur")
+		return
+		;;
+	-d | --drive)
+		mapfile -t COMPREPLY < <(compgen -W "$(_chili_fr_blockdevs)" -- "$cur")
+		return
+		;;
+	-m | --memory)
+		mapfile -t COMPREPLY < <(compgen -W "1G 2G 3G 4G 6G 8G 12G 16G 32G" -- "$cur")
+		return
+		;;
+	-v | --vdisk)
+		mapfile -t COMPREPLY < <(compgen -W "$(_chili_fr_vdisks)" -- "$cur")
+		mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -f -X '!*.@(img|qcow2|raw)' -- "$cur")
+		return
+		;;
+	-g | --video)
+		mapfile -t COMPREPLY < <(compgen -W "ati-vga bochs-display cirrus-vga none qxl qxl-vga ramfb VGA
+			virtio-gpu virtio-gpu-gl virtio-vga virtio-vga-gl virtio-gpu-rutabaga-pci vmware-svga" -- "$cur")
+		return
+		;;
+	--display)
+		mapfile -t COMPREPLY < <(compgen -W "gtk sdl egl-headless curses spice-app dbus none" -- "$cur")
+		return
+		;;
+	-C | --cache)
+		mapfile -t COMPREPLY < <(compgen -W "none writeback writethrough directsync unsafe" -- "$cur")
+		return
+		;;
+	-N | --network)
+		mapfile -t COMPREPLY < <(compgen -W "virtio-net-pci e1000 rtl8139 vmxnet3 ne2k_pci ne2k_isa
+			pcnet smc91c111 i82551 i82557b i82559er" -- "$cur")
+		return
+		;;
+	-a | --audio)
+		mapfile -t COMPREPLY < <(compgen -W "pipewire pa jack none" -- "$cur")
+		return
+		;;
+	--share)
+		mapfile -t COMPREPLY < <(compgen -d -- "$cur")
+		return
+		;;
+	-i | --image)
+		mapfile -t COMPREPLY < <(compgen -f -X '!*.@(iso|img|qcow2|raw)' -- "$cur")
+		mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -d -- "$cur")
+		return
+		;;
+	esac
+
+	# --machine-from-host=<nome>: sugere fabricante-modelo desta máquina
+	if [[ "$cur" == --machine-from-host=* ]]; then
+		local sug=''
+		if [[ -r /sys/class/dmi/id/sys_vendor ]]; then
+			sug="$(cat /sys/class/dmi/id/sys_vendor)-$(cat /sys/class/dmi/id/product_name)"
+			sug="${sug,,}"
+			sug="${sug//[^a-z0-9._-]/-}"
+		fi
+		mapfile -t COMPREPLY < <(compgen -P '--machine-from-host=' -W "$sug" -- "${cur#*=}")
+		return
+	fi
+
+	if [[ "$cur" == -* ]]; then
+		mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+		[[ "${COMPREPLY[*]}" == *= ]] && compopt -o nospace 2>/dev/null
+		return
+	fi
+
+	# argumentos soltos: ISO/imagem/disco virtual, discos /dev e os vdisks do chili-fr
+	if [[ "$cur" == /dev/* ]]; then
+		mapfile -t COMPREPLY < <(compgen -W "$(_chili_fr_blockdevs)" -- "$cur")
+		return
+	fi
+	mapfile -t COMPREPLY < <(compgen -W "$(_chili_fr_vdisks)" -- "$cur")
+	mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -f -X '!*.@(iso|img|qcow2|raw)' -- "$cur")
+	mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -d -- "$cur")
+	compopt -o filenames 2>/dev/null
+} &&
+	complete -F _chili_fr chili-fr
+
+# ex: filetype=sh
