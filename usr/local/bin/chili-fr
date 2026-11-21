@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 02:32:24 -04
+#  Updated: sáb 21 nov 2026 02:40:40 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -1290,7 +1290,7 @@ get_raw_images() {
 	local dir="${HOME_DIR:-$HOME}/vdisk"
 	# Lista os arquivos com extensão .img, removendo o caminho e separando por espaço
 	#  find "$dir" -maxdepth 1 -type f -name "*.img" -exec basename {} \; | tr '\n' ' ' | sed 's/ $//'
-	find "$dir" -maxdepth 1 -type f \( -name "*.img" -o -name "*.qcow2" \) -exec basename {} \; | tr '\n' ' ' | sed 's/ $//'
+	find -L "$dir/" -maxdepth 1 -type f \( -name "*.img" -o -name "*.qcow2" \) -exec basename {} \; | tr '\n' ' ' | sed 's/ $//'
 }
 
 supports_uefi() {
@@ -1906,14 +1906,18 @@ sh_create_vdisk_file() {
 tilde_path() {
 	# /home/fulano/x -> ~/x (só para exibição)
 	local p="$1"
-	[[ "$p" == "$HOME"/* ]] && p="~/${p#"$HOME"/}"
+	if [[ "$p" == "$HOME" ]]; then
+		p='~'
+	elif [[ "$p" == "$HOME"/* ]]; then
+		p="~/${p#"$HOME"/}"
+	fi
 	printf '%s' "$p"
 }
 
 file_row() {
 	# file_row <arquivo> <largura do nome> [nome exibido] : nome, tamanho, data e "(vazio)"
 	local f="$1" w="$2" disp="${3:-$(tilde_path "$1")}" size epoch hsize hdate empty=''
-	read -r size epoch < <(stat -c '%s %Y' "$f" 2>/dev/null) || return
+	read -r size epoch < <(stat -L -c '%s %Y' "$f" 2>/dev/null) || return
 	hsize=$(numfmt --to=iec --suffix= "$size" 2>/dev/null || echo "$size")
 	hdate=$(date -d "@$epoch" '+%d %b %Y %H:%M' 2>/dev/null)
 	# qcow2 recém-criado ocupa ~200K: nunca recebeu instalação
@@ -1926,7 +1930,7 @@ sh_list_vdisks() {
 	local dir="$HOME_DIR/vdisk" f w=4
 	local -a files=()
 	while IFS= read -r f; do files+=("$f"); done < <(
-		find "$dir" -maxdepth 1 -type f \( -name '*.qcow2' -o -name '*.img' -o -name '*.raw' -o -name '*.iso' \) 2>/dev/null | LC_ALL=C sort -f
+		find -L "$dir/" -maxdepth 1 -type f \( -name '*.qcow2' -o -name '*.img' -o -name '*.raw' -o -name '*.iso' \) 2>/dev/null | LC_ALL=C sort -f
 	)
 	echo
 	msg_info "$(gettext 'Discos virtuais em') ${cyan}$(tilde_path "$dir")${rst}"
@@ -1983,11 +1987,23 @@ suggest_files() {
 		done < <(iso_search_dirs)
 		if ((${#hits[@]})); then
 			printf '%s\n' "${hits[@]}" | awk '!seen[$0]++' | while IFS= read -r f; do
-				printf '%s\t%s\n' "$(stat -c %Y "$f")" "$f"
+				printf '%s\t%s\n' "$(stat -L -c %Y "$f")" "$f"
 			done | sort -rn | cut -f2 | head -5
 			return
 		fi
 	done
+}
+
+list_isos() {
+	# até 10 ISOs dos lugares de busca, mais recentes primeiro
+	local d f
+	while IFS= read -r d; do
+		shopt -s nullglob nocaseglob
+		for f in "$d"/*.iso; do
+			[[ -f "$f" ]] && printf '%s\t%s\n' "$(stat -L -c %Y "$f")" "$f"
+		done
+		shopt -u nullglob nocaseglob
+	done < <(iso_search_dirs) | awk -F'\t' '!seen[$2]++' | sort -rn | cut -f2 | head -10
 }
 
 sh_not_found() {
@@ -2009,6 +2025,21 @@ sh_not_found() {
 		done
 		for f in "${sugs[@]}"; do file_row "$f" "$w"; done
 		first="${sugs[0]}"
+	else
+		local -a where=() isos=()
+		while IFS= read -r f; do where+=("$(tilde_path "$f")"); done < <(iso_search_dirs)
+		msg_info_tab "$(gettext 'nenhum arquivo parecido em:') ${cyan}$(IFS=,; printf '%s' "${where[*]}" | sed 's/,/, /g')${rst}"
+		# sem nome parecido: mostra as ISOs que existem nesses lugares
+		while IFS= read -r f; do isos+=("$f"); done < <(list_isos)
+		if ((${#isos[@]})); then
+			echo
+			msg_info "$(gettext 'ISOs disponíveis')"
+			for f in "${isos[@]}"; do
+				f="$(tilde_path "$f")"
+				((${#f} > w)) && w=${#f}
+			done
+			for f in "${isos[@]}"; do file_row "$f" "$w"; done
+		fi
 	fi
 
 	sh_list_vdisks
