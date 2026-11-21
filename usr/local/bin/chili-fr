@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 02:45:48 -04
+#  Updated: sáb 21 nov 2026 02:49:37 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -2007,40 +2007,56 @@ list_isos() {
 }
 
 sh_not_found() {
-	# sh_not_found <arquivo digitado> : erro primeiro, sugestões, ISOs ou discos e comando pronto
-	local img="$1" f w=4 first='' arg kind
-	local -a sugs=() cmd=()
+	# sh_not_found <arquivo> [arquivo...] : relata tudo o que faltou de uma vez.
+	# Mostra só o que é relativo a cada um: ISO -> ISOs, disco -> discos.
+	local img f w arg kind where_txt
+	local show_isos=false show_disks=false all_suggested=true
+	local -a sugs=() cmd=() where=() isos=()
+	local -A first=()
 
-	# mostra só o que é relativo ao que faltou: ISO -> ISOs, disco -> discos
-	case "${img,,}" in
-	*.iso) kind=iso ;;
-	*.qcow2 | *.img | *.raw) kind=disk ;;
-	*) kind=all ;;
-	esac
+	while IFS= read -r f; do where+=("$(tilde_path "$f")"); done < <(iso_search_dirs)
+	where_txt="$(IFS=,; printf '%s' "${where[*]}" | sed 's/,/, /g')"
 
 	echo
-	log_msg false "${red}${img}${rst} $(gettext 'não encontrado')"
+	for img in "$@"; do
+		log_msg false "${red}${img}${rst} $(gettext 'não encontrado')"
+	done
 	msg_info_tab "$(gettext 'procurado em:') ${cyan}$(tilde_path "$PWD")${rst} ($(gettext 'pasta atual')) $(gettext 'e') ${cyan}$(tilde_path "$HOME_DIR/vdisk")${rst}"
 
-	while IFS= read -r f; do sugs+=("$f"); done < <(suggest_files "$img")
-	if ((${#sugs[@]})); then
+	for img in "$@"; do
+		case "${img,,}" in
+		*.iso) kind=iso ;;
+		*.qcow2 | *.img | *.raw) kind=disk ;;
+		*) kind=all ;;
+		esac
+		[[ $kind != iso ]] && show_disks=true
+
+		sugs=()
+		while IFS= read -r f; do sugs+=("$f"); done < <(suggest_files "$img")
 		echo
-		msg_info "$(gettext 'Você quis dizer?')"
-		for f in "${sugs[@]}"; do
-			f="$(tilde_path "$f")"
-			((${#f} > w)) && w=${#f}
-		done
-		for f in "${sugs[@]}"; do file_row "$f" "$w"; done
-		first="${sugs[0]}"
-	else
-		local -a where=() isos=()
-		while IFS= read -r f; do where+=("$(tilde_path "$f")"); done < <(iso_search_dirs)
-		msg_info_tab "$(gettext 'nenhum arquivo parecido em:') ${cyan}$(IFS=,; printf '%s' "${where[*]}" | sed 's/,/, /g')${rst}"
-		# sem nome parecido: mostra as ISOs que existem nesses lugares
-		[[ $kind != disk ]] && while IFS= read -r f; do isos+=("$f"); done < <(list_isos)
+		if ((${#sugs[@]})); then
+			msg_info "${cyan}${img}${rst}: $(gettext 'você quis dizer?')"
+			w=4
+			for f in "${sugs[@]}"; do
+				f="$(tilde_path "$f")"
+				((${#f} > w)) && w=${#f}
+			done
+			for f in "${sugs[@]}"; do file_row "$f" "$w"; done
+			first[$img]="${sugs[0]}"
+		else
+			msg_info "${cyan}${img}${rst}: $(gettext 'nenhum arquivo parecido em:') ${cyan}${where_txt}${rst}"
+			all_suggested=false
+			[[ $kind != disk ]] && show_isos=true
+		fi
+	done
+
+	# sem nome parecido para uma ISO: mostra as ISOs que existem
+	if $show_isos; then
+		while IFS= read -r f; do isos+=("$f"); done < <(list_isos)
 		if ((${#isos[@]})); then
 			echo
 			msg_info "$(gettext 'ISOs disponíveis')"
+			w=4
 			for f in "${isos[@]}"; do
 				f="$(tilde_path "$f")"
 				((${#f} > w)) && w=${#f}
@@ -2049,15 +2065,23 @@ sh_not_found() {
 		fi
 	fi
 
-	[[ $kind != iso ]] && sh_list_vdisks
+	$show_disks && sh_list_vdisks
 
-	if [[ -n "$first" ]]; then
+	# comando pronto só quando há sugestão para todos os que faltaram
+	if $all_suggested; then
 		for arg in "${orig_args[@]}"; do
-			[[ "$arg" == "$img" ]] && arg="$(tilde_path "$first")"
+			if [[ -n "${first[$arg]:-}" ]]; then
+				# no vdisk basta o nome: o chili-fr já procura lá
+				if [[ "${first[$arg]%/*}" -ef "$HOME_DIR/vdisk" ]]; then
+					arg="${first[$arg]##*/}"
+				else
+					arg="$(tilde_path "${first[$arg]}")"
+				fi
+			fi
 			cmd+=("$arg")
 		done
 		echo
-		msg_info "$(gettext 'Para usar o arquivo sugerido:')"
+		msg_info "$(gettext 'Para usar os arquivos sugeridos:')"
 		printf '    %s$%s %s %s\n' "$green" "$rst" "$APP" "${cmd[*]}"
 	fi
 	echo
@@ -2265,18 +2289,20 @@ main::init_main() {
 }
 
 main::process_devices() {
+	local -a missing=()
+
+	# confere todos os arquivos antes, para relatar de uma vez tudo o que faltou
 	for img in "${params[@]}"; do
 		[[ -z "$img" ]] && {
 			sh_list_vdisks
 			die "Erro: vdisk/iso/device #${count} não especificada!"
 		}
+		has_file "$img" || has_file "$HOME_DIR/vdisk/$img" || missing+=("$img")
+	done
+	((${#missing[@]})) && sh_not_found "${missing[@]}"
 
-		if ! has_file "$img"; then
-			if ! has_file "$HOME_DIR/vdisk/$img"; then
-				sh_not_found "$img"
-			fi
-			img="$HOME_DIR/vdisk/$img"
-		fi
+	for img in "${params[@]}"; do
+		has_file "$img" || img="$HOME_DIR/vdisk/$img"
 
 		devices+=("$img")
 
