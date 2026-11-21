@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 01:47:28 -04
+#  Updated: sáb 21 nov 2026 02:32:24 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -1903,12 +1903,127 @@ sh_create_vdisk_file() {
 	done
 }
 
+tilde_path() {
+	# /home/fulano/x -> ~/x (só para exibição)
+	local p="$1"
+	[[ "$p" == "$HOME"/* ]] && p="~/${p#"$HOME"/}"
+	printf '%s' "$p"
+}
+
+file_row() {
+	# file_row <arquivo> <largura do nome> [nome exibido] : nome, tamanho, data e "(vazio)"
+	local f="$1" w="$2" disp="${3:-$(tilde_path "$1")}" size epoch hsize hdate empty=''
+	read -r size epoch < <(stat -c '%s %Y' "$f" 2>/dev/null) || return
+	hsize=$(numfmt --to=iec --suffix= "$size" 2>/dev/null || echo "$size")
+	hdate=$(date -d "@$epoch" '+%d %b %Y %H:%M' 2>/dev/null)
+	# qcow2 recém-criado ocupa ~200K: nunca recebeu instalação
+	[[ "$f" == *.qcow2 ]] && ((size < 1048576)) && empty="  ${yellow}($(gettext 'vazio'))${rst}"
+	printf "    %-*s %8s   %s%b\n" "$w" "$disp" "$hsize" "$hdate" "$empty"
+}
+
 sh_list_vdisks() {
-	replicate "================== $(gettext 'DISCOS VIRTUAIS DISPONÍVEIS em') $HOME_DIR/vdisk ===================" 1
-	#	echo -n ${bpurple}
-	ls -lh $HOME_DIR/vdisk/
-	#	echo -n $rst
-	replicate '='
+	# discos virtuais e ISOs de ~/.chili-fr/vdisk, em ordem alfabética
+	local dir="$HOME_DIR/vdisk" f w=4
+	local -a files=()
+	while IFS= read -r f; do files+=("$f"); done < <(
+		find "$dir" -maxdepth 1 -type f \( -name '*.qcow2' -o -name '*.img' -o -name '*.raw' -o -name '*.iso' \) 2>/dev/null | LC_ALL=C sort -f
+	)
+	echo
+	msg_info "$(gettext 'Discos virtuais em') ${cyan}$(tilde_path "$dir")${rst}"
+	if ((${#files[@]} == 0)); then
+		msg_info_tab "$(gettext 'nenhum disco encontrado - crie um com') ${cyan}$APP --cvdisk${rst}"
+		return
+	fi
+	for f in "${files[@]}"; do ((${#f} - ${#dir} - 1 > w)) && w=$((${#f} - ${#dir} - 1)); done
+	printf "    ${bold}%-*s %8s   %s${rst}\n" "$w" "$(gettext 'NOME')" "$(gettext 'TAMANHO')" "$(gettext 'MODIFICADO')"
+	for f in "${files[@]}"; do
+		file_row "$f" "$w" "${f##*/}"
+	done
+}
+
+iso_search_dirs() {
+	# onde procurar arquivos parecidos: pasta atual, Downloads, vdisk e raiz do $HOME
+	local d dl="$HOME/Downloads" line
+	if [[ -r "$HOME/.config/user-dirs.dirs" ]]; then
+		line=$(grep -m1 '^XDG_DOWNLOAD_DIR=' "$HOME/.config/user-dirs.dirs")
+		line="${line#*=}"
+		line="${line//\"/}"
+		[[ -n "$line" ]] && dl="${line/\$HOME/$HOME}"
+	fi
+	for d in "$PWD" "$dl" "$HOME/Downloads" "$HOME_DIR/vdisk" "$HOME"; do
+		[[ -d "$d" ]] && printf '%s\n' "$d"
+	done | awk '!seen[$0]++'
+}
+
+suggest_files() {
+	# suggest_files <nome digitado> : até 5 arquivos parecidos, mais recentes primeiro
+	local base="${1##*/}" stem ext pat key d
+	ext="${base##*.}"
+	[[ "$ext" == "$base" ]] && ext=''
+	stem="${base%.*}"
+	stem="${stem,,}"
+	case "${ext,,}" in
+	iso) pat='*.iso' ;;
+	qcow2 | img | raw) pat='*.@(qcow2|img|raw)' ;;
+	*) pat='*.@(iso|qcow2|img|raw)' ;;
+	esac
+	# tenta o nome inteiro (sem extensão) e, se nada casar, só a primeira parte
+	for key in "$stem" "${stem%%[-_.]*}"; do
+		[[ -z "$key" ]] && continue
+		local -a hits=()
+		while IFS= read -r d; do
+			local f
+			shopt -s nullglob extglob nocaseglob
+			for f in "$d"/$pat; do
+				[[ -f "$f" ]] || continue
+				local n="${f##*/}"
+				[[ "${n,,}" == *"$key"* ]] && hits+=("$f")
+			done
+			shopt -u nullglob nocaseglob
+		done < <(iso_search_dirs)
+		if ((${#hits[@]})); then
+			printf '%s\n' "${hits[@]}" | awk '!seen[$0]++' | while IFS= read -r f; do
+				printf '%s\t%s\n' "$(stat -c %Y "$f")" "$f"
+			done | sort -rn | cut -f2 | head -5
+			return
+		fi
+	done
+}
+
+sh_not_found() {
+	# sh_not_found <arquivo digitado> : erro primeiro, sugestões, discos e comando pronto
+	local img="$1" f w=4 first='' arg
+	local -a sugs=() cmd=()
+
+	echo
+	log_msg false "${red}${img}${rst} $(gettext 'não encontrado')"
+	msg_info_tab "$(gettext 'procurado em:') ${cyan}$(tilde_path "$PWD")${rst} ($(gettext 'pasta atual')) $(gettext 'e') ${cyan}$(tilde_path "$HOME_DIR/vdisk")${rst}"
+
+	while IFS= read -r f; do sugs+=("$f"); done < <(suggest_files "$img")
+	if ((${#sugs[@]})); then
+		echo
+		msg_info "$(gettext 'Você quis dizer?')"
+		for f in "${sugs[@]}"; do
+			f="$(tilde_path "$f")"
+			((${#f} > w)) && w=${#f}
+		done
+		for f in "${sugs[@]}"; do file_row "$f" "$w"; done
+		first="${sugs[0]}"
+	fi
+
+	sh_list_vdisks
+
+	if [[ -n "$first" ]]; then
+		for arg in "${orig_args[@]}"; do
+			[[ "$arg" == "$img" ]] && arg="$(tilde_path "$first")"
+			cmd+=("$arg")
+		done
+		echo
+		msg_info "$(gettext 'Para usar o arquivo sugerido:')"
+		printf '    %s$%s %s %s\n' "$green" "$rst" "$APP" "${cmd[*]}"
+	fi
+	echo
+	exit 1
 }
 
 sh_remove_vdisk_file() {
@@ -2120,9 +2235,7 @@ main::process_devices() {
 
 		if ! has_file "$img"; then
 			if ! has_file "$HOME_DIR/vdisk/$img"; then
-				log_msg 1 "Check input ${yellow}#${count}: ${cyan}$img"
-				sh_list_vdisks
-				die "$(gettext 'Erro:') vdisk/iso/device #${count} ${cyan}${img} ${red}$(gettext 'não localizada, tente os listados acima!')${reset}"
+				sh_not_found "$img"
 			fi
 			img="$HOME_DIR/vdisk/$img"
 		fi
@@ -2335,6 +2448,7 @@ run_qemu() {
 }
 
 params="${@}"
+declare -a orig_args=("$@") # argumentos como digitados (comando pronto em sh_not_found)
 sh_setvarcolors
 #sh_copyright
 
