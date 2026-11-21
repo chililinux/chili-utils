@@ -5,7 +5,7 @@
 #  chili-machine-hwreport - gera o perfil desta máquina para o chili-fr (-M) e
 #                           envia ao mantenedor como issue no GitHub
 #  Created: sáb 21 nov 2026 01:53:30 -04
-#  Updated: sáb 21 nov 2026 01:53:30 -04
+#  Updated: sáb 21 nov 2026 02:10:43 -04
 #
 #  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -48,6 +48,7 @@ declare send=true
 declare assume_yes=false
 declare name=''
 declare nocolor=false
+declare clipboard_ok=false
 
 sh_setvarcolors() {
 	if ! $nocolor && [[ -t 1 ]] && command -v tput &>/dev/null; then
@@ -279,6 +280,42 @@ save_profile() {
 	msg_ok "$(gettext 'Perfil salvo em') ${cyan}$outfile${rst}"
 }
 
+copy_to_clipboard() {
+	# copia o perfil para a área de transferência, para colar direto numa
+	# conversa (Telegram, e-mail...). Retorna 1 se não conseguiu.
+	if [[ -n "$REAL_USER" ]]; then
+		# com sudo/doas não há acesso à sessão gráfica do usuário
+		msg_warn "$(gettext 'Rodando com sudo não dá para copiar para a área de transferência. Rode sem sudo (não precisa de root).')"
+		return 1
+	fi
+	if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null; then
+		printf '%s\n' "$profile" | wl-copy 2>/dev/null || return 1
+	elif [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null; then
+		printf '%s\n' "$profile" | xclip -selection clipboard 2>/dev/null || return 1
+	elif [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null; then
+		printf '%s\n' "$profile" | xsel --clipboard --input 2>/dev/null || return 1
+	elif [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+		msg "$(gettext 'Dica: instale o pacote') ${cyan}wl-clipboard${rst} $(gettext 'para o perfil ir direto para a área de transferência.')"
+		return 1
+	elif [[ -n "${DISPLAY:-}" ]]; then
+		msg "$(gettext 'Dica: instale o pacote') ${cyan}xclip${rst} $(gettext 'para o perfil ir direto para a área de transferência.')"
+		return 1
+	else
+		return 1 # sem sessão gráfica (TTY)
+	fi
+	msg_ok "$(gettext 'Perfil copiado para a área de transferência (Ctrl+V para colar)')"
+	clipboard_ok=true
+}
+
+msg_other_ways() {
+	echo
+	if $clipboard_ok; then
+		msg "$(gettext 'Sem conta no GitHub? O perfil já está na área de transferência: cole (Ctrl+V) numa conversa com o mantenedor no Telegram ou num e-mail.')"
+	else
+		msg "$(gettext 'Sem conta no GitHub? Envie ao mantenedor, por Telegram ou e-mail, o arquivo') ${cyan}$outfile${rst}"
+	fi
+}
+
 #----------------------------------------------------------------------------
 # envio
 #----------------------------------------------------------------------------
@@ -353,6 +390,7 @@ Comentários (opcional):
 			xdg-open "$url" &>/dev/null &
 		fi
 	fi
+	msg_other_ways
 }
 
 #----------------------------------------------------------------------------
@@ -397,6 +435,13 @@ echo "${black}---${rst}"
 echo
 
 save_profile
-$send || exit 0
-readconf "$(gettext 'Enviar este perfil ao mantenedor do VoidBR/chili-fr?')" || exit 0
+copy_to_clipboard
+if ! $send; then
+	msg_other_ways
+	exit 0
+fi
+if ! readconf "$(gettext 'Enviar este perfil ao mantenedor do VoidBR/chili-fr?')"; then
+	msg_other_ways
+	exit 0
+fi
 send_profile
