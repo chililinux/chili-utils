@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sex 20 nov 2026 23:52:51 -04
+#  Updated: sáb 21 nov 2026 01:32:36 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -48,7 +48,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.11.20-20261120'
+readonly VERSION='3.11.21-20261121'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -1408,8 +1408,64 @@ dmi_read() {
 	tr -d '\n"' <"$f" 2>/dev/null
 }
 
+dmi_is_generic() {
+	# texto de fábrica que o BIOS deixa sem preencher - não serve para descrição
+	local v="${1,,}"
+	v="${v#"${v%%[![:space:]]*}"}"
+	v="${v%"${v##*[![:space:]]}"}"
+	case "$v" in
+	'' | tbd | none | n/a | na | '*' | 'not specified' | 'not applicable' | 'not available' | 'not defined' | \
+		'to be filled by o.e.m.' | 'default string' | 'system version' | 'system product name' | \
+		'type1productconfigid' | 'chassis version' | 'base board version' | 'x.x' | 'revision mp')
+		return 0
+		;;
+	esac
+	return 1
+}
+
+cpu_model_from_flags() {
+	# cpu_model_from_flags <vendor_id> <flags>
+	# Escolhe o modelo de CPU do QEMU mais novo cujas instruções a CPU real possui,
+	# para a VM não oferecer instruções que a máquina não tem (ex: AES nos Core i3
+	# antigos). AMD, CPU mais nova que Skylake ou desconhecida -> host.
+	local vendor="$1" flags=" $2 " model extra=''
+	_has() {
+		local x
+		for x; do [[ "$flags" == *" $x "* ]] || return 1; done
+	}
+
+	if [[ "$vendor" != GenuineIntel ]] || _has avx512f || _has sha_ni || _has gfni; then
+		echo host
+		return
+	fi
+	_has lm ssse3 || { echo qemu64; return; }
+
+	# nível pela geração (sem AES/PCLMUL, que a Intel cortou de vários i3/Pentium/Celeron)
+	model=Conroe
+	if _has sse4_1; then model=Penryn; fi
+	if [[ $model == Penryn ]] && _has sse4_2 popcnt; then model=Nehalem; fi
+	if [[ $model == Nehalem ]] && _has avx xsave; then model=SandyBridge; fi
+	if [[ $model == SandyBridge ]] && _has f16c; then model=IvyBridge; fi
+	if [[ $model == IvyBridge ]] && _has avx2 fma bmi1 bmi2 movbe; then model=Haswell-noTSX; fi
+	if [[ $model == Haswell-noTSX ]] && _has adx rdseed; then model=Broadwell-noTSX; fi
+	if [[ $model == Broadwell-noTSX ]] && _has clflushopt xsavec; then model=Skylake-Client-noTSX-IBRS; fi
+
+	case "$model" in
+	Conroe | Penryn) ;;
+	Nehalem)
+		_has aes pclmulqdq && model=Westmere
+		;;
+	*)
+		_has aes || extra+=',-aes'
+		_has pclmulqdq || extra+=',-pclmulqdq'
+		[[ $model != SandyBridge ]] && ! _has rdrand && extra+=',-rdrand'
+		;;
+	esac
+	echo "${model}${extra}"
+}
+
 sh_machine_from_host() {
-	local name="$1" out key val bus efi memgb cpu_name
+	local name="$1" out key val bus efi memgb cpu_name cpu_model
 	local -a pairs
 
 	[[ -d /sys/class/dmi/id ]] || die "$(gettext 'DMI não disponível neste host') (/sys/class/dmi/id)"
@@ -1430,6 +1486,9 @@ sh_machine_from_host() {
 
 	cpu_name=$(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo)
 	cpu_name="${cpu_name//\"/}"
+	cpu_model=$(cpu_model_from_flags \
+		"$(awk -F': ' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)" \
+		"$(awk -F': ' '/^flags/{print $2; exit}' /proc/cpuinfo)")
 	if compgen -G '/sys/block/nvme*' >/dev/null; then bus='nvme'; else bus='sata'; fi
 	[[ -d /sys/firmware/efi ]] && efi=true || efi=false
 	memgb=$(awk '/^MemTotal/{printf "%d", ($2/1048576)+0.999}' /proc/meminfo)
@@ -1456,19 +1515,21 @@ sh_machine_from_host() {
 		"chassis_version=$(dmi_read chassis_version)"
 		"chassis_serial=$(dmi_read chassis_serial)"
 		"chassis_asset=$(dmi_read chassis_asset_tag)"
-		"cpu=host"
+		"cpu=$cpu_model"
 		"cpu_name=$cpu_name"
 		"smp=$(nproc)"
 		"disk_bus=$bus"
 		"uefi=$efi"
 	)
 	# product_version costuma trazer o nome comercial (ex: Lenovo: "ThinkPad T14 Gen 2i")
+	# (ignora textos de fábrica como "TBD", "Not Specified", "To be filled by O.E.M.")
 	val=$(dmi_read product_version)
-	[[ -n "$val" ]] && pairs[0]+=" - $val"
+	dmi_is_generic "$val" || pairs[0]+=" - $val"
 
 	{
 		echo "# perfil de máquina gerado por $APP --machine-from-host em $(date '+%d/%m/%Y %H:%M')"
 		echo "# serial/uuid só são lidos quando executado como root"
+		echo "# cpu: modelo do QEMU escolhido pelas instruções (flags) da CPU real"
 		for val in "${pairs[@]}"; do
 			key="${val%%=*}"
 			val="${val#*=}"
