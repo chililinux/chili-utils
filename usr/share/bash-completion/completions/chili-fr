@@ -1,7 +1,7 @@
 # bash completion para chili-fr                                -*- shell-script -*-
 #
 #  Created: sáb 21 nov 2026 01:58:07 -04
-#  Updated: sáb 21 nov 2026 01:58:07 -04
+#  Updated: sáb 21 nov 2026 02:40:40 -04
 #
 #  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -27,7 +27,7 @@ _chili_fr_bridges() {
 _chili_fr_vdisks() {
 	local dir="$HOME/.chili-fr/vdisk"
 	[[ -d "$dir" ]] || return
-	find "$dir" -maxdepth 1 -type f \( -name '*.img' -o -name '*.qcow2' \) -printf '%f\n' 2>/dev/null
+	find -L "$dir/" -maxdepth 1 -type f \( -name '*.img' -o -name '*.qcow2' \) -printf '%f\n' 2>/dev/null
 }
 
 _chili_fr_blockdevs() {
