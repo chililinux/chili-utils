@@ -5,7 +5,7 @@
 #  chili-machine-import - importa para o repositório um perfil de máquina
 #                         enviado por issue [perfil-maquina] (chili-machine-hwreport)
 #  Created: sáb 21 nov 2026 17:22:27 -04
-#  Updated: sáb 21 nov 2026 17:22:27 -04
+#  Updated: sáb 21 nov 2026 18:43:12 -04
 #
 #  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -60,13 +60,16 @@ declare save_only=false
 declare repo_dir=''
 declare name=''
 declare issue=''
+declare list_mode=false
+declare list_state='open'
 
 #----------------------------------------------------------------------------
 if [[ -t 1 ]] && command -v tput &>/dev/null; then
 	bold=$(tput bold) rst=$(tput sgr0) red="${bold}$(tput setaf 196)" green=$(tput setaf 2)
 	yellow="${bold}$(tput setaf 3)" cyan=$(tput setaf 6) black="${bold}$(tput setaf 0)"
+	orange=$(tput setaf 3)
 else
-	bold='' rst='' red='' green='' yellow='' cyan='' black=''
+	bold='' rst='' red='' green='' yellow='' cyan='' black='' orange=''
 fi
 msg() { printf '%s[%s➜%s]%s %b%s\n' "$black" "$yellow" "$black" "$rst" "$*" "$rst"; }
 msg_ok() { printf '%s[%s✓%s]%s %b%s\n' "$black" "$green" "$black" "$rst" "$*" "$rst"; }
@@ -84,19 +87,29 @@ confirm() {
 
 usage() {
 	cat <<EOF
-${bold}$APP${rst} v$VERSION - importa um perfil de máquina enviado por issue
+${bold}$APP${rst} v$VERSION - ${cyan}importa um perfil de máquina enviado por issue${rst}
 
-uso: $APP [opções] <número-da-issue>
+uso: ${orange}$APP${rst} [opções] ${orange}<número-da-issue>${rst}
+     ${orange}$APP${rst} [-l] [-a]                ${cyan}# sem número: lista as issues em aberto${rst}
 
-Opções:
-  -C <dir>     repositório chili-utils (padrão: raiz do git da pasta atual)
-  -n <nome>    nome do perfil (padrão: fabricante-modelo, ex: asus-x200ma)
-  -s           só salva o .conf (sem commit, push nem comentário na issue)
-  -y           não pergunta nada (usado pelo GitHub Actions)
-  -V           versão
-  -h           esta ajuda
+${cyan}Opções:${rst}
+    ${rst}-C ${orange}<dir>     ${cyan}# repositório chili-utils - (default: ${yellow}raiz do git da pasta atual${cyan})${rst}
+    ${rst}-n ${orange}<nome>    ${cyan}# nome do perfil - (default: ${yellow}fabricante-modelo${cyan}, ex: asus-x200ma)${rst}
+    ${rst}-l           ${cyan}# lista as issues ${yellow}[perfil-maquina]${cyan} em aberto${rst}
+    ${rst}-a           ${cyan}# com -l: lista também as fechadas${rst}
+    ${rst}-s           ${cyan}# só salva o .conf (sem commit, push nem comentário na issue)${rst}
+    ${rst}-y           ${cyan}# não pergunta nada - (usado pelo ${yellow}GitHub Actions${cyan})${rst}
+    ${rst}-V           ${cyan}# exibe a versão${rst}
+    ${rst}-h           ${cyan}# exibe esta ajuda${rst}
 
-Precisa do gh logado (ou GH_TOKEN definido, no Actions).
+${cyan}Exemplos:${rst}
+    $ ${orange}$APP${rst}                    ${cyan}# lista as issues em aberto${rst}
+    $ ${orange}$APP${rst} -l -a              ${cyan}# lista todas, inclusive as fechadas${rst}
+    $ ${orange}$APP${rst} 2                  ${cyan}# importa a issue #2 (pergunta antes de cada passo)${rst}
+    $ ${orange}$APP${rst} -s 2               ${cyan}# só gera o .conf da issue #2, para conferir${rst}
+    $ ${orange}$APP${rst} -n lenovo-s145 2   ${cyan}# importa com outro nome de arquivo${rst}
+
+${black}Precisa do ${rst}gh${black} logado (ou ${rst}GH_TOKEN${black} definido, no Actions) e do ${rst}jq${black}.${rst}
 EOF
 	exit 0
 }
@@ -161,11 +174,56 @@ commit_date() {
 	printf '%s %s %s %s -04' "${dias[$w]}" "$d" "${meses[$((10#$m - 1))]}" "$rest"
 }
 
+list_issues() {
+	# lista as issues [perfil-maquina]: número, data, autor, máquina e se já está cadastrada
+	local json n count=0 num date author title state body vendor product reg f dir
+	json=$(gh api --paginate "repos/$REPO/issues?state=$list_state&per_page=100") ||
+		die "não consegui listar as issues de $REPO"
+	dir="${repo_dir:-$(git rev-parse --show-toplevel 2>/dev/null)}"
+	[[ -d "$dir/$MACHINES_DIR" ]] || dir=''
+
+	echo
+	msg "Issues ${bold}$TITLE_TAG${rst} $([[ $list_state == open ]] && echo 'em aberto' || echo '(todas)') em ${cyan}$REPO${rst}"
+	while IFS=$'\t' read -r num date author state title; do
+		((++count))
+		body=$(jq -r --argjson n "$num" '.[] | select(.number == $n) | .body // ""' <<<"$json")
+		vendor=$(grep -m1 '^vendor=' <<<"$body" | cut -d'"' -f2)
+		product=$(grep -m1 '^product=' <<<"$body" | cut -d'"' -f2)
+		vendor=$(trim "$vendor")
+		product=$(trim "$product")
+		reg=''
+		if [[ -n "$dir" && -n "$vendor" && -n "$product" ]]; then
+			for f in "$dir/$MACHINES_DIR"/*.conf; do
+				[[ -f "$f" ]] || continue
+				if grep -qxF "vendor=\"$vendor\"" "$f" && grep -qxF "product=\"$product\"" "$f"; then
+					reg="  ${green}(já cadastrada: $(basename "$f" .conf))${rst}"
+					break
+				fi
+			done
+		fi
+		[[ $state == closed ]] && state=" ${black}[fechada]${rst}" || state=''
+		printf "  %s#%-4s%s %s%s%s  %s%-20s%s %s%b%b\n" "$yellow" "$num" "$rst" \
+			"$cyan" "$(date -d "$date" '+%d/%m/%Y' 2>/dev/null || echo "${date%%T*}")" "$rst" \
+			"$bold" "$author" "$rst" "${title#"$TITLE_TAG" }" "$state" "$reg"
+	done < <(jq -r --arg tag "$TITLE_TAG" \
+		'.[] | select(.pull_request | not) | select(.title | startswith($tag)) | [.number, .created_at, .user.login, .state, .title] | @tsv' <<<"$json")
+
+	if ((count == 0)); then
+		msg "nenhuma issue $([[ $list_state == open ]] && echo 'em aberto')"
+	else
+		echo
+		msg "Para importar: ${cyan}$APP <número>${rst}"
+	fi
+	exit 0
+}
+
 #----------------------------------------------------------------------------
-while getopts ':C:n:syVh' opt; do
+while getopts ':C:n:lasyVh' opt; do
 	case "$opt" in
 	C) repo_dir="$OPTARG" ;;
 	n) name="$OPTARG" ;;
+	l) list_mode=true ;;
+	a) list_state='all' ;;
 	s) save_only=true ;;
 	y) assume_yes=true ;;
 	V)
@@ -179,9 +237,12 @@ while getopts ':C:n:syVh' opt; do
 done
 shift $((OPTIND - 1))
 issue="${1:-}"
-[[ "$issue" =~ ^[0-9]+$ ]] || die "informe o número da issue (ex: $APP 12)"
 
 command -v gh >/dev/null || die "o gh (GitHub CLI) não está instalado"
+command -v jq >/dev/null || die "o jq não está instalado"
+# sem número (ou com -l): lista as issues em aberto
+{ $list_mode || [[ -z "$issue" ]]; } && list_issues
+[[ "$issue" =~ ^[0-9]+$ ]] || die "número de issue inválido: $issue (ex: $APP 12)"
 [[ -z "$repo_dir" ]] && repo_dir=$(git rev-parse --show-toplevel 2>/dev/null)
 [[ -d "$repo_dir/$MACHINES_DIR" ]] || die "não achei $MACHINES_DIR em '${repo_dir:-.}' (use -C <repositório chili-utils>)"
 cd "$repo_dir" || exit 1
@@ -303,7 +364,11 @@ if [[ -z "$name" ]]; then
 	model="${prof[product]}"
 	# Lenovo põe o "machine type" em product e o nome comercial em version
 	[[ "$(short_vendor "${prof[vendor]}")" == lenovo ]] && ! is_generic "${prof[version]:-}" && model="${prof[version]}"
-	name="$(short_vendor "${prof[vendor]}")-$(slug "$model")"
+	vshort="$(short_vendor "${prof[vendor]}")"
+	model="$(slug "$model")"
+	# não repete a marca quando o modelo já começa com ela ("Lenovo IdeaPad ...")
+	model="${model#"$vshort"-}"
+	name="$vshort-$model"
 fi
 name=$(slug "$name")
 outfile="$MACHINES_DIR/$name.conf"
