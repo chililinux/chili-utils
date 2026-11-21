@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 02:49:37 -04
+#  Updated: sáb 21 nov 2026 17:22:27 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -1415,9 +1415,14 @@ sh_list_machines() {
 }
 
 dmi_read() {
-	local f="/sys/class/dmi/id/$1"
+	# lê um campo DMI sem aspas e sem espaços nas pontas (alguns BIOS, como os
+	# da ASUS, preenchem os textos com espaços: "1.0       ")
+	local f="/sys/class/dmi/id/$1" v
 	[[ -r "$f" ]] || return 0
-	tr -d '\n"' <"$f" 2>/dev/null
+	v=$(tr -d '\n"' <"$f" 2>/dev/null)
+	v="${v#"${v%%[![:space:]]*}"}"
+	v="${v%"${v##*[![:space:]]}"}"
+	printf '%s' "$v"
 }
 
 dmi_is_generic() {

@@ -1,0 +1,351 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC2034
+#
+#  chili-machine-import - importa para o repositório um perfil de máquina
+#                         enviado por issue [perfil-maquina] (chili-machine-hwreport)
+#  Created: sáb 21 nov 2026 17:22:27 -04
+#  Updated: sáb 21 nov 2026 17:22:27 -04
+#
+#  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+#
+#  Ferramenta do mantenedor (fica em tools/, não entra no pacote).
+#  Também é usada pelo workflow .github/workflows/import-machine-profile.yml.
+#
+#  Fluxo: baixa a issue -> extrai o bloco ```conf -> limpa e valida o perfil ->
+#         salva em usr/share/chili-fr/machines/<nome>.conf -> commit e push ->
+#         comenta e fecha a issue.
+
+readonly APP="${0##*/}"
+readonly VERSION='1.11.21-20261121'
+readonly REPO="${CHILI_REPO:-chililinux/chili-utils}"
+readonly TITLE_TAG='[perfil-maquina]'
+readonly MACHINES_DIR='usr/share/chili-fr/machines'
+
+# chaves aceitas (as mesmas do chili-fr), sem serial/uuid
+readonly -a KEYS=(
+	desc
+	vendor product version family sku
+	board_vendor board_product board_version board_asset
+	bios_vendor bios_version bios_date
+	chassis_type chassis_vendor chassis_version chassis_asset chassis_sku
+	cpu cpu_name smp mem video net disk_bus uefi
+)
+readonly -a PRIVATE_KEYS=(serial uuid board_serial chassis_serial)
+
+declare assume_yes=false
+declare save_only=false
+declare repo_dir=''
+declare name=''
+declare issue=''
+
+#----------------------------------------------------------------------------
+if [[ -t 1 ]] && command -v tput &>/dev/null; then
+	bold=$(tput bold) rst=$(tput sgr0) red="${bold}$(tput setaf 196)" green=$(tput setaf 2)
+	yellow="${bold}$(tput setaf 3)" cyan=$(tput setaf 6) black="${bold}$(tput setaf 0)"
+else
+	bold='' rst='' red='' green='' yellow='' cyan='' black=''
+fi
+msg() { printf '%s[%s➜%s]%s %b%s\n' "$black" "$yellow" "$black" "$rst" "$*" "$rst"; }
+msg_ok() { printf '%s[%s✓%s]%s %b%s\n' "$black" "$green" "$black" "$rst" "$*" "$rst"; }
+msg_warn() { printf '%s[%s⚠%s]%s %b%s\n' "$black" "$yellow" "$black" "$yellow" "$*" "$rst"; }
+die() {
+	printf '%s[%s✗%s]%s %b%s\n' "$black" "$red" "$black" "$rst" "$*" "$rst" >&2
+	exit 1
+}
+
+confirm() {
+	$assume_yes && return 0
+	read -r -p "$1 [S/n] "
+	[[ -z "$REPLY" || "${REPLY,,}" == @(s|sim|y|yes) ]]
+}
+
+usage() {
+	cat <<EOF
+${bold}$APP${rst} v$VERSION - importa um perfil de máquina enviado por issue
+
+uso: $APP [opções] <número-da-issue>
+
+Opções:
+  -C <dir>     repositório chili-utils (padrão: raiz do git da pasta atual)
+  -n <nome>    nome do perfil (padrão: fabricante-modelo, ex: asus-x200ma)
+  -s           só salva o .conf (sem commit, push nem comentário na issue)
+  -y           não pergunta nada (usado pelo GitHub Actions)
+  -V           versão
+  -h           esta ajuda
+
+Precisa do gh logado (ou GH_TOKEN definido, no Actions).
+EOF
+	exit 0
+}
+
+trim() {
+	local v="$1"
+	v="${v#"${v%%[![:space:]]*}"}"
+	v="${v%"${v##*[![:space:]]}"}"
+	printf '%s' "$v"
+}
+
+is_generic() {
+	local v
+	v="$(trim "${1,,}")"
+	case "$v" in
+	'' | tbd | none | n/a | na | '*' | 'not specified' | 'not applicable' | 'not available' | 'not defined' | \
+		'to be filled by o.e.m.' | 'default string' | 'system version' | 'system product name' | \
+		'type1productconfigid' | 'chassis version' | 'base board version' | 'x.x' | 'revision mp')
+		return 0
+		;;
+	esac
+	return 1
+}
+
+slug() {
+	local n="${1,,}"
+	n="${n//[^a-z0-9._-]/-}"
+	n="${n//./-}"
+	while [[ "$n" == *--* ]]; do n="${n//--/-}"; done
+	n="${n#-}"
+	n="${n%-}"
+	printf '%s' "$n"
+}
+
+short_vendor() {
+	# nome curto do fabricante para o nome do arquivo
+	local v="${1,,}"
+	case "$v" in
+	asustek* | asus*) echo asus ;;
+	lenovo*) echo lenovo ;;
+	hewlett-packard* | hp*) echo hp ;;
+	dell*) echo dell ;;
+	acer*) echo acer ;;
+	samsung*) echo samsung ;;
+	lg*) echo lg ;;
+	positivo*) echo positivo ;;
+	toshiba*) echo toshiba ;;
+	gigabyte*) echo gigabyte ;;
+	micro-star* | msi*) echo msi ;;
+	apple*) echo apple ;;
+	sony*) echo sony ;;
+	*) slug "${v%% *}" ;;
+	esac
+}
+
+commit_date() {
+	# "sáb 21 nov 2026 17:30:00 -04" em pt_BR, fuso America/Porto_Velho,
+	# sem depender do locale pt_BR estar instalado (runner do Actions)
+	local -a dias=(dom seg ter qua qui sex sáb) meses=(jan fev mar abr mai jun jul ago set out nov dez)
+	local w d m rest
+	read -r w d m rest < <(TZ=America/Porto_Velho date '+%w %d %m %Y %H:%M:%S')
+	printf '%s %s %s %s -04' "${dias[$w]}" "$d" "${meses[$((10#$m - 1))]}" "$rest"
+}
+
+#----------------------------------------------------------------------------
+while getopts ':C:n:syVh' opt; do
+	case "$opt" in
+	C) repo_dir="$OPTARG" ;;
+	n) name="$OPTARG" ;;
+	s) save_only=true ;;
+	y) assume_yes=true ;;
+	V)
+		echo "$APP v$VERSION"
+		exit 0
+		;;
+	h) usage ;;
+	:) die "falta o argumento de -$OPTARG" ;;
+	*) die "opção desconhecida: -$OPTARG (use -h)" ;;
+	esac
+done
+shift $((OPTIND - 1))
+issue="${1:-}"
+[[ "$issue" =~ ^[0-9]+$ ]] || die "informe o número da issue (ex: $APP 12)"
+
+command -v gh >/dev/null || die "o gh (GitHub CLI) não está instalado"
+[[ -z "$repo_dir" ]] && repo_dir=$(git rev-parse --show-toplevel 2>/dev/null)
+[[ -d "$repo_dir/$MACHINES_DIR" ]] || die "não achei $MACHINES_DIR em '${repo_dir:-.}' (use -C <repositório chili-utils>)"
+cd "$repo_dir" || exit 1
+
+#----------------------------------------------------------------------------
+# 1) baixa a issue (API REST)
+json=$(gh api "repos/$REPO/issues/$issue") || die "não consegui ler a issue #$issue de $REPO"
+title=$(jq -r '.title' <<<"$json")
+body=$(jq -r '.body // ""' <<<"$json")
+author=$(jq -r '.user.login' <<<"$json")
+state=$(jq -r '.state' <<<"$json")
+created=$(jq -r '.created_at' <<<"$json")
+
+[[ "$title" == "$TITLE_TAG"* ]] || die "a issue #$issue não é de perfil de máquina (título: $title)"
+msg "Issue #$issue: ${bold}$title${rst} (por ${cyan}$author${rst}, $state)"
+
+# 2) extrai o primeiro bloco ```conf
+block=$(awk '/^```conf[[:space:]]*\r?$/ {on=1; next} on && /^```/ {exit} on' <<<"$body" | tr -d '\r')
+[[ -n "$block" ]] || die "não achei o bloco \`\`\`conf na issue #$issue"
+generator=$(grep -m1 '^# perfil de máquina gerado por' <<<"$block" | sed 's/^# //')
+
+# 3) limpa e valida: só chaves conhecidas, sem dados pessoais, sem espaços nas pontas
+declare -A prof=()
+while IFS= read -r line; do
+	line=$(trim "$line")
+	[[ -z "$line" || "$line" == \#* || "$line" != *=* ]] && continue
+	key=$(trim "${line%%=*}")
+	val=$(trim "${line#*=}")
+	[[ "$val" =~ ^\"(.*)\"$ ]] && val="${BASH_REMATCH[1]}"
+	val=$(trim "${val//[\"\`\$\\]/}")
+	if [[ " ${PRIVATE_KEYS[*]} " == *" $key "* ]]; then
+		msg_warn "removido (dado pessoal): $key"
+		continue
+	fi
+	if [[ " ${KEYS[*]} " != *" $key "* ]]; then
+		msg_warn "ignorado (chave desconhecida): $key"
+		continue
+	fi
+	[[ -n "$val" ]] && prof[$key]="$val"
+done <<<"$block"
+
+[[ -n "${prof[vendor]:-}" && -n "${prof[product]:-}" ]] || die "perfil sem vendor/product - confira a issue #$issue"
+# asset tag só se for texto de fábrica
+for key in board_asset chassis_asset; do
+	val="${prof[$key]:-}"
+	[[ -z "$val" ]] && continue
+	if ! is_generic "$val" && [[ "${val,,}" != *'asset tag'* && "${val,,}" != *'asset information'* && "${val,,}" != atn12345678901234567 ]]; then
+		msg_warn "removido (asset tag pessoal): $key"
+		unset "prof[$key]"
+	fi
+done
+
+# validação: as mesmas regras que o chili-fr aplica ao carregar um perfil
+declare -a errors=()
+chassis_ok() {
+	local t="${1,,}"
+	t="${t//[-_ ]/}"
+	case "$t" in
+	other | desktop | lowprofile | minitower | tower | portable | laptop | notebook | handheld | \
+		allinone | subnotebook | spacesaving | tablet | convertible | detachable | minipc | stickpc) return 0 ;;
+	esac
+	[[ "$t" =~ ^[0-9]+$ ]] && ((t >= 1 && t <= 36))
+}
+for key in "${!prof[@]}"; do
+	val="${prof[$key]}"
+	((${#val} > 128)) && errors+=("$key: valor longo demais (${#val} caracteres)")
+	[[ "$val" =~ [[:cntrl:]] ]] && errors+=("$key: contém caracteres de controle")
+done
+is_generic "${prof[vendor]}" && errors+=("vendor: texto de fábrica (\"${prof[vendor]}\"), não identifica a máquina")
+is_generic "${prof[product]}" && errors+=("product: texto de fábrica (\"${prof[product]}\"), não identifica a máquina")
+[[ -n "${prof[chassis_type]:-}" ]] && ! chassis_ok "${prof[chassis_type]}" &&
+	errors+=("chassis_type: inválido (${prof[chassis_type]})")
+[[ -n "${prof[cpu]:-}" && ! "${prof[cpu]}" =~ ^(host|qemu64|core2duo|Conroe|Penryn|Nehalem|Westmere|SandyBridge|IvyBridge|Haswell(-noTSX)?|Broadwell(-noTSX)?|Skylake-Client(-noTSX-IBRS)?)(,-(aes|pclmulqdq|rdrand))*$ ]] &&
+	errors+=("cpu: modelo desconhecido (${prof[cpu]})")
+[[ -n "${prof[smp]:-}" ]] && { [[ "${prof[smp]}" =~ ^[0-9]+$ ]] && ((prof[smp] >= 1 && prof[smp] <= 256)) || errors+=("smp: inválido (${prof[smp]})"); }
+[[ -n "${prof[mem]:-}" ]] && { [[ "${prof[mem]}" =~ ^[0-9]+[MGmg]$ ]] || errors+=("mem: inválido (${prof[mem]})"); }
+[[ -n "${prof[disk_bus]:-}" && ! "${prof[disk_bus]}" =~ ^(virtio|sata|nvme)$ ]] && errors+=("disk_bus: inválido (${prof[disk_bus]})")
+[[ -n "${prof[uefi]:-}" && ! "${prof[uefi],,}" =~ ^(true|false|yes|no|sim|nao|não|on|off|1|0)$ ]] && errors+=("uefi: inválido (${prof[uefi]})")
+[[ -n "${prof[bios_date]:-}" && ! "${prof[bios_date]}" =~ ^[0-9]{2}/[0-9]{2}/[0-9]{4}$ ]] && errors+=("bios_date: formato inválido (${prof[bios_date]}), esperado mm/dd/aaaa")
+[[ -n "${prof[video]:-}" && ! "${prof[video]}" =~ ^(ati-vga|bochs-display|cirrus-vga|none|qxl|qxl-vga|ramfb|VGA|virtio-gpu|virtio-gpu-gl|virtio-vga|virtio-vga-gl|virtio-gpu-rutabaga-pci|vmware-svga)$ ]] &&
+	errors+=("video: dispositivo desconhecido (${prof[video]})")
+[[ -n "${prof[net]:-}" && ! "${prof[net]}" =~ ^[a-zA-Z0-9_-]+$ ]] && errors+=("net: inválido (${prof[net]})")
+
+if ((${#errors[@]})); then
+	for e in "${errors[@]}"; do msg_warn "$e"; done
+	if $assume_yes && ! $save_only; then
+		# no Actions: explica na issue o que está errado e não importa
+		{
+			echo "Não consegui importar este perfil automaticamente:"
+			echo
+			for e in "${errors[@]}"; do echo "- $e"; done
+			echo
+			echo "Gere o perfil de novo com \`chili-machine-hwreport\` sem editar o bloco \`conf\` e envie outra issue."
+		} | gh api -X POST "repos/$REPO/issues/$issue/comments" -F body=@- >/dev/null
+	fi
+	die "perfil da issue #$issue inválido (${#errors[@]} problema(s))"
+fi
+
+# perfil repetido: mesma máquina (vendor + product + bios_version) já cadastrada
+for f in "$MACHINES_DIR"/*.conf; do
+	[[ -f "$f" ]] || continue
+	grep -qxF "vendor=\"${prof[vendor]}\"" "$f" && grep -qxF "product=\"${prof[product]}\"" "$f" &&
+		{ [[ -z "${prof[bios_version]:-}" ]] || grep -qxF "bios_version=\"${prof[bios_version]}\"" "$f"; } || continue
+	msg_warn "esta máquina já está cadastrada em ${cyan}$f${rst}"
+	if $assume_yes; then
+		$save_only || gh api -X POST "repos/$REPO/issues/$issue/comments" \
+			-f body="Esta máquina já está cadastrada como \`$(basename "$f" .conf)\`. Obrigado mesmo assim!" >/dev/null
+		exit 0
+	fi
+	confirm "Importar mesmo assim?" || exit 0
+done
+
+# descrição refeita: fabricante modelo [- versão, se não for texto de fábrica]
+prof[desc]="${prof[vendor]} ${prof[product]}"
+is_generic "${prof[version]:-}" || prof[desc]+=" - ${prof[version]}"
+
+# 4) nome do arquivo
+if [[ -z "$name" ]]; then
+	model="${prof[product]}"
+	# Lenovo põe o "machine type" em product e o nome comercial em version
+	[[ "$(short_vendor "${prof[vendor]}")" == lenovo ]] && ! is_generic "${prof[version]:-}" && model="${prof[version]}"
+	name="$(short_vendor "${prof[vendor]}")-$(slug "$model")"
+fi
+name=$(slug "$name")
+outfile="$MACHINES_DIR/$name.conf"
+
+# 5) monta o arquivo
+created_br=$(date -d "$created" '+%d/%m/%Y' 2>/dev/null || echo "${created%%T*}")
+content="# Perfil: ${prof[desc]}
+# Fonte: issue #$issue (https://github.com/$REPO/issues/$issue), enviado por $author em $created_br"
+[[ -n "$generator" ]] && content+=$'\n'"# $generator"
+for key in "${KEYS[@]}"; do
+	[[ -n "${prof[$key]:-}" ]] && content+=$'\n'"$(printf '%s="%s"' "$key" "${prof[$key]}")"
+done
+
+echo
+echo "${black}--- $outfile ---${rst}"
+printf '%s\n' "$content"
+echo "${black}---${rst}"
+echo
+
+if [[ -e "$outfile" ]]; then
+	$assume_yes && die "$outfile já existe - importe manualmente com -n <outro-nome>"
+	confirm "$outfile já existe. Sobrescrever?" || exit 1
+fi
+confirm "Salvar $outfile?" || exit 1
+printf '%s\n' "$content" >"$outfile"
+msg_ok "Salvo: ${cyan}$outfile${rst}"
+$save_only && exit 0
+
+# 6) commit e push (padrão de mensagem do repositório)
+confirm "Commitar e fazer push no main?" || exit 0
+git add "$outfile"
+git commit -q -m "$(commit_date) Vilmar Catafesta (vcatafesta@gmail.com)" || die "falha no commit"
+sha=$(git rev-parse --short HEAD)
+git push -q origin HEAD:main || die "falha no push (commit $sha ficou local)"
+msg_ok "Commit ${cyan}$sha${rst} enviado ao main"
+
+# 7) agradece e fecha a issue
+confirm "Comentar e fechar a issue #$issue?" || exit 0
+gh api -X POST "repos/$REPO/issues/$issue/comments" \
+	-f body="Perfil adicionado como \`$name\` em $sha. Obrigado! Já dá para usar com \`chili-fr -M $name\` depois de atualizar o pacote." >/dev/null &&
+	msg_ok "Comentário publicado na issue #$issue"
+if [[ "$state" == open ]]; then
+	gh api -X PATCH "repos/$REPO/issues/$issue" -f state=closed -f state_reason=completed >/dev/null &&
+		msg_ok "Issue #$issue fechada"
+fi

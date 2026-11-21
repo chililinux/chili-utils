@@ -1,0 +1,52 @@
+name: Importar perfil de máquina
+
+# Importa para usr/share/chili-fr/machines/ um perfil enviado por issue
+# "[perfil-maquina] ..." (gerado pelo chili-machine-hwreport), usando o
+# script tools/chili-machine-import, que valida o perfil antes de salvar.
+#
+# PRONTO, MAS SEM RODAR SOZINHO: por enquanto só executa manualmente
+# (Actions > Importar perfil de máquina > Run workflow > número da issue).
+#
+# Para importar automaticamente quando o rótulo "aprovado" for posto numa
+# issue [perfil-maquina], descomente o bloco "issues:" abaixo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Número da issue [perfil-maquina]"
+        required: true
+        type: string
+
+#  issues:
+#    types: [labeled]
+
+permissions:
+  contents: write # commit do .conf no main
+  issues: write # comentar e fechar a issue
+
+concurrency:
+  group: import-machine-profile # um de cada vez, para não brigar no push
+  cancel-in-progress: false
+
+jobs:
+  importar:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'aprovado' &&
+       startsWith(github.event.issue.title, '[perfil-maquina]'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Importar o perfil
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.inputs.issue || github.event.issue.number }}
+        run: |
+          git config user.name vcatafesta
+          git config user.email vcatafesta@gmail.com
+          bash tools/chili-machine-import -y "$ISSUE"
