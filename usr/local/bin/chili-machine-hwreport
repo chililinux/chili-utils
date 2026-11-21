@@ -1,0 +1,402 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC2034
+#
+#  chili-machine-hwreport - gera o perfil desta máquina para o chili-fr (-M) e
+#                           envia ao mantenedor como issue no GitHub
+#  Created: sáb 21 nov 2026 01:53:30 -04
+#  Updated: sáb 21 nov 2026 01:53:30 -04
+#
+#  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+export LANGUAGE="${LANGUAGE:-pt_BR}"
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=chili-machine-hwreport
+
+# roda em qualquer live USB: sem gettext, as mensagens saem em pt_BR
+command -v gettext >/dev/null || gettext() { printf '%s' "$1"; }
+
+readonly APP="${0##*/}"
+readonly VERSION='1.11.21-20261121'
+readonly APPDESC="$(gettext 'Gera o perfil desta máquina para o chili-fr e envia ao mantenedor')"
+readonly REPO='chililinux/chili-utils'
+readonly TITLE_TAG='[perfil-maquina]'
+readonly DMI='/sys/class/dmi/id'
+
+declare send=true
+declare assume_yes=false
+declare name=''
+declare nocolor=false
+
+sh_setvarcolors() {
+	if ! $nocolor && [[ -t 1 ]] && command -v tput &>/dev/null; then
+		bold=$(tput bold)
+		rst=$(tput sgr0)
+		black="${bold}$(tput setaf 0)"
+		red="${bold}$(tput setaf 196)"
+		green=$(tput setaf 2)
+		yellow="${bold}$(tput setaf 3)"
+		cyan=$(tput setaf 6)
+	else
+		sh_unsetvarcolors
+	fi
+	tick="${black}[${green}✓${black}]${rst}"
+	cross="${black}[${red}✗${black}]${rst}"
+	warn="${black}[${yellow}⚠${black}]${yellow}"
+	info="${black}[${yellow}➜${black}]${rst}"
+}
+
+sh_unsetvarcolors() {
+	bold='' rst='' black='' red='' green='' yellow='' cyan=''
+}
+
+msg() { printf '%b %b%b\n' "$info" "$*" "$rst"; }
+msg_ok() { printf '%b %b%b\n' "$tick" "$*" "$rst"; }
+msg_warn() { printf '%b %b%b\n' "$warn" "$*" "$rst"; }
+die() {
+	printf '%b %b%b\n' "$cross" "$*" "$rst" >&2
+	exit 1
+}
+
+readconf() {
+	$assume_yes && return 0
+	read -r -p "$1 [S/n] "
+	case "${REPLY^}" in
+	[SY] | '') return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+sh_usage() {
+	cat <<EOF
+${bold}$APP${rst} v$VERSION - $APPDESC
+
+$(gettext 'uso:') $APP [$(gettext 'opções')]
+
+$(gettext 'Opções:')
+  -n, --name <nome>   $(gettext 'nome do perfil (padrão: fabricante-modelo)')
+  -s, --save-only     $(gettext 'só gera o arquivo local, não envia')
+  -y, --yes           $(gettext 'não pergunta nada (confirma tudo)')
+      --nocolor       $(gettext 'saída sem cores')
+  -V, --version       $(gettext 'exibe a versão')
+  -h, --help          $(gettext 'exibe esta ajuda')
+
+$(gettext 'Não precisa de root: serial, UUID e MAC nunca são lidos nem enviados.')
+$(gettext 'O perfil é salvo em') ~/.config/chili-fr/machines/ $(gettext 'e pode ser usado com') chili-fr -M <nome>
+EOF
+	exit 0
+}
+
+#----------------------------------------------------------------------------
+# usuário real (com sudo/doas o $HOME é o do root)
+#----------------------------------------------------------------------------
+REAL_USER="${SUDO_USER:-${DOAS_USER:-}}"
+REAL_HOME="$HOME"
+if [[ -n "$REAL_USER" && "$REAL_USER" != root && $EUID -eq 0 ]]; then
+	REAL_HOME=$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)
+	[[ -z "$REAL_HOME" ]] && REAL_HOME=$(awk -F: -v u="$REAL_USER" '$1 == u {print $6}' /etc/passwd)
+	[[ -z "$REAL_HOME" ]] && REAL_HOME="$HOME"
+	MACHINES_USER_DIR="$REAL_HOME/.config/chili-fr/machines"
+else
+	REAL_USER=''
+	MACHINES_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/chili-fr/machines"
+fi
+
+#----------------------------------------------------------------------------
+# leitura do hardware (mesmo formato de perfil do chili-fr)
+#----------------------------------------------------------------------------
+dmi_read() {
+	local f="$DMI/$1"
+	[[ -r "$f" ]] || return 0
+	tr -d '\n"' <"$f" 2>/dev/null
+}
+
+dmi_is_generic() {
+	# texto de fábrica que o BIOS deixa sem preencher
+	local v="${1,,}"
+	v="${v#"${v%%[![:space:]]*}"}"
+	v="${v%"${v##*[![:space:]]}"}"
+	case "$v" in
+	'' | tbd | none | n/a | na | '*' | 'not specified' | 'not applicable' | 'not available' | 'not defined' | \
+		'to be filled by o.e.m.' | 'default string' | 'system version' | 'system product name' | \
+		'type1productconfigid' | 'chassis version' | 'base board version' | 'x.x' | 'revision mp')
+		return 0
+		;;
+	esac
+	return 1
+}
+
+asset_is_generic() {
+	# asset tag pode ter nome de pessoa/empresa: só envia se for texto de fábrica
+	local v="${1,,}"
+	dmi_is_generic "$v" && return 0
+	[[ "$v" == *'asset tag'* || "$v" == *'asset information'* || "$v" == atn12345678901234567 ]]
+}
+
+cpu_model_from_flags() {
+	# modelo de CPU do QEMU mais novo cujas instruções a CPU real possui
+	local vendor="$1" flags=" $2 " model extra=''
+	_has() {
+		local x
+		for x; do [[ "$flags" == *" $x "* ]] || return 1; done
+	}
+
+	if [[ "$vendor" != GenuineIntel ]] || _has avx512f || _has sha_ni || _has gfni; then
+		echo host
+		return
+	fi
+	_has lm ssse3 || {
+		echo qemu64
+		return
+	}
+
+	model=Conroe
+	if _has sse4_1; then model=Penryn; fi
+	if [[ $model == Penryn ]] && _has sse4_2 popcnt; then model=Nehalem; fi
+	if [[ $model == Nehalem ]] && _has avx xsave; then model=SandyBridge; fi
+	if [[ $model == SandyBridge ]] && _has f16c; then model=IvyBridge; fi
+	if [[ $model == IvyBridge ]] && _has avx2 fma bmi1 bmi2 movbe; then model=Haswell-noTSX; fi
+	if [[ $model == Haswell-noTSX ]] && _has adx rdseed; then model=Broadwell-noTSX; fi
+	if [[ $model == Broadwell-noTSX ]] && _has clflushopt xsavec; then model=Skylake-Client-noTSX-IBRS; fi
+
+	case "$model" in
+	Conroe | Penryn) ;;
+	Nehalem)
+		_has aes pclmulqdq && model=Westmere
+		;;
+	*)
+		_has aes || extra+=',-aes'
+		_has pclmulqdq || extra+=',-pclmulqdq'
+		[[ $model != SandyBridge ]] && ! _has rdrand && extra+=',-rdrand'
+		;;
+	esac
+	echo "${model}${extra}"
+}
+
+make_name() {
+	local n="$1"
+	n="${n,,}"
+	n="${n//[^a-z0-9._-]/-}"
+	while [[ "$n" == *--* ]]; do n="${n//--/-}"; done
+	n="${n#-}"
+	n="${n%-}"
+	echo "${n:-maquina}"
+}
+
+build_profile() {
+	# gera o perfil em $profile (sem serial, UUID, MAC nem asset tag pessoal)
+	local key val cpu_name cpu_model bus efi memgb desc
+	local -a pairs
+
+	cpu_name=$(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo)
+	cpu_name="${cpu_name//\"/}"
+	cpu_model=$(cpu_model_from_flags \
+		"$(awk -F': ' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)" \
+		"$(awk -F': ' '/^flags/{print $2; exit}' /proc/cpuinfo)")
+	if compgen -G '/sys/block/nvme*' >/dev/null; then bus='nvme'; else bus='sata'; fi
+	[[ -d /sys/firmware/efi ]] && efi=true || efi=false
+	memgb=$(awk '/^MemTotal/{printf "%d", ($2/1048576)+0.999}' /proc/meminfo)
+
+	desc="$(dmi_read sys_vendor) $(dmi_read product_name)"
+	val=$(dmi_read product_version)
+	dmi_is_generic "$val" || desc+=" - $val"
+
+	pairs=(
+		"desc=$desc"
+		"vendor=$(dmi_read sys_vendor)"
+		"product=$(dmi_read product_name)"
+		"version=$(dmi_read product_version)"
+		"family=$(dmi_read product_family)"
+		"sku=$(dmi_read product_sku)"
+		"board_vendor=$(dmi_read board_vendor)"
+		"board_product=$(dmi_read board_name)"
+		"board_version=$(dmi_read board_version)"
+		"bios_vendor=$(dmi_read bios_vendor)"
+		"bios_version=$(dmi_read bios_version)"
+		"bios_date=$(dmi_read bios_date)"
+		"chassis_type=$(dmi_read chassis_type)"
+		"chassis_vendor=$(dmi_read chassis_vendor)"
+		"chassis_version=$(dmi_read chassis_version)"
+	)
+	val=$(dmi_read board_asset_tag)
+	asset_is_generic "$val" && pairs+=("board_asset=$val")
+	val=$(dmi_read chassis_asset_tag)
+	asset_is_generic "$val" && pairs+=("chassis_asset=$val")
+	pairs+=(
+		"cpu=$cpu_model"
+		"cpu_name=$cpu_name"
+		"smp=$(nproc)"
+		"mem=${memgb}G"
+		"disk_bus=$bus"
+		"uefi=$efi"
+	)
+
+	profile="# perfil de máquina gerado por $APP v$VERSION em $(date '+%d/%m/%Y %H:%M')
+# sem serial, UUID, MAC nem asset tag pessoal
+# cpu: modelo do QEMU escolhido pelas instruções (flags) da CPU real"
+	for val in "${pairs[@]}"; do
+		key="${val%%=*}"
+		val="${val#*=}"
+		[[ -z "$val" ]] && continue
+		profile+=$'\n'"$(printf '%s="%s"' "$key" "$val")"
+	done
+}
+
+save_profile() {
+	local config_existia=true
+	[[ -d "$REAL_HOME/.config" ]] || config_existia=false
+	mkdir -p "$MACHINES_USER_DIR" || die "$(gettext 'não foi possível criar') $MACHINES_USER_DIR"
+	outfile="$MACHINES_USER_DIR/$name.conf"
+	if [[ -e "$outfile" ]] && ! readconf "$(gettext 'Perfil já existe, sobrescrever?') $outfile"; then
+		exit 1
+	fi
+	printf '%s\n' "$profile" >"$outfile" || die "$(gettext 'não foi possível gravar') $outfile"
+	if [[ -n "$REAL_USER" ]]; then
+		chown -R "$REAL_USER": "$REAL_HOME/.config/chili-fr" 2>/dev/null
+		$config_existia || chown "$REAL_USER": "$REAL_HOME/.config" 2>/dev/null
+	fi
+	msg_ok "$(gettext 'Perfil salvo em') ${cyan}$outfile${rst}"
+}
+
+#----------------------------------------------------------------------------
+# envio
+#----------------------------------------------------------------------------
+urlencode() {
+	local b ch out=''
+	for b in $(printf '%s' "$1" | od -An -v -tx1); do
+		case "$b" in
+		3[0-9] | 4[1-9a-f] | 5[0-9a] | 6[1-9a-f] | 7[0-9a] | 2d | 2e | 5f | 7e)
+			printf -v ch "\\x$b"
+			out+="$ch"
+			;;
+		*) out+="%${b^^}" ;;
+		esac
+	done
+	printf '%s' "$out"
+}
+
+send_profile() {
+	local title body url
+
+	title="$TITLE_TAG $(dmi_read sys_vendor) $(dmi_read product_name)"
+	body="Perfil de máquina gerado por \`$APP\` v$VERSION.
+
+\`\`\`conf
+$profile
+\`\`\`
+
+Comentários (opcional):
+"
+
+	# 1) gh instalado e logado: envia direto
+	if command -v gh >/dev/null && gh auth status &>/dev/null; then
+		if readconf "$(gettext 'Enviar agora com o gh (sua conta do GitHub)?')"; then
+			if url=$(gh issue create -R "$REPO" --title "$title" --body "$body" 2>&1); then
+				msg_ok "$(gettext 'Enviado! Issue:') ${cyan}$url${rst}"
+				return
+			fi
+			msg_warn "$(gettext 'O gh falhou, usando o link:') $url"
+		fi
+	fi
+
+	# 2) link de issue já preenchido (sem conta/token no terminal)
+	url="https://github.com/$REPO/issues/new?title=$(urlencode "$title")&body=$(urlencode "$body")"
+	echo
+	msg "$(gettext 'Para enviar, abra o link abaixo (precisa estar logado no GitHub) e clique em') ${bold}Submit new issue${rst}:"
+	echo
+	printf '%s\n\n' "$url"
+	if command -v qrencode >/dev/null; then
+		local qr qr_lines qr_cols term_lines term_cols
+		if qr=$(qrencode -t UTF8 -l L "$url" 2>/dev/null); then
+			qr_lines=$(wc -l <<<"$qr")
+			qr_cols=$((qr_lines * 2)) # QR é quadrado e cada linha UTF8 desenha 2 fileiras
+			term_lines=$(tput lines 2>/dev/null || echo 24)
+			term_cols=$(tput cols 2>/dev/null || echo 80)
+			if ((qr_lines < term_lines && qr_cols <= term_cols)); then
+				msg "$(gettext 'Ou leia o QR code com o celular:')"
+				qrencode -t ANSIUTF8 -l L "$url"
+			else
+				msg_warn "$(gettext 'O QR code não cabe no terminal') (${qr_cols}x${qr_lines}). $(gettext 'Maximize a janela e rode de novo, ou use o link acima.')"
+			fi
+		else
+			msg_warn "$(gettext 'link grande demais para QR code; use o link acima')"
+		fi
+	else
+		msg "$(gettext 'Dica: instale o pacote') ${cyan}qrencode${rst} $(gettext 'para ver um QR code e enviar pelo celular.')"
+	fi
+	if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] && command -v xdg-open >/dev/null &&
+		readconf "$(gettext 'Abrir o link no navegador agora?')"; then
+		if [[ -n "$REAL_USER" ]]; then
+			sudo -u "$REAL_USER" xdg-open "$url" &>/dev/null &
+		else
+			xdg-open "$url" &>/dev/null &
+		fi
+	fi
+}
+
+#----------------------------------------------------------------------------
+# main
+#----------------------------------------------------------------------------
+sh_setvarcolors
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-n | --name)
+		[[ -z "${2:-}" ]] && die "$(gettext 'falta o nome para') $1"
+		name="$2"
+		shift
+		;;
+	--name=*) name="${1#*=}" ;;
+	-s | --save-only) send=false ;;
+	-y | --yes) assume_yes=true ;;
+	--nocolor) nocolor=true ;;
+	-V | --version)
+		echo "$APP v$VERSION"
+		exit 0
+		;;
+	-h | --help) sh_usage ;;
+	*) die "$(gettext 'opção desconhecida:') $1 ($(gettext 'use') -h)" ;;
+	esac
+	shift
+done
+sh_setvarcolors
+
+[[ -d "$DMI" ]] || die "$(gettext 'DMI não disponível nesta máquina') ($DMI)"
+
+build_profile
+[[ -z "$name" ]] && name="$(dmi_read sys_vendor)-$(dmi_read product_name)"
+name=$(make_name "$name")
+
+msg_ok "$(gettext 'Máquina:') ${bold}$(dmi_read sys_vendor) $(dmi_read product_name)${rst}"
+msg_ok "$(gettext 'CPU:') $(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo) → ${cyan}$(grep -m1 '^cpu=' <<<"$profile" | cut -d'"' -f2)${rst}"
+msg_ok "$(gettext 'Serial, UUID e MAC não incluídos')"
+echo
+echo "${black}--- $(gettext 'perfil') ($name) ---${rst}"
+printf '%s\n' "$profile"
+echo "${black}---${rst}"
+echo
+
+save_profile
+$send || exit 0
+readconf "$(gettext 'Enviar este perfil ao mantenedor do VoidBR/chili-fr?')" || exit 0
+send_profile
