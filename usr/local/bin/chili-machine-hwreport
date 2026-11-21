@@ -5,7 +5,7 @@
 #  chili-machine-hwreport - gera o perfil desta máquina para o chili-fr (-M) e
 #                           envia ao mantenedor como issue no GitHub
 #  Created: sáb 21 nov 2026 01:53:30 -04
-#  Updated: sáb 21 nov 2026 02:10:43 -04
+#  Updated: sáb 21 nov 2026 17:22:27 -04
 #
 #  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -128,9 +128,14 @@ fi
 # leitura do hardware (mesmo formato de perfil do chili-fr)
 #----------------------------------------------------------------------------
 dmi_read() {
-	local f="$DMI/$1"
+	# lê um campo DMI sem aspas e sem espaços nas pontas (alguns BIOS, como os
+	# da ASUS, preenchem os textos com espaços: "1.0       ")
+	local f="$DMI/$1" v
 	[[ -r "$f" ]] || return 0
-	tr -d '\n"' <"$f" 2>/dev/null
+	v=$(tr -d '\n"' <"$f" 2>/dev/null)
+	v="${v#"${v%%[![:space:]]*}"}"
+	v="${v%"${v##*[![:space:]]}"}"
+	printf '%s' "$v"
 }
 
 dmi_is_generic() {
