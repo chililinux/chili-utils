@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 01:32:36 -04
+#  Updated: sáb 21 nov 2026 01:47:28 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -160,7 +160,19 @@ declare LPARAM_UEFI=false
 #
 # perfis de máquina (-M|--machine)
 declare MACHINES_SYS_DIR='/usr/share/chili-fr/machines'
-declare MACHINES_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/chili-fr/machines"
+# usuário real: com sudo/doas o $HOME é o do root, mas os perfis devem ficar
+# no home de quem chamou o comando
+declare REAL_USER="${SUDO_USER:-${DOAS_USER:-}}"
+declare REAL_HOME="$HOME"
+if [[ -n "$REAL_USER" && "$REAL_USER" != root && $EUID -eq 0 ]]; then
+	REAL_HOME=$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)
+	[[ -z "$REAL_HOME" ]] && REAL_HOME=$(awk -F: -v u="$REAL_USER" '$1 == u {print $6}' /etc/passwd)
+	[[ -z "$REAL_HOME" ]] && REAL_HOME="$HOME"
+	declare MACHINES_USER_DIR="$REAL_HOME/.config/chili-fr/machines"
+else
+	REAL_USER=''
+	declare MACHINES_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/chili-fr/machines"
+fi
 declare machine_name=''
 declare machine_file=''
 declare -A machine=()
@@ -1478,6 +1490,8 @@ sh_machine_from_host() {
 	name="${name%-}"
 	[[ -z "$name" ]] && name='host'
 
+	local config_existia=true
+	[[ -d "$REAL_HOME/.config" ]] || config_existia=false
 	mkdir -p "$MACHINES_USER_DIR"
 	out="$MACHINES_USER_DIR/$name.conf"
 	if has_file "$out" && ! readconf "$(gettext 'Perfil já existe, sobrescrever?') ${out}"; then
@@ -1540,6 +1554,12 @@ sh_machine_from_host() {
 		echo "#video=\"virtio-vga-gl\""
 		echo "#net=\"e1000e\""
 	} >"$out"
+
+	# rodando com sudo/doas: devolve a posse ao usuário real
+	if [[ -n "$REAL_USER" ]]; then
+		chown -R "$REAL_USER": "$REAL_HOME/.config/chili-fr" 2>/dev/null
+		$config_existia || chown "$REAL_USER": "$REAL_HOME/.config" 2>/dev/null
+	fi
 
 	msg_ok "$(gettext 'Perfil criado:') ${cyan}${out}${rst}"
 	cat "$out"
