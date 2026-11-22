@@ -5,7 +5,7 @@
 #  chili-machine-import - importa para o repositório um perfil de máquina
 #                         enviado por issue [perfil-maquina] (chili-machine-hwreport)
 #  Created: sáb 21 nov 2026 17:22:27 -04
-#  Updated: sáb 21 nov 2026 20:00:06 -04
+#  Updated: sáb 21 nov 2026 21:56:13 -04
 #
 #  Copyright (c) 2026-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -173,13 +173,31 @@ commit_date() {
 	printf '%s %s %s %s -04' "${dias[$w]}" "$d" "${meses[$((10#$m - 1))]}" "$rest"
 }
 
+find_repo() {
+	# repositório chili-utils: o de -C; senão a pasta atual; senão o repositório de
+	# onde o script veio (seguindo o link, ex: /usr/local/bin -> .../chili-utils/tools)
+	local d
+	local -a cands=()
+	if [[ -n "$repo_dir" ]]; then
+		cands=("$repo_dir")
+	else
+		cands=("$(git rev-parse --show-toplevel 2>/dev/null)"
+			"$(cd "$(dirname "$(readlink -f "$0")")/.." 2>/dev/null && pwd)")
+	fi
+	for d in "${cands[@]}"; do
+		[[ -n "$d" && -d "$d/$MACHINES_DIR" ]] && git -C "$d" rev-parse --git-dir &>/dev/null || continue
+		printf '%s' "$d"
+		return 0
+	done
+	return 1
+}
+
 list_issues() {
 	# lista as issues [perfil-maquina]: número, data, autor, máquina e se já está cadastrada
 	local json n count=0 num date author title state body vendor product reg f dir
 	json=$(gh api --paginate "repos/$REPO/issues?state=$list_state&per_page=100") ||
 		die "não consegui listar as issues de $REPO"
-	dir="${repo_dir:-$(git rev-parse --show-toplevel 2>/dev/null)}"
-	[[ -d "$dir/$MACHINES_DIR" ]] || dir=''
+	dir=$(find_repo) || dir=''
 
 	echo
 	msg "Issues ${bold}$TITLE_TAG${rst} $([[ $list_state == open ]] && echo 'em aberto' || echo '(todas)') em ${cyan}$REPO${rst}"
@@ -242,9 +260,11 @@ command -v jq >/dev/null || die "o jq não está instalado"
 # sem número (ou com -l): lista as issues em aberto
 { $list_mode || [[ -z "$issue" ]]; } && list_issues
 [[ "$issue" =~ ^[0-9]+$ ]] || die "número de issue inválido: $issue (ex: $APP 12)"
-[[ -z "$repo_dir" ]] && repo_dir=$(git rev-parse --show-toplevel 2>/dev/null)
-[[ -d "$repo_dir/$MACHINES_DIR" ]] || die "não achei $MACHINES_DIR em '${repo_dir:-.}' (use -C <repositório chili-utils>)"
+given_dir="$repo_dir"
+repo_dir=$(find_repo) ||
+	die "não achei o repositório chili-utils${given_dir:+ em '$given_dir'} - rode dentro dele ou use -C <dir>"
 cd "$repo_dir" || exit 1
+msg "Repositório: ${cyan}$repo_dir${rst}"
 
 #----------------------------------------------------------------------------
 # 1) baixa a issue (API REST)
