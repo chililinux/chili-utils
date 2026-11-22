@@ -29,6 +29,17 @@ Tudo com a filosofia clássica do Unix:
 
 ## ⚙️ Destaques
 
+### 🖥️ **chili-machine-hwreport** + **chili-fr -M**
+Gera o perfil da sua máquina (fabricante, modelo, BIOS, chassi e hardware), sem serial, UUID nem MAC, e envia por issue. Com os perfis, o `chili-fr` simula no QEMU a instalação do VoidBR em máquinas reais.
+
+```bash
+chili-machine-hwreport                         # gera e envia o perfil desta máquina
+chili-fr --list-machines                       # lista os perfis disponíveis
+chili-fr -M lg-a410 voidbr.iso disco.qcow2     # simula a instalação num LG A410
+```
+
+📖 Documentação completa: [chili-machine-hwreport.md](chili-machine-hwreport.md)
+
 ### 🔥 **chili-maketar**
 Compactador universal com suporte a múltiplos algoritmos e criptografia via GPG.
 
@@ -36,53 +47,64 @@ Compactador universal com suporte a múltiplos algoritmos e criptografia via GPG
 chili-maketar -s           # Compacta com zstd (padrão)
 chili-maketar -r /var/log  # Usa lrzip
 chili-maketar -p backup    # Compacta + criptografa
+```
 
-🧠 chili-tradutor-go
-
+### 🧠 **chili-tradutor-go**
 Tradutor escrito em Go com threads paralelos e suporte a JSON.
 
+```bash
 chili-tradutor-go texto_entrada.json
+```
 
-🔒 chili-manager-efi
-
+### 🔒 **chili-manager-efi**
 Gerencia partições e entradas EFI, reinstala GRUB e detecta múltiplos sistemas operacionais.
-🧪 chili-compare-dirs
 
+### 🧪 **chili-compare-dirs**
 Compara e sincroniza diretórios com diferentes modos (rsync, comm, simples).
 
+```bash
 chili-compare-dirs /mnt/diskA /mnt/diskB
+```
 
-🧠 Filosofia
+---
 
-    “Automatizar é reduzir o tédio, não a atenção.”
-    — Vilmar Catafesta
+## 🧠 Filosofia
+
+> _“Automatizar é reduzir o tédio, não a atenção.”_  
+> — Vilmar Catafesta
 
 Os chili-utils seguem quatro mandamentos:
 
-    Simplicidade acima de tudo.
+1. Simplicidade acima de tudo.
+2. Zero dependências externas sempre que possível.
+3. Scripts autoexplicativos e com mensagens claras.
+4. Compatibilidade total com ambientes POSIX.
 
-    Zero dependências externas sempre que possível.
+---
 
-    Scripts autoexplicativos e com mensagens claras.
+## 🧱 Instalação
 
-    Compatibilidade total com ambientes POSIX.
+### 🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
 
-🧱 Instalação
-🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
-
+```bash
 git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils/pkgbuild
 makepkg -si
+```
 
-🧩 Opção 2 — via Makefile (instalação manual)
+### 🧩 Opção 2 — via Makefile (instalação manual)
 
+```bash
 git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils
 sudo make install
+```
 
 Para remover:
 
+```bash
 sudo make uninstall
+```
 
 ### 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
 
@@ -93,26 +115,29 @@ sudo make uninstall
 > Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
 > 👉 [https://chililinux.com/repo/chili-stable/x86_64/](https://chililinux.com/repo/chili-stable/x86_64/)
 
-📜 Licença
+---
 
-Licenciado sob BSD 2-Clause License
+## 📜 Licença
 
-Copyright (c) 2019-2025
+Licenciado sob a [Licença MIT](LICENSE).
+
+Copyright (c) 2019-2025  
 Vilmar Catafesta <vcatafesta@gmail.com>
-All rights reserved.
-
-🧩 Autor
-
-Vilmar Catafesta
-💻 Programador & SysAdmin
-✉️ vcatafesta@gmail.com
-🌶️ Conclusão
-
-chili-utils é o canivete suíço definitivo pra quem vive no terminal —
-um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
-
-    “Não existe mágica. Só shell bem escrito.” 🧙‍♂️
-    — vcatafesta
-
 
 ---
+
+## 🧩 Autor
+
+**Vilmar Catafesta**  
+💻 Programador & SysAdmin  
+✉️ vcatafesta@gmail.com
+
+---
+
+## 🌶️ Conclusão
+
+**chili-utils** é o canivete suíço definitivo pra quem vive no terminal —  
+um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
+
+> _“Não existe mágica. Só shell bem escrito.”_ 🧙‍♂️  
+> — vcatafesta
