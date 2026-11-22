@@ -1,50 +1,50 @@
-# 🌶️ chili-maketar
+# 🌶️ produttore di chili
 
-**chili-maketar** è uno strumento Bash progettato per creare file `.tar` (e derivati) con supporto per vari compressori, crittografia e rilevamento automatico delle dipendenze.
+**chili-maketar** è uno strumento in Bash creato per generare file `.tar` (e derivati) con supporto a diversi compressori, crittografia e rilevamento automatico delle dipendenze.
 
-Semplice, veloce ed efficiente: il tutto nel *classico stile Unix*, senza dipendenze non necessarie.
+Semplice, veloce ed efficiente — tutto nello stile *Unix-like classico*, senza dipendenze inutili.
 
 ---
 
-## 📦 A proposito
+## 📦 Informazioni
 
-- **Autore:** Vilmar Catafesta
-- **Versione:** 3.3.3 — _13/11/2025_
-- **Licenza:** Clausola BSD 2
-- **Descrizione:** Crea file `.tar` compressi o crittografati utilizzando metodi diversi.
+- **Autore:** Vilmar Catafesta  
+- **Versione:** 3.3.3 — _13/11/2025_  
+- **Licenza:** MIT  
+- **Descrizione:** Crea file `.tar` compressi o crittografati utilizzando diversi metodi.  
 - **Compatibilità:** Linux (testato su Arch/Manjaro)
 
 ---
 
-## ⚙️Caratteristiche
+## ⚙️ Risorse
 
-✅ Compressione con supporto per più compressori
-✅ Crittografia opzionale tramite `gpg`
-✅ Registro dettagliato con contatore progressivo
-✅ Rilevamento e installazione automatici delle dipendenze
-✅ Supporto colore e modalità silenziosa
-✅ Backup anche solo con file nascosti
-✅ Risultati puliti e standardizzati
+✅ Compressione con supporto a più compressori  
+✅ Crittografia opzionale tramite `gpg`  
+✅ Log dettagliato con contatore progressivo  
+✅ Rilevamento e installazione automatica delle dipendenze  
+✅ Supporto per colori e modalità silenziosa  
+✅ Backup anche con solo file nascosti  
+✅ Uscite pulite e standardizzate  
 
 ---
 
 ## 🧩 Compressori disponibili
 
-| Opzione | Compressore | Estensione generata | Velocità | Livello di compressione | Nota |
-|-------|-------------|------------|-------------|----------------------|-------------|
-| `-s` | **pzstd** | `.tar.zst` | ⚡ Veloce | 🟢 Forte | Standard (multithread Zstandard) |
-| `-z` | **pigz** `.tar.gz` | ⚡⚡| 🟡Media | gzip parallelo |
-| `-g` | **gzip** | `.tar.gz` | ⚡| 🟡 Medio | gzip tradizionale |
-| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Forte | Pacchetto Linux standard |
-| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴Basso | Ultraveloce |
-| `-o` | **lzop** | `.tar.lzo` | ⚡⚡| 🔴Basso | Semplice e leggero |
-| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Forte | Ideale per il web (HTML, JS, CSS) |
-| `-r` | **lrzip** | `.tar.lrz` | ⚡| 🟢 Forte | Eccellente su file di grandi dimensioni |
-| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Estremo | Massima compressione, post-elaborazione |
-| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡| 🟢 Forte | Zstandard + crittografia |
-| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡| 🟢 Forte | Crittografia con `gpg2` |
-| `-7` | **7z** | `.7z` | 🐢 | 🟢 Forte | Compressione complessiva elevata |
-| `-Z` | **zip** | `.zip` | ⚡| 🟡 Medio | Formato universale |
+| Opzione | Compressore | Estensione generata | Velocità | Livello di compressione | Osservazione |
+|-------|-------------|------------------|-------------|----------------------|-------------|
+| `-s` | **pzstd** | `.tar.zst` | ⚡ Veloce | 🟢 Alto | Standard (Zstandard multithread) |
+| `-z` | **pigz** | `.tar.gz` | ⚡⚡ | 🟡 Medio | gzip parallelo |
+| `-g` | **gzip** | `.tar.gz` | ⚡ | 🟡 Medio | gzip tradizionale |
+| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Alto | Standard dei pacchetti Linux |
+| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Basso | Ultrarapido |
+| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Basso | Semplice e leggero |
+| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Alto | Ideale per il web (HTML, JS, CSS) |
+| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Alto | Eccellente per file grandi |
+| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Estremo | Compressione massima, post-elaborazione |
+| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Alto | Zstandard + crittografia |
+| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Alto | Crittografia con `gpg2` |
+| `-7` | **7z** | `.7z` | 🐢 | 🟢 Alta | Alta compressione generale |
+| `-Z` | **zip** | `.zip` | ⚡ | 🟡 Medio | Formato universale |
 
 ---
 
@@ -106,7 +106,7 @@ makepkg -si
 
 📜 Licença
 
-Licenciado sob BSD 2-Clause
+Licenciado sob a [Licença MIT](LICENSE)
 
 Copyright (c) 2023-2025, Vilmar Catafesta
 All rights reserved.

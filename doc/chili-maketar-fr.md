@@ -1,49 +1,49 @@
-# 🌶️ chili-maketar
+# 🌶️ marché au chili
 
-**chili-maketar** est un outil Bash conçu pour créer des fichiers `.tar` (et dérivés) avec prise en charge de divers compresseurs, cryptage et détection automatique des dépendances.
+**chili-maketar** est un outil en Bash conçu pour créer des fichiers `.tar` (et dérivés) avec prise en charge de divers compresseurs, cryptage et détection automatique des dépendances.
 
-Simple, rapide et efficace — le tout dans le style *classique de type Unix*, sans dépendances inutiles.
+Simple, rapide et efficace — tout dans le style *Unix-like classique*, sans dépendances inutiles.
 
 ---
 
 ## 📦 À propos
 
-- **Auteur :** Vilmar Catafesta
-- **Version :** 3.3.3 — _13/11/2025_
-- **Licence :** Clause BSD 2
-- **Description :** Crée des fichiers `.tar` compressés ou cryptés à l'aide de différentes méthodes.
-- **Compatibilité :** Linux (testé sur Arch/Manjaro)
+- **Auteur :** Vilmar Catafesta  
+- **Version :** 3.3.3 — _13/11/2025_  
+- **Licence :** MIT  
+- **Description :** Crée des fichiers `.tar` compressés ou cryptés en utilisant différentes méthodes.  
+- **Compatibilité :** Linux (testé sur Arch/Manjaro)
 
 ---
 
-## ⚙️ Caractéristiques
+## ⚙️ Ressources
 
-✅ Compression avec prise en charge de plusieurs compresseurs
-✅ Cryptage optionnel via `gpg`
-✅ Journal détaillé avec compteur progressif
-✅ Détection et installation automatiques des dépendances
-✅ Prise en charge des couleurs et mode silencieux
-✅ Sauvegarde même avec uniquement des fichiers cachés
-✅ Sorties propres et standardisées
+✅ Compression avec support pour plusieurs compresseurs  
+✅ Cryptographie optionnelle via `gpg`  
+✅ Journal détaillé avec compteur progressif  
+✅ Détection et installation automatique des dépendances  
+✅ Prise en charge des couleurs et mode silencieux  
+✅ Sauvegarde même avec seulement des fichiers cachés  
+✅ Sorties propres et standardisées  
 
 ---
 
 ## 🧩 Compresseurs disponibles
 
-| Options | Compresseur | Extension générée | Vitesse | Niveau de compression | Remarque |
-|-------|-------------|--------|-------------|----------------------|-------------|
-| `-s` | **pzstd** | `.tar.zst` | ⚡ Rapide | 🟢 Fort | Standard (multithread Zstandard) |
-| `-z` | **pigz** `.tar.gz` | ⚡⚡ | 🟡 Médias | gzip parallèle |
+| Option | Compresseur | Extension générée | Vitesse | Niveau de compression | Remarque |
+|-------|-------------|------------------|-------------|----------------------|-------------|
+| `-s` | **pzstd** | `.tar.zst` | ⚡ Rapide | 🟢 Élevé | Standard (Zstandard multithread) |
+| `-z` | **pigz** | `.tar.gz` | ⚡⚡ | 🟡 Moyen | gzip parallèle |
 | `-g` | **gzip** | `.tar.gz` | ⚡ | 🟡 Moyen | gzip traditionnel |
-| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Fort | Norme de paquet Linux |
-| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Basse | Ultrarapide |
-| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Basse | Simple et léger |
-| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Fort | Idéal pour le web (HTML, JS, CSS) |
-| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Fort | Excellent sur les gros fichiers |
+| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Élevé | Standard des paquets Linux |
+| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Faible | Ultra-rapide |
+| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Faible | Simple et léger |
+| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Élevé | Idéal pour le web (HTML, JS, CSS) |
+| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Élevé | Excellent pour les grands fichiers |
 | `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extrême | Compression maximale, post-traitement |
-| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Fort | Zstandard + cryptage |
-| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Fort | Cryptage avec `gpg2` |
-| `-7` | **7z** | `.7z` | 🐢 | 🟢 Fort | Compression globale élevée |
+| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Élevé | Zstandard + cryptage |
+| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Élevé | Cryptage avec `gpg2` |
+| `-7` | **7z** | `.7z` | 🐢 | 🟢 Élevé | Haute compression générale |
 | `-Z` | **zip** | `.zip` | ⚡ | 🟡 Moyen | Format universel |
 
 ---
@@ -106,7 +106,7 @@ makepkg -si
 
 📜 Licença
 
-Licenciado sob BSD 2-Clause
+Licenciado sob a [Licença MIT](LICENSE)
 
 Copyright (c) 2023-2025, Vilmar Catafesta
 All rights reserved.

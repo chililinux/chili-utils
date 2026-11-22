@@ -1,54 +1,54 @@
-# 🌶️ chili-maketar
+# 🌶️ chili-maker
 
-**chili-maketar** is a Bash tool designed to create `.tar` files (and derivatives) with support for various compressors, encryption and automatic dependency detection.
+**chili-maketar** is a Bash tool made to create `.tar` files (and derivatives) with support for various compressors, encryption, and automatic dependency detection.
 
-Simple, fast and efficient — all in the *classic Unix-like* style, without unnecessary dependencies.
+Simple, fast, and efficient — all in the classic *Unix-like* style, without unnecessary dependencies.
 
 ---
 
 ## 📦 About
 
-- **Author:** Vilmar Catafesta
-- **Version:** 3.3.3 — _13/11/2025_
-- **License:** BSD 2-Clause
-- **Description:** Creates compressed or encrypted `.tar` files using different methods.
+- **Author:** Vilmar Catafesta  
+- **Version:** 3.3.3 — _11/13/2025_  
+- **License:** MIT  
+- **Description:** Creates `.tar` files compressed or encrypted using different methods.  
 - **Compatibility:** Linux (tested on Arch/Manjaro)
 
 ---
 
 ## ⚙️ Features
 
-✅ Compression with support for multiple compressors
-✅ Optional encryption via `gpg`
-✅ Detailed log with progressive counter
-✅ Automatic dependency detection and installation
-✅ Color support and silent mode
-✅ Backup even with only hidden files
-✅ Clean and standardized outputs
+✅ Compression with support for multiple compressors  
+✅ Optional encryption via `gpg`  
+✅ Detailed log with progressive counter  
+✅ Automatic detection and installation of dependencies  
+✅ Color support and silent mode  
+✅ Backup even with only hidden files  
+✅ Clean and standardized outputs  
 
 ---
 
-## 🧩 Compressors available
+## 🧩 Available compressors
 
-| Option | Compressor | Generated extension | Speed | Compression level | Note |
+| Option | Compressor | Generated Extension | Speed | Compression Level | Note |
 |-------|-------------|------------------|-------------|----------------------|-------------|
-| `-s` | **pzstd** | `.tar.zst` | ⚡ Fast | 🟢 Loud | Standard (Zstandard multithread) |
-| `-z` | **pigz** `.tar.gz` | ⚡⚡ | 🟡 Media | parallel gzip |
+| `-s` | **pzstd** | `.tar.zst` | ⚡ Fast | 🟢 High | Standard (Multithreaded Zstandard) |
+| `-z` | **pigz** | `.tar.gz` | ⚡⚡ | 🟡 Medium | parallel gzip |
 | `-g` | **gzip** | `.tar.gz` | ⚡ | 🟡 Medium | traditional gzip |
-| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Loud | Linux package standard |
-| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Bass | Ultrafast |
-| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Bass | Simple and light |
-| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Loud | Ideal for web (HTML, JS, CSS) |
-| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Loud | Excellent on large files |
-| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extreme | Maximum compression, post-process |
-| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Loud | Zstandard + encryption |
-| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Loud | Encryption with `gpg2` |
-| `-7` | **7z** | `.7z` | 🐢 | 🟢 Loud | High overall compression |
+| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 High | Linux package standard |
+| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Low | Ultra fast |
+| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Low | Simple and light |
+| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 High | Ideal for web (HTML, JS, CSS) |
+| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 High | Excellent for large files |
+| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extreme | Maximum compression, post-processing |
+| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 High | Zstandard + encryption |
+| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 High | Encryption with `gpg2` |
+| `-7` | **7z** | `.7z` | 🐢 | 🟢 High | High overall compression |
 | `-Z` | **zip** | `.zip` | ⚡ | 🟡 Medium | Universal format |
 
 ---
 
-## 💻 Usage example
+## 💻 Example of use
 
 ```bash
 # Compacta diretório atual com zstd (padrão)
@@ -106,7 +106,7 @@ makepkg -si
 
 📜 Licença
 
-Licenciado sob BSD 2-Clause
+Licenciado sob a [Licença MIT](LICENSE)
 
 Copyright (c) 2023-2025, Vilmar Catafesta
 All rights reserved.
