@@ -10,7 +10,7 @@ Simples, rápida e eficiente — tudo no estilo *Unix-like clássico*, sem depen
 
 - **Autor:** Vilmar Catafesta  
 - **Versão:** 3.3.3 — _13/11/2025_  
-- **Licença:** BSD 2-Clause  
+- **Licença:** MIT  
 - **Descrição:** Cria arquivos `.tar` compactados ou criptografados usando diferentes métodos.  
 - **Compatibilidade:** Linux (testado no Arch/Manjaro)
 
@@ -106,7 +106,7 @@ makepkg -si
 
 📜 Licença
 
-Licenciado sob BSD 2-Clause
+Licenciado sob a [Licença MIT](LICENSE)
 
 Copyright (c) 2023-2025, Vilmar Catafesta
 All rights reserved.

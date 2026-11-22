@@ -1,49 +1,49 @@
-# 🌶️ chili-maketar
+# 🌶️ mercado de chili
 
-**chili-maketar** es una herramienta Bash diseñada para crear archivos `.tar` (y derivados) con soporte para varios compresores, cifrado y detección automática de dependencias.
+**chili-maketar** es una herramienta en Bash hecha para crear archivos `.tar` (y derivados) con soporte para diversos compresores, cifrado y detección automática de dependencias.
 
-Simple, rápido y eficiente, todo en el estilo *clásico tipo Unix*, sin dependencias innecesarias.
+Simple, rápida y eficiente — todo al estilo *Unix-like clásico*, sin dependencias innecesarias.
 
 ---
 
-## 📦 Acerca de
+## 📦 Sobre
 
-- **Autor:** Vilmar Catafesta
-- **Versión:** 3.3.3 — _13/11/2025_
-- **Licencia:** BSD 2-Cláusula
-- **Descripción:** Crea archivos `.tar` comprimidos o cifrados utilizando diferentes métodos.
+- **Autor:** Vilmar Catafesta  
+- **Versión:** 3.3.3 — _13/11/2025_  
+- **Licencia:** MIT  
+- **Descripción:** Crea archivos `.tar` comprimidos o encriptados usando diferentes métodos.  
 - **Compatibilidad:** Linux (probado en Arch/Manjaro)
 
 ---
 
-## ⚙️ Características
+## ⚙️ Recursos
 
-✅ Compresión con soporte para múltiples compresores
-✅ Cifrado opcional mediante `gpg`
-✅ Registro detallado con contador progresivo
-✅ Detección e instalación automática de dependencias
-✅ Soporte de color y modo silencioso
-✅ Copia de seguridad incluso solo con archivos ocultos
-✅ Salidas limpias y estandarizadas
+✅ Compresión con soporte para múltiples compresores  
+✅ Cifrado opcional vía `gpg`  
+✅ Registro detallado con contador progresivo  
+✅ Detección e instalación automática de dependencias  
+✅ Soporte de colores y modo silencioso  
+✅ Copia de seguridad incluso con solo archivos ocultos  
+✅ Salidas limpias y estandarizadas  
 
 ---
 
 ## 🧩 Compresores disponibles
 
-| Opción | Compresor | Extensión generada | Velocidad | Nivel de compresión | Nota |
+| Opción | Compresor | Extensión generada | Velocidad | Nivel de compresión | Observación |
 |-------|-------------|------------------|-------------|----------------------|-------------|
-| `-s` | **pzstd** | `.tar.zst` | ⚡ Rápido | 🟢 Fuerte | Estándar (multiproceso Zestándar) |
-| `-z` | **cerdo** `.tar.gz` | ⚡⚡ | 🟡 Medios | gzip paralelo |
-| `-g` | **gzip** | `.tar.gz` | ⚡ | 🟡 Medio | zip tradicional |
-| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Fuerte | Estándar del paquete Linux |
+| `-s` | **pzstd** | `.tar.zst` | ⚡ Rápido | 🟢 Alto | Estándar (Zstandard multihilo) |
+| `-z` | **pigz** | `.tar.gz` | ⚡⚡ | 🟡 Medio | gzip paralelo |
+| `-g` | **gzip** | `.tar.gz` | ⚡ | 🟡 Medio | gzip tradicional |
+| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Alto | Estándar de los paquetes Linux |
 | `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Bajo | Ultrarrápido |
-| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Bajo | Sencillo y ligero |
-| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Fuerte | Ideal para web (HTML, JS, CSS) |
-| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Fuerte | Excelente en archivos grandes |
-| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extremo | Máxima compresión, posproceso |
-| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Fuerte | Zestándar + cifrado |
-| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Fuerte | Cifrado con `gpg2` |
-| `-7` | **7z** | `.7z` | 🐢 | 🟢 Fuerte | Alta compresión general |
+| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Bajo | Simple y ligero |
+| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Alto | Ideal para web (HTML, JS, CSS) |
+| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Alto | Excelente en archivos grandes |
+| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extremo | Compresión máxima, posproceso |
+| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Alto | Zstandard + cifrado |
+| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Alto | Cifrado con `gpg2` |
+| `-7` | **7z** | `.7z` | 🐢 | 🟢 Alta | Alta compresión general |
 | `-Z` | **zip** | `.zip` | ⚡ | 🟡 Medio | Formato universal |
 
 ---
@@ -106,7 +106,7 @@ makepkg -si
 
 📜 Licença
 
-Licenciado sob BSD 2-Clause
+Licenciado sob a [Licença MIT](LICENSE)
 
 Copyright (c) 2023-2025, Vilmar Catafesta
 All rights reserved.

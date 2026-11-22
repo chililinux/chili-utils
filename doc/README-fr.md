@@ -1,118 +1,143 @@
-# 🌶️ chili-utils
+# 🌶️ utilitaires-chili
 
-**chili-utils** est une collection d'outils **Linux créés par Vilmar Catafesta** — un ensemble d'utilitaires rapides, simples et sans fioritures, réalisés en **Bash**, **C**, **Go**, **Harbour** et **Python**.
+**chili-utils** est une collection de **outils Linux créés par Vilmar Catafesta** — un ensemble d'utilitaires rapides, directs et sans fioritures, faits en **Bash**, **C**, **Go**, **Harbour** et **Python**.
 
-Le tout avec la philosophie Unix classique :
-> _« Chaque outil fait une chose et le fait bien. »_
+Tout avec la philosophie classique d'Unix :  
+> _“Chaque outil fait une chose, et la fait bien.”_
 
 ---
 
-## 🧩 Aperçu
+## 🧩 Vue d'ensemble
 
-| Catégorie | Descriptif | Exemples |
-|------------|------------|--------------|
-| 🧰 **Système et noyau** | Configuration et diagnostic du système | `chili-cpuinfo`, `chili-memuse`, `chili-glibc-version`, `chili-systemd-services` |
-| 💾 **Disques et partitions** | Gestion des disques, tests et récupération | `chili-disk-test-bench`, `chili-parted`, `chili-power-disk`, `chili-e2fsck-wrapper`, `chili-writesector` |
-| 🔒 **Boot et EFI** | Maintenance des chargeurs de démarrage et des partitions EFI | `chili-manager-efi`, `chili-create-efi-entry`, `chili-grub-fix`, `chili-update-grub-btrfs`, `chili-update-uuid` |
+| Catégorie | Description | Exemples |
+|------------|------------|----------|
+| 🧰 **Système et Kernel** | Configuration et diagnostic du système | `chili-cpuinfo`, `chili-memuse`, `chili-glibc-version`, `chili-systemd-services` |
+| 💾 **Disques et Partitions** | Gestion, test et récupération de disques | `chili-disk-test-bench`, `chili-parted`, `chili-power-disk`, `chili-e2fsck-wrapper`, `chili-writesector` |
+| 🔒 **Boot et EFI** | Maintenance des bootloaders et des partitions EFI | `chili-manager-efi`, `chili-criar-entrada-efi`, `chili-grub-fix`, `chili-update-grub-btrfs`, `chili-update-uuid` |
 | 🌐 **Réseau et Internet** | Connectivité, Wi-Fi et synchronisation de l'heure | `chili-wifi-config`, `chili-wifi-config-wpa`, `chili-syncdatetime`, `chili-testmirror` |
-| 📦 **Compaction et emballage** | Création et conversion de packages et de fichiers | `chili-maketar`, `chili-deb2zst`, `chili-recompress-btrfs`, `chili-make-pacman-conf` |
-| 🧠 **Traduction et automatisation** | Traduction automatique et scripts parallèles | `chili-translator.sh`, `chili-translator-go`, `chili-translator-parallel` |
-| ⚙️ **Ambientes Chroot et Jail** | Montage et exécution sécurisés de chroots | `chili-chroot`, `chili-jailchroot`, `chili-break_chroot`, `chili-runiso` |
-| 🧹 **Entretien et nettoyage** | Nettoyage, mise à jour et initialisation des packages | `chili-cleaner`, `chili-init-keys`, `chili-update`, `chili-testmirror` |
-| 💡 **Conversion et graphisme** | Convertisseurs d'images et de formats | `chili-convert-png-to-avif`, `chili-convert-png-to-svg.py`, `chili-convertpng.py`, `chili-convertpng40x40.py` |
-| 🪄 **Bureau et interface** | Ajustements du thème, de la police et du moniteur | `chili-setfont`, `chili-dialog-theme-selector`, `chili-sysmontask-root`, `chili-xrandr`, `chili-util-selector` |
-| 🧱 **Anciens systèmes (mode rétro)** | Scripts pour MS-DOS, FreeDOS et Windows 3.11 | `chili-setup-freedos`, `chili-setup-msdos`, `chili-setup-windows311` |
-| 🧨 **Administration et sécurité** | Processus, autorisations et utilisateurs | `chili-sudo-wayland`, `chili-rename-user`, `chili-killer`, `chili-locale-config` |
-| 🧪 **Comparateurs et synchronisation** | Synchronisation et comparaison d'annuaires | `chili-compare-dirs`, `chili-compare-dirs-comm`, `chili-compare-dirs-rsync`, `chili-compare-dirs-simple` |
+| 📦 **Compression et Emballage** | Création et conversion de paquets et fichiers | `chili-maketar`, `chili-deb2zst`, `chili-recompress-btrfs`, `chili-make-pacman-conf` |
+| 🧠 **Traduction et Automatisation** | Traduction automatique et scripts parallèles | `chili-tradutor.sh`, `chili-tradutor-go`, `chili-tradutor-parallel` |
+| ⚙️ **Environnements Chroot et Jail** | Montage et exécution sécurisée de chroots | `chili-chroot`, `chili-jailchroot`, `chili-break_chroot`, `chili-runiso` |
+| 🧹 **Maintenance et Nettoyage** | Nettoyage, mise à jour et initialisation des packages | `chili-cleaner`, `chili-init-keys`, `chili-update`, `chili-testmirror` |
+| 💡 **Conversion et Graphiques** | Convertisseurs d'images et de formats | `chili-convert-png-to-avif`, `chili-convert-png-to-svg.py`, `chili-convertpng.py`, `chili-convertpng40x40.py` |
+| 🪄 **Bureau et Interface** | Réglages des thèmes, des polices et des moniteurs | `chili-setfont`, `chili-dialog-theme-selector`, `chili-sysmontask-root`, `chili-xrandr`, `chili-util-selector` |
+| 🧱 **Systèmes anciens (mode rétro)** | Scripts pour MS-DOS, FreeDOS et Windows 3.11 | `chili-setup-freedos`, `chili-setup-msdos`, `chili-setup-windows311` |
+| 🧨 **Administration et Sécurité** | Processus, permissions et utilisateurs | `chili-sudo-wayland`, `chili-rename-user`, `chili-killer`, `chili-locale-config` |
+| 🧪 **Comparateurs et Sync** | Synchronisation et comparaison de répertoires | `chili-compare-dirs`, `chili-compare-dirs-comm`, `chili-compare-dirs-rsync`, `chili-compare-dirs-simple` |
 
 ---
 
-## ⚙️ Faits saillants
+## ⚙️ Points forts
+
+### 🖥️ **chili-machine-hwreport** + **chili-fr -M**
+Génère le profil de votre machine (fabricant, modèle, BIOS, châssis et matériel), sans numéro de série, UUID ni MAC, et l'envoie par issue. Avec les profils, le `chili-fr` simule dans QEMU l'installation de VoidBR sur des machines réelles.
+
+```bash
+chili-machine-hwreport                         # gera e envia o perfil desta máquina
+chili-fr --list-machines                       # lista os perfis disponíveis
+chili-fr -M lg-a410 voidbr.iso disco.qcow2     # simula a instalação num LG A410
+```
+
+📖 Documentation complète : [chili-machine-hwreport.md](chili-machine-hwreport.md)
 
 ### 🔥 **chili-maketar**
-Compresseur universel avec prise en charge de plusieurs algorithmes et cryptage via GPG.
+Compresseur universel avec support pour plusieurs algorithmes et chiffrement via GPG.
 
 ```bash
 chili-maketar -s           # Compacta com zstd (padrão)
 chili-maketar -r /var/log  # Usa lrzip
 chili-maketar -p backup    # Compacta + criptografa
+```
 
-🧠 chili-tradutor-go
+### 🧠 **chili-traducteur-go**
+Traducteur écrit en Go avec des threads parallèles et support JSON.
 
-Tradutor escrito em Go com threads paralelos e suporte a JSON.
-
+```bash
 chili-tradutor-go texto_entrada.json
+```
 
-🔒 chili-manager-efi
+### 🔒 **chili-manager-efi**
+Gère les partitions et les entrées EFI, réinstalle GRUB et détecte plusieurs systèmes d'exploitation.
 
-Gerencia partições e entradas EFI, reinstala GRUB e detecta múltiplos sistemas operacionais.
-🧪 chili-compare-dirs
+### 🧪 **chili-comparer-dossiers**
+Compare et synchronise des répertoires avec différents modes (rsync, comm, simple).
 
-Compara e sincroniza diretórios com diferentes modos (rsync, comm, simples).
-
+```bash
 chili-compare-dirs /mnt/diskA /mnt/diskB
+```
 
-🧠 Filosofia
+---
 
-    “Automatizar é reduzir o tédio, não a atenção.”
-    — Vilmar Catafesta
+## 🧠 Philosophie
 
-Os chili-utils seguem quatro mandamentos:
+> _« Automatiser, c’est réduire l’ennui, pas l’attention. »_  
+> — Vilmar Catafesta
 
-    Simplicidade acima de tudo.
+Les chili-utils suivent quatre commandements :
 
-    Zero dependências externas sempre que possível.
+1. La simplicité avant tout.
+2. Zéro dépendances externes autant que possible.
+3. Scripts auto-explicatifs et avec des messages clairs.
+4. Compatibilité totale avec les environnements POSIX.
 
-    Scripts autoexplicativos e com mensagens claras.
+---
 
-    Compatibilidade total com ambientes POSIX.
+## 🧱 Installation
 
-🧱 Instalação
-🧩 Opção 1 — via PKGBUILD (Arch / Manjaro)
+### 🧩 Option 1 — via PKGBUILD (Arch / Manjaro)
 
+```bash
 git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils/pkgbuild
 makepkg -si
+```
 
-🧩 Opção 2 — via Makefile (instalação manual)
+### 🧩 Option 2 — via Makefile (installation manuelle)
 
+```bash
 git clone https://github.com/vcatafesta/chili-utils.git
 cd chili-utils
 sudo make install
+```
 
-Para remover:
+Pour enlever :
 
+```bash
 sudo make uninstall
+```
 
-### 🧩 Opção 3 — Instalar diretamente do repositório Chili Linux
+### 🧩 Option 3 — Installer directement depuis le dépôt Chili Linux
 
-> **Pacote pré-compilado (Arch, Manjaro e derivados)**  
+> **Package pré-compilé (Arch, Manjaro et dérivés)**  
 >  
 > `sudo pacman -U https://chililinux.com/repo/chili-stable/x86_64/chili-utils-20251112-0052-any.pkg.tar.zst`  
 >  
-> Se o link acima falhar, acesse o diretório de pacotes e pegue a versão mais recente manualmente:  
+> Si le lien ci-dessus échoue, accédez au répertoire des paquets et prenez la version la plus récente manuellement :  
 > 👉 [https://chililinux.com/repo/chili-stable/x86_64/](https://chililinux.com/repo/chili-stable/x86_64/)
 
-📜 Licença
+---
 
-Licenciado sob BSD 2-Clause License
+## 📜 Licence
 
-Copyright (c) 2019-2025
+Licencié sous le [Licença MIT](LICENSE).
+
+Droits d'auteur (c) 2019-2025  
 Vilmar Catafesta <vcatafesta@gmail.com>
-All rights reserved.
-
-🧩 Autor
-
-Vilmar Catafesta
-💻 Programador & SysAdmin
-✉️ vcatafesta@gmail.com
-🌶️ Conclusão
-
-chili-utils é o canivete suíço definitivo pra quem vive no terminal —
-um arsenal de ferramentas Unix puras, feitas pra resolver, não pra enfeitar.
-
-    “Não existe mágica. Só shell bem escrito.” 🧙‍♂️
-    — vcatafesta
-
 
 ---
+
+## 🧩 Auteur
+
+**Vilmar Catafesta*  
+💻 Programmeur & SysAdmin  
+✉️ vcatafesta@gmail.com
+
+---
+
+## 🌶️ Conclusion
+
+**chili-utils** est le couteau suisse définitif pour ceux qui vivent dans le terminal —  
+un arsenal d'outils Unix purs, faits pour résoudre, pas pour embellir.
+
+> _“Il n’y a pas de magie. Seulement des scripts shell bien écrits.”_ 🧙‍♂️  
+> — vcatafesta

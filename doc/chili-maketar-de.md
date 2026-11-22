@@ -1,50 +1,50 @@
-# 🌶️ Chili-Maketar
+# 🌶️ Chili-Vermarkter
 
-**chili-maketar** ist ein Bash-Tool zum Erstellen von „.tar“-Dateien (und Derivaten) mit Unterstützung für verschiedene Kompressoren, Verschlüsselung und automatische Abhängigkeitserkennung.
+**chili-maketar** ist ein Bash-Tool, das dazu dient, `.tar`-Dateien (und abgeleitete Dateien) mit Unterstützung für verschiedene Kompressoren, Verschlüsselung und automatische Abhängigkeitsprüfung zu erstellen.
 
-Einfach, schnell und effizient – alles im *klassischen Unix-ähnlichen* Stil, ohne unnötige Abhängigkeiten.
+Einfach, schnell und effizient — alles im klassischen *Unix-ähnlichen* Stil, ohne unnötige Abhängigkeiten.
 
 ---
 
-## 📦 Ungefähr
+## 📦 Über
 
-- **Autor:** Vilmar Catafesta
-- **Version:** 3.3.3 – _13.11.2025_
-- **Lizenz:** BSD 2-Klausel
-- **Beschreibung:** Erstellt komprimierte oder verschlüsselte „.tar“-Dateien mit verschiedenen Methoden.
+- **Autor:** Vilmar Catafesta  
+- **Version:** 3.3.3 — _13/11/2025_  
+- **Lizenz:** MIT  
+- **Beschreibung:** Erstellt `.tar`-Dateien, die komprimiert oder verschlüsselt sind, unter Verwendung verschiedener Methoden.  
 - **Kompatibilität:** Linux (getestet auf Arch/Manjaro)
 
 ---
 
 ## ⚙️ Funktionen
 
-✅ Komprimierung mit Unterstützung für mehrere Kompressoren
-✅ Optionale Verschlüsselung per „gpg“.
-✅ Detailliertes Protokoll mit progressivem Zähler
-✅ Automatische Erkennung und Installation von Abhängigkeiten
-✅ Farbunterstützung und lautloser Modus
-✅ Sichern Sie auch nur versteckte Dateien
-✅ Saubere und standardisierte Ausgaben
+✅ Komprimierung mit Unterstützung für mehrere Kompressoren  
+✅ Optionale Verschlüsselung über `gpg`  
+✅ Detailliertes Protokoll mit fortschreitendem Zähler  
+✅ Automatische Erkennung und Installation von Abhängigkeiten  
+✅ Farbunterstützung und Ruhemodus  
+✅ Backup auch mit nur versteckten Dateien  
+✅ Saubere und standardisierte Ausgänge  
 
 ---
 
-## 🧩 Kompressoren verfügbar
+## 🧩 Verfügbare Kompressoren
 
-| Option | Kompressor | Generierte Erweiterung | Geschwindigkeit | Komprimierungsstufe | Hinweis |
-|-------|-------------|----|-------------|--------|-------------|
-| `-s` | **pzstd** | `.tar.zst` | ⚡ Schnell | 🟢 Laut | Standard (Zstandard-Multithread) |
-| `-z` | **pigz** `.tar.gz` | ⚡⚡ | 🟡 Medien | parallel gzip |
+| Option | Kompressor | Generierte Erweiterung | Geschwindigkeit | Kompressionsstufe | Anmerkung |
+|-------|-------------|------------------|-------------|----------------------|-------------|
+| `-s` | **pzstd** | `.tar.zst` | ⚡ Schnell | 🟢 Hoch | Standard (Multithread-Zstandard) |
+| `-z` | **pigz** | `.tar.gz` | ⚡⚡ | 🟡 Mittel | paralleles gzip |
 | `-g` | **gzip** | `.tar.gz` | ⚡ | 🟡 Mittel | traditionelles gzip |
-| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Laut | Linux-Paketstandard |
-| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Bass | Ultraschnell |
-| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Bass | Einfach und leicht |
-| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Laut | Ideal für Web (HTML, JS, CSS) |
-| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Laut | Hervorragend geeignet für große Dateien |
-| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extrem | Maximale Komprimierung, Nachbearbeitung |
-| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Laut | Zstandard + Verschlüsselung |
-| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Laut | Verschlüsselung mit „gpg2“ |
-| `-7` | **7z** | `.7z` | 🐢 | 🟢 Laut | Hohe Gesamtkomprimierung |
-| `-Z` | **zip** | `.zip` | ⚡ | 🟡 Mittel | Universelles Format |
+| `-x` | **xz** | `.tar.xz` | 🐢 | 🟢 Hoch | Standard der Linux-Pakete |
+| `-l` | **lz4** | `.tar.lz4` | ⚡⚡⚡ | 🔴 Niedrig | Ultrahochgeschwindigkeit |
+| `-o` | **lzop** | `.tar.lzo` | ⚡⚡ | 🔴 Niedrig | Einfach und leicht |
+| `-b` | **brotli** | `.tar.br` | 🐢 | 🟢 Hoch | Ideal für Web (HTML, JS, CSS) |
+| `-r` | **lrzip** | `.tar.lrz` | ⚡ | 🟢 Hoch | Ausgezeichnet bei großen Dateien |
+| `-q` | **zpaq** | `.zpaq` | 🐌 | 🟣 Extrem | Maximale Kompression, Nachbearbeitung |
+| `-e` | **zstdgpg** | `.tar.zst.gpg` | ⚡ | 🟢 Hoch | Zstandard + Verschlüsselung |
+| `-p` | **tarzstgpg2** | `.tar.zst.gpg` | ⚡ | 🟢 Hoch | Verschlüsselung mit `gpg2` |
+| `-7` | **7z** | `.7z` | 🐢 | 🟢 Hoch | Hohe Gesamtkodierung |
+| `-Z` | **Reißverschluss** | `.zip` | ⚡ | 🟡 Mittel | Universelles Format |
 
 ---
 
@@ -106,7 +106,7 @@ makepkg -si
 
 📜 Licença
 
-Licenciado sob BSD 2-Clause
+Licenciado sob a [Licença MIT](LICENSE)
 
 Copyright (c) 2023-2025, Vilmar Catafesta
 All rights reserved.
