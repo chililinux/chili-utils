@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: sáb 21 nov 2026 20:00:06 -04
+#  Updated: qua 25 nov 2026 00:29:34 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -47,7 +47,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.11.21-20261121'
+readonly VERSION='3.11.22-20261125'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -188,6 +188,21 @@ has_command() {
 
 has_file() {
 	[[ -e "$1" ]] && return 0 || return 1
+}
+
+# MAC fixo de cada placa de rede da VM, tirado da imagem de boot: a mesma
+# imagem sempre recebe o mesmo MAC, e imagens diferentes recebem MACs
+# diferentes. Sem mac=, o QEMU da a todas as VMs o mesmo 52:54:00:12:34:56,
+# e o que identifica a maquina pelo MAC (Epoptes, reserva de DHCP, Wake On
+# LAN) mistura as VMs.
+# Parametros: $1 = imagem/device de boot, $2 = numero da placa (1, 2...).
+vm_mac() {
+	local img="$1" sum
+
+	has_file "$img" || img="$HOME_DIR/vdisk/$img"
+	img=$(readlink -f "$img" 2>/dev/null || echo "$img")
+	sum=$(printf '%s#%s' "$img" "$2" | md5sum)
+	echo "52:54:00:${sum:0:2}:${sum:2:2}:${sum:4:2}"
 }
 
 detect_distro() {
@@ -2857,6 +2872,9 @@ if [[ $# -gt 0 || ${#aimages[@]} -gt 0 ]]; then
 		only_tty=true
 	fi
 
+	# imagem de boot: a primeira de -i/--image ou o primeiro argumento
+	boot_img="${aimages[0]:-$1}"
+
 	if $netchoosedriver; then
 		for netdevice in "${anetdevices[@]}"; do
 			((nId++))
@@ -2876,7 +2894,9 @@ if [[ $# -gt 0 || ${#aimages[@]} -gt 0 ]]; then
 			fi
 
 			# Associar o dispositivo de rede
-			qemu_options+=(-device "$netdevice",netdev="$netdev_id")
+			mac=$(vm_mac "$boot_img" "$nId")
+			msg_info "$(gettext 'Placa de rede') #${nId}: ${yellow}$netdevice${rst}, MAC ${cyan}$mac"
+			qemu_options+=(-device "$netdevice",netdev="$netdev_id",mac="$mac")
 		done
 	else
 		netdev_id="net0"
@@ -2886,7 +2906,9 @@ if [[ $# -gt 0 || ${#aimages[@]} -gt 0 ]]; then
 			#        qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22"$(add_smb_share)")
 			qemu_options+=(-netdev user,id="$netdev_id",hostfwd=tcp::$HOST_FWD-:22,hostfwd=tcp::$HOST_GOTIFY-:8080"$(add_smb_share)")
 		fi
-		qemu_options+=(-device "$netdevice",netdev="$netdev_id")
+		mac=$(vm_mac "$boot_img" 1)
+		msg_info "$(gettext 'Placa de rede'): ${yellow}$netdevice${rst}, MAC ${cyan}$mac"
+		qemu_options+=(-device "$netdevice",netdev="$netdev_id",mac="$mac")
 	fi
 
 	# Adicionando vhost-vsock
