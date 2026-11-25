@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: qua 25 nov 2026 00:44:39 -04
+#  Updated: qua 25 nov 2026 00:46:52 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -47,7 +47,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.11.24-20261125'
+readonly VERSION='3.11.25-20261125'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -2436,10 +2436,15 @@ main::attach_extra_vdisks() {
 main::configure_name() {
 	local vmname="chili-fr"
 	[[ -n "$machine_file" ]] && vmname+=" [$(basename "$machine_file" .conf)]"
-	# Discos anexados (#1 e o de boot), MAC da primeira placa e porta do ssh
-	# (NAT) no titulo da janela: com varias VMs abertas, da para saber qual
-	# e qual.
+	# Firmware (UEFI ou BIOS), discos anexados (#1 e o de boot), MAC da
+	# primeira placa e porta do ssh (NAT) no titulo da janela: com varias VMs
+	# abertas, da para saber qual e qual.
 	local i
+	if $uefi; then
+		vmname+=" | UEFI"
+	else
+		vmname+=" | BIOS"
+	fi
 	for i in "${!vm_disks[@]}"; do
 		vmname+=" | #$((i + 1)) ${vm_disks[i]}"
 	done
