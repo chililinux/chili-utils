@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: qua 25 nov 2026 00:42:04 -04
+#  Updated: qua 25 nov 2026 00:44:39 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -47,7 +47,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.11.23-20261125'
+readonly VERSION='3.11.24-20261125'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -152,6 +152,7 @@ declare -i Pcol=0
 declare -a qemu_options=()
 declare -a avdisk_names=()
 declare -a aimages=()
+declare -a vm_disks=() # discos anexados, para o titulo da janela
 declare LPARAM_AUDIO=false
 declare LPARAM_MEM=false
 declare LPARAM_VIDEO=false
@@ -190,12 +191,12 @@ has_file() {
 	[[ -e "$1" ]] && return 0 || return 1
 }
 
-# MAC fixo de cada placa de rede da VM, tirado da imagem de boot: a mesma
-# imagem sempre recebe o mesmo MAC, e imagens diferentes recebem MACs
+# MAC fixo de cada placa de rede da VM, tirado do disco da VM (ver boot_img):
+# o mesmo disco sempre recebe o mesmo MAC, e discos diferentes recebem MACs
 # diferentes. Sem mac=, o QEMU da a todas as VMs o mesmo 52:54:00:12:34:56,
 # e o que identifica a maquina pelo MAC (Epoptes, reserva de DHCP, Wake On
 # LAN) mistura as VMs.
-# Parametros: $1 = imagem/device de boot, $2 = numero da placa (1, 2...).
+# Parametros: $1 = disco da VM, $2 = numero da placa (1, 2...).
 vm_mac() {
 	local sum
 
@@ -2375,6 +2376,7 @@ main::build_base_qemu() {
 
 main::attach_primary_devices() {
 	for img in "${devices[@]}"; do
+		vm_disks+=("${img##*/}") # para o titulo da janela
 		media_type=$(file -b --mime-type "${img}")
 
 		if [[ "$img" == *.iso ]]; then
@@ -2425,6 +2427,7 @@ main::attach_extra_vdisks() {
 			qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 		fi
 
+		vm_disks+=("${vdsk##*/}") # para o titulo da janela
 		disk_device "disk${bootindex}" "${bootindex}"
 		((bootindex++))
 	done
@@ -2433,10 +2436,14 @@ main::attach_extra_vdisks() {
 main::configure_name() {
 	local vmname="chili-fr"
 	[[ -n "$machine_file" ]] && vmname+=" [$(basename "$machine_file" .conf)]"
-	# Caminho da imagem/device de boot, MAC da primeira placa e porta do ssh
+	# Discos anexados (#1 e o de boot), MAC da primeira placa e porta do ssh
 	# (NAT) no titulo da janela: com varias VMs abertas, da para saber qual
 	# e qual.
-	vmname+=" | $(vm_boot_path "$boot_img") | MAC $(vm_mac "$boot_img" 1)"
+	local i
+	for i in "${!vm_disks[@]}"; do
+		vmname+=" | #$((i + 1)) ${vm_disks[i]}"
+	done
+	vmname+=" | MAC $(vm_mac "$boot_img" 1)"
 	$bridge || vmname+=" | ssh $HOST_FWD"
 	# virgula e separador de opcoes do QEMU; no valor, vai dobrada
 	qemu_options+=(-name "${vmname//,/,,}")
@@ -2885,8 +2892,17 @@ if [[ $# -gt 0 || ${#aimages[@]} -gt 0 ]]; then
 		only_tty=true
 	fi
 
-	# imagem de boot: a primeira de -i/--image ou o primeiro argumento
-	boot_img="${aimages[0]:-$1}"
+	# disco que identifica a VM, de onde sai o MAC: o primeiro que nao e .iso,
+	# para a mesma VM ter o mesmo MAC subindo pela iso de instalacao ou
+	# direto pelo disco (e VMs diferentes com a mesma iso nao repetirem MAC).
+	# Sem disco, a propria iso.
+	boot_img=""
+	for img in "${aimages[@]}" "$@"; do
+		[[ "$img" == *.iso ]] && continue
+		boot_img="$img"
+		break
+	done
+	boot_img="${boot_img:-${aimages[0]:-$1}}"
 
 	if $netchoosedriver; then
 		for netdevice in "${anetdevices[@]}"; do
