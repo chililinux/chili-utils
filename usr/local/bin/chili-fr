@@ -4,7 +4,7 @@
 #
 #  chili-fr - Wrapper lite para o qemu
 #  Created: 2019/12/13 - 00:00
-#  Updated: qua 25 nov 2026 00:46:52 -04
+#  Updated: qua 25 nov 2026 07:10:11 -04
 #
 #  Copyright (c) 2019-2026, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -47,7 +47,7 @@ export PS4='${red}${0##*/}${green}[${FUNCNAME:-main}]${pink}[$LINENO]${reset} '
 
 #system
 readonly APP="${0##*/}"
-readonly VERSION='3.11.25-20261125'
+readonly VERSION='3.11.26-20261125'
 readonly APPDESC="$(gettext 'Wrapper lite para o qemu')"
 readonly -A PACKAGEDEP=(
 	['tput']='ncurses'
@@ -2376,7 +2376,7 @@ main::build_base_qemu() {
 
 main::attach_primary_devices() {
 	for img in "${devices[@]}"; do
-		vm_disks+=("${img##*/}") # para o titulo da janela
+		vm_disks+=("$(readlink -f "$img" 2>/dev/null || echo "$img")") # titulo da janela
 		media_type=$(file -b --mime-type "${img}")
 
 		if [[ "$img" == *.iso ]]; then
@@ -2427,7 +2427,7 @@ main::attach_extra_vdisks() {
 			qemu_options+=(-drive file="${vdsk}",if=none,id=disk${bootindex},format=qcow2,cache=${cache_type})
 		fi
 
-		vm_disks+=("${vdsk##*/}") # para o titulo da janela
+		vm_disks+=("$(readlink -f "$vdsk" 2>/dev/null || echo "$vdsk")") # titulo da janela
 		disk_device "disk${bootindex}" "${bootindex}"
 		((bootindex++))
 	done
